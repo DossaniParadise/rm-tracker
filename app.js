@@ -59,34 +59,48 @@ async function sendSignInLink() {
 
 // Handle sign-in from email link
 async function handleEmailLinkSignIn() {
+    // Get email from localStorage
     let email = window.localStorage.getItem('emailForSignIn');
     
     if (!email) {
-        // User opened link on different device, ask for email
-        email = prompt('Please provide your email for confirmation:');
+        // User opened link on different device or cleared storage
+        // Use browser prompt as fallback
+        email = window.prompt('Please confirm your email address:');
     }
     
     if (!email) {
         showError('Email required to complete sign-in');
+        showLoginScreen();
         return;
     }
     
     try {
         const result = await auth.signInWithEmailLink(email, window.location.href);
+        
+        // Clear saved email and URL params
         window.localStorage.removeItem('emailForSignIn');
+        window.history.replaceState({}, document.title, window.location.pathname);
+        
         console.log('Email link sign-in successful:', result.user.email);
         
-        // Clear the link from URL
-        window.history.replaceState({}, document.title, window.location.pathname);
+        // loadUserData will be called by onAuthStateChanged
     } catch (error) {
         console.error('Error signing in with email link:', error);
+        
+        // Show appropriate error
         if (error.code === 'auth/invalid-action-code') {
-            showError('This sign-in link has expired or already been used');
+            showError('This sign-in link has expired or has already been used. Please request a new one.');
         } else if (error.code === 'auth/invalid-email') {
-            showError('Invalid email address');
+            showError('Invalid email address. Please try again.');
+        } else if (error.code === 'auth/user-disabled') {
+            showError('This account has been disabled. Contact IT Support.');
         } else {
-            showError('Error completing sign-in. Please try again.');
+            showError('Error completing sign-in: ' + error.message);
         }
+        
+        // Clear the URL and show login form
+        window.history.replaceState({}, document.title, window.location.pathname);
+        showLoginScreen();
     }
 }
 
@@ -160,7 +174,8 @@ function showError(message) {
     const errorEl = document.getElementById('loginError');
     errorEl.textContent = message;
     errorEl.classList.remove('hidden');
-    setTimeout(() => errorEl.classList.add('hidden'), 8000);
+    // Show error for 10 seconds (longer for important messages)
+    setTimeout(() => errorEl.classList.add('hidden'), 10000);
 }
 
 // Store Selection
