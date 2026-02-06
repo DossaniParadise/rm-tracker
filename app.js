@@ -15,6 +15,16 @@ auth.onAuthStateChanged(async (user) => {
     }
 });
 
+// Handle redirect result (user coming back from Microsoft login)
+auth.getRedirectResult().then((result) => {
+    if (result.user) {
+        console.log('Redirect login successful:', result.user.email);
+    }
+}).catch((error) => {
+    console.error('Redirect error:', error);
+    showError(error.message);
+});
+
 // Microsoft Login
 async function loginWithMicrosoft() {
     try {
@@ -23,8 +33,9 @@ async function loginWithMicrosoft() {
             tenant: 'ba38caa7-6bf9-4989-880b-3f2741f8c9d7'  // Dossani Paradise tenant
         });
         
-        const result = await auth.signInWithPopup(provider);
-        console.log('Login successful:', result.user.email);
+        // Use redirect instead of popup to avoid Cross-Origin-Opener-Policy issues
+        await auth.signInWithRedirect(provider);
+        // User will be redirected to Microsoft login, then back to the app
     } catch (error) {
         console.error('Login error:', error);
         showError(error.message);
