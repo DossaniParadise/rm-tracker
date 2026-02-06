@@ -46,6 +46,48 @@
     --status-resolved: #059669;
     --status-closed: #6b7280;
 }
+[data-theme="dark"] {
+    --bg: #0f1419;
+    --card: #1a1f2e;
+    --primary: #5b9cf6;
+    --primary-light: rgba(91,156,246,0.12);
+    --primary-hover: #4a8ae0;
+    --accent: #f0b429;
+    --accent-light: rgba(240,180,41,0.1);
+    --danger: #f87171;
+    --danger-light: rgba(248,113,113,0.1);
+    --warning: #fb923c;
+    --warning-light: rgba(251,146,60,0.1);
+    --info: #5b9cf6;
+    --info-light: rgba(91,156,246,0.1);
+    --text: #e2e8f0;
+    --text-mid: #94a3b8;
+    --text-muted: #64748b;
+    --border: #2a3040;
+    --border-light: #1e2433;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+    --shadow: 0 1px 3px rgba(0,0,0,0.3);
+    --shadow-lg: 0 10px 25px rgba(0,0,0,0.3);
+    --status-open: #f87171;
+    --status-assigned: #a78bfa;
+    --status-inprogress: #5b9cf6;
+    --status-waiting: #f0b429;
+    --status-resolved: #34d399;
+    --status-closed: #64748b;
+}
+[data-theme="dark"] .brand-pill-icon { background: #252b3b; }
+[data-theme="dark"] .form-input,
+[data-theme="dark"] .form-select,
+[data-theme="dark"] .form-textarea { background: #141821; color: var(--text); }
+[data-theme="dark"] .toast.success { background: rgba(52,211,153,0.15); color: #34d399; border: 1px solid rgba(52,211,153,0.3); }
+[data-theme="dark"] .toast.error { background: rgba(248,113,113,0.15); color: #f87171; border: 1px solid rgba(248,113,113,0.3); }
+[data-theme="dark"] .pending-card { background: #141821; }
+[data-theme="dark"] .leaflet-popup-content-wrapper { background: #1a1f2e !important; }
+[data-theme="dark"] .leaflet-popup-tip { background: #1a1f2e !important; }
+
+[data-theme="dark"] .login-container { background: var(--bg); }
+[data-theme="dark"] .login-card { background: var(--card); border-color: var(--border); }
+[data-theme="dark"] .login-card input { background: #141821; color: var(--text); border-color: var(--border); }
 
 body {
     font-family: 'Inter', sans-serif;
@@ -214,6 +256,23 @@ body {
     flex-direction: column;
 }
 
+
+/* Theme Toggle */
+.theme-toggle {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+.theme-toggle:hover { border-color: var(--primary); background: var(--primary-light); }
 /* Header */
 .app-header {
     background: var(--card);
@@ -248,7 +307,8 @@ body {
 .header-right {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 10px;
+    flex-shrink: 0;
 }
 
 .user-badge {
@@ -1068,22 +1128,100 @@ body {
 }
 
 /* ---- Responsive ---- */
+
+/* Tablet */
+@media (max-width: 900px) {
+    .app-content { padding: 12px; }
+    .store-card { padding: 16px; }
+    #overviewMap { height: 300px; }
+    .map-header { padding: 10px 14px; }
+    .map-stats-bar { padding: 8px 14px; }
+    .header-right { gap: 8px; }
+}
+
+/* Mobile */
 @media (max-width: 600px) {
-    .app-header { padding: 0 14px; height: 56px; }
-    .header-title { font-size: 14px; }
+    .app-header { padding: 0 10px; height: 50px; }
+    .header-title { font-size: 13px; }
+    .theme-toggle { width: 28px; height: 28px; font-size: 14px; }
     .user-badge .user-meta { display: none; }
-    .app-content { padding: 16px; }
-    .store-card { padding: 20px; }
+    .user-avatar { width: 28px; height: 28px; font-size: 11px; }
+    .admin-btn { font-size: 11px; padding: 4px 8px; }
+    .btn-logout { font-size: 11px; padding: 4px 10px; }
+    .app-content { padding: 8px; }
+    .store-card { padding: 14px; }
+    .store-card h2 { font-size: 16px; }
+    .store-card-header p { font-size: 12px; }
+    .brand-pill { padding: 8px 14px 8px 8px; font-size: 13px; }
+    .brand-pill-icon { width: 24px; height: 24px; border-radius: 6px; }
+    .brand-pill-icon img { width: 18px; height: 18px; }
     .form-row { grid-template-columns: 1fr; }
-    .action-grid { grid-template-columns: 1fr; }
-    .category-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
-    .priority-options { flex-direction: column; }
+    .form-label { font-size: 11px; }
+    .form-select, .form-input { font-size: 13px; padding: 8px 10px; }
+    .action-grid { grid-template-columns: 1fr; gap: 8px; }
+    .action-card { padding: 16px; }
+    .action-icon { font-size: 24px; }
+    .action-title { font-size: 14px; }
+    .action-desc { font-size: 11px; }
+    #overviewMap { height: 250px; }
+    .map-header { padding: 8px 12px; }
+    .map-header h2 { font-size: 14px; }
+    .map-legend { font-size: 10px; gap: 8px; }
+    .map-stats-bar { padding: 8px 12px; gap: 10px; }
+    .map-stats-bar .mstat strong { font-size: 14px; }
+    .map-stats-bar .mstat { font-size: 11px; }
+    .category-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 6px; }
+    .category-btn { padding: 10px 6px; }
+    .cat-icon { font-size: 20px; }
+    .cat-label { font-size: 11px; }
+    .priority-options { flex-direction: column; gap: 6px; }
+    .priority-btn { padding: 10px; flex-direction: row; gap: 10px; }
+    .priority-icon { font-size: 18px; }
+    .priority-label { font-size: 13px; margin-top: 0; }
+    .priority-desc { display: inline; margin-top: 0; margin-left: 4px; }
+    .issue-form-body { padding: 14px; }
+    .issue-form-header { padding: 14px; }
+    .issue-form-header h2 { font-size: 16px; }
+    .photo-upload-area { padding: 16px; }
+    .form-actions { flex-direction: column; }
+    .form-actions .btn { width: 100%; }
     .status-select-grid { grid-template-columns: repeat(2, 1fr); }
-    .issue-form-body { padding: 20px; }
-    .issue-form-header { padding: 18px 20px; }
-    .modal-body { padding: 18px; }
-    .modal-header { padding: 16px 18px; }
-    .ticket-card-inner { padding: 14px 16px; }
+    .modal-content { max-width: 100%; margin: 0 8px; max-height: 90vh; }
+    .modal-body { padding: 14px; }
+    .modal-header { padding: 14px; }
+    .modal-header h3 { font-size: 14px; }
+    .ticket-card-inner { padding: 12px; }
+    .ticket-card-desc { font-size: 13px; }
+    .ticket-card-meta { font-size: 11px; }
+    .ticket-id { font-size: 11px; }
+    .tickets-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .tickets-header h2 { font-size: 16px; }
+    .ticket-filters { gap: 4px; }
+    .filter-chip { font-size: 11px; padding: 4px 10px; }
+    .back-row { margin-bottom: 8px; }
+    .btn-back { font-size: 12px; }
+    .admin-section-header { padding: 12px 14px; }
+    .admin-section-body { padding: 12px 14px; }
+    .admin-section-header h3 { font-size: 13px; }
+    .pending-form { grid-template-columns: 1fr; }
+    .user-row { flex-wrap: wrap; gap: 8px; }
+    .user-row-actions { width: 100%; justify-content: flex-end; }
+    .admin-modal { padding: 16px 8px 8px; }
+    .modal-card { padding: 16px; max-width: 100%; }
+    .modal-card h3 { font-size: 14px; }
+    .leaflet-popup-content-wrapper { max-width: 240px !important; }
+    .mp-btns { flex-direction: column; gap: 4px; }
+    .mp-btn { font-size: 11px; padding: 5px 8px; }
+}
+
+/* Extra small phones */
+@media (max-width: 380px) {
+    .brand-pill { padding: 6px 10px 6px 6px; font-size: 12px; gap: 5px; }
+    .brand-pill-icon { width: 20px; height: 20px; }
+    .brand-pill-icon img { width: 16px; height: 16px; }
+    .store-card { padding: 10px; }
+    .app-content { padding: 6px; }
+    #overviewMap { height: 200px; }
 }
     
 /* ============================================================
@@ -1148,8 +1286,10 @@ body {
 }
 .map-stats-bar .mstat strong {
     color: var(--text);
-    font-size: 16px;
+    font-size: 15px;
 }
+.map-stats-bar .mstat[style*="cursor"] { padding: 4px 8px; border-radius: 6px; }
+.map-stats-bar .mstat[style*="cursor"]:hover { background: var(--primary-light); }
 
 /* Leaflet dark overrides */
 .leaflet-popup-content-wrapper {
@@ -1185,11 +1325,7 @@ body {
 }
 .map-popup .mp-btn:hover { background: var(--primary); color: #fff; }
 
-@media (max-width: 600px) {
-    #overviewMap { height: 320px; }
-    .map-header { padding: 12px 16px; }
-    .map-stats-bar { padding: 10px 16px; }
-}
+/* map mobile handled in main responsive section */
 
 /* ============================================================
    BRAND PILL BUTTONS
@@ -1360,16 +1496,17 @@ body {
 .user-row-actions button:hover { color: var(--primary); border-color: var(--primary); }
 .user-row-actions button.del:hover { color: var(--danger); border-color: var(--danger); }
 
-/* Edit user modal overlay */
+/* Admin/dynamic modal overlay */
 .admin-modal {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.6);
+    background: rgba(0,0,0,0.5);
     z-index: 250;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
-    padding: 20px;
+    padding: 80px 20px 20px;
+    overflow-y: auto;
 }
 .modal-card {
     background: var(--card);
@@ -1391,10 +1528,7 @@ body {
     font-size: 13px;
 }
 
-@media (max-width: 600px) {
-    .pending-form { grid-template-columns: 1fr; }
-    .user-row { flex-wrap: wrap; }
-}
+/* admin mobile handled in main responsive section */
 
 </style>
 </head>
@@ -1458,6 +1592,7 @@ body {
     <!-- Header -->
     <div class="app-header">
         <div class="header-left">
+            <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle dark mode">🌙</button>
             <a class="header-logo" href="#" onclick="goHome();return false" style="text-decoration:none;display:flex;align-items:center;gap:8px;cursor:pointer"><img src="logos/dpm-icon.png" alt="DPM" style="height:24px;vertical-align:middle"><span class="header-title">R&amp;M Tracker</span></a>
         </div>
         <div class="header-right">
@@ -2117,10 +2252,10 @@ function loadMapOverview(type) {
     // Init or clear map
     if (!overviewMap) {
         overviewMap = L.map('overviewMap', { zoomControl: true, attributionControl: false }).setView([33.0, -96.5], 7);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        currentTileLayer = L.tileLayer(isDark ? DARK_TILES : LIGHT_TILES, {
             maxZoom: 18
         }).addTo(overviewMap);
-        // Fix tile rendering after hidden->visible
         setTimeout(() => overviewMap.invalidateSize(), 100);
     } else {
         overviewMap.invalidateSize();
@@ -3280,6 +3415,47 @@ function goHome() {
     selectedStore = null;
     if (activeTicketListener) { activeTicketListener(); activeTicketListener = null; }
 }
+
+// ============================================================
+// DARK MODE
+// ============================================================
+const LIGHT_TILES = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+const DARK_TILES = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+let currentTileLayer = null;
+
+function toggleTheme() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    if (isDark) {
+        document.documentElement.removeAttribute('data-theme');
+        document.getElementById('themeToggle').textContent = '🌙';
+        localStorage.setItem('theme', 'light');
+    } else {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        document.getElementById('themeToggle').textContent = '☀️';
+        localStorage.setItem('theme', 'dark');
+    }
+    // Swap map tiles if map is active
+    if (overviewMap && currentTileLayer) {
+        overviewMap.removeLayer(currentTileLayer);
+        currentTileLayer = L.tileLayer(isDark ? LIGHT_TILES : DARK_TILES, {
+            attribution: '© CartoDB',
+            maxZoom: 18
+        }).addTo(overviewMap);
+    }
+}
+
+// Restore saved theme on load
+(function() {
+    const saved = localStorage.getItem('theme');
+    if (saved === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        // Toggle button will be updated after DOM loads
+        setTimeout(() => {
+            const btn = document.getElementById('themeToggle');
+            if (btn) btn.textContent = '☀️';
+        }, 0);
+    }
+})();
 
 function getCategoryEmoji(cat) {
     const map = {hvac:'❄️',plumbing:'🔧',electrical:'⚡',equipment:'⚙️',structural:'🏗️',it:'💻',exterior:'🏪',safety:'🛡️',other:'📎'};
