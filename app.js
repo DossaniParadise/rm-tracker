@@ -20,7 +20,7 @@ async function loginWithMicrosoft() {
     try {
         const provider = new firebase.auth.OAuthProvider('microsoft.com');
         provider.setCustomParameters({
-            tenant: 'common'
+            tenant: 'ba38caa7-6bf9-4989-880b-3f2741f8c9d7'  // Dossani Paradise tenant
         });
         
         const result = await auth.signInWithPopup(provider);
