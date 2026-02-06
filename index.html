@@ -51,8 +51,9 @@ body {
     font-family: 'Inter', sans-serif;
     background: var(--bg);
     color: var(--text);
-    line-height: 1.6;
+    line-height: 1.5;
     min-height: 100vh;
+    font-size: 14px;
 }
 
 /* ---- Utility ---- */
@@ -1360,11 +1361,11 @@ body {
 .user-row-actions button.del:hover { color: var(--danger); border-color: var(--danger); }
 
 /* Edit user modal overlay */
-.modal-overlay {
+.admin-modal {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(0,0,0,0.6);
-    z-index: 200;
+    z-index: 250;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1540,8 +1541,8 @@ body {
                         <h2 id="mapTitle">Store Overview</h2>
                         <div class="map-legend">
                             <span><span class="dot dot-green"></span> No issues</span>
-                            <span><span class="dot dot-yellow"></span> 1-2 open</span>
-                            <span><span class="dot dot-red"></span> 3+ open</span>
+                            <span><span class="dot dot-yellow"></span> Low/Routine</span>
+                            <span><span class="dot dot-red"></span> Urgent/Emergency</span>
                         </div>
                     </div>
                     <div id="overviewMap"></div>
@@ -1677,6 +1678,37 @@ body {
             </div>
         </div>
 
+        <!-- ===== SCREEN: All Tickets (from stats bar click) ===== -->
+        <div id="allTicketsScreen" class="hidden">
+            <div class="back-row">
+                <button class="btn-back" onclick="goHome()">← Back to overview</button>
+            </div>
+            <div class="tickets-header">
+                <h2 id="allTicketsTitle">All Tickets</h2>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+                <select class="form-select" id="atFilterStatus" onchange="filterAllTickets()" style="width:auto;min-width:130px;font-size:13px;padding:6px 10px">
+                    <option value="open">Open Tickets</option>
+                    <option value="all">All Statuses</option>
+                    <option value="assigned">Assigned</option>
+                    <option value="inprogress">In Progress</option>
+                    <option value="waiting">Waiting</option>
+                    <option value="resolved">Resolved</option>
+                    <option value="closed">Closed</option>
+                </select>
+                <select class="form-select" id="atFilterType" onchange="filterAllTickets()" style="width:auto;min-width:130px;font-size:13px;padding:6px 10px">
+                    <option value="">All Store Types</option>
+                    <option value="fastfood">Fast Food</option>
+                    <option value="cstore">C-Store</option>
+                    <option value="carwash">Car Wash</option>
+                </select>
+                <select class="form-select" id="atFilterStore" onchange="filterAllTickets()" style="width:auto;min-width:160px;font-size:13px;padding:6px 10px">
+                    <option value="">All Stores</option>
+                </select>
+            </div>
+            <div class="tickets-list" id="allTicketsList"></div>
+        </div>
+
         <!-- ===== SCREEN: Admin Panel ===== -->
         <div id="adminScreen" class="hidden">
             <div class="back-row">
@@ -1713,6 +1745,18 @@ body {
                     <p style="font-size:13px;color:var(--text-mid);margin-bottom:12px">Remove old data nodes from the previous app version that are no longer needed.</p>
                     <div id="cleanupNodes" style="margin-bottom:12px"></div>
                     <button class="btn btn-secondary" onclick="scanOldNodes()" id="scanBtn">Scan for old data</button>
+                </div>
+            </div>
+
+            <!-- Notification Routing -->
+            <div class="admin-section">
+                <div class="admin-section-header">
+                    <h3>📧 Notification Routing</h3>
+                </div>
+                <div class="admin-section-body" id="notifySection">
+                    <p style="font-size:13px;color:var(--text-mid);margin-bottom:14px">Set up to 3 email addresses per category. These contacts will be notified when a ticket is created.</p>
+                    <div id="notifyGrid"></div>
+                    <button class="btn btn-primary" onclick="saveNotifyRouting()" style="margin-top:12px">Save Routing</button>
                 </div>
             </div>
         </div>
@@ -1965,7 +2009,7 @@ function showError(msg) {
 }
 
 function showScreen(screenId) {
-    ['storeSelection', 'newIssueScreen', 'existingIssuesScreen', 'adminScreen'].forEach(id => {
+    ['storeSelection', 'newIssueScreen', 'existingIssuesScreen', 'allTicketsScreen', 'adminScreen'].forEach(id => {
         document.getElementById(id).classList.toggle('hidden', id !== screenId);
     });
 }
@@ -2141,9 +2185,9 @@ function loadMapOverview(type) {
         });
         document.getElementById('mapStatsBar').innerHTML = 
             '<div class="mstat"><strong>' + filtered.length + '</strong>stores</div>' +
-            '<div class="mstat"><strong style="color:#f87171">' + totalOpen + '</strong>open tickets</div>' +
-            '<div class="mstat"><strong>' + storesWithIssues + '</strong>need attention</div>' +
-            '<div class="mstat"><strong>' + totalAll + '</strong>total tickets</div>';
+            '<div class="mstat" style="cursor:pointer" onclick="showAllTickets(\'open\')"><strong style="color:#dc2626">' + totalOpen + '</strong>open tickets</div>' +
+            '<div class="mstat" style="cursor:pointer" onclick="showAllTickets(\'open\')"><strong>' + storesWithIssues + '</strong>need attention</div>' +
+            '<div class="mstat" style="cursor:pointer" onclick="showAllTickets(\'all\')"><strong>' + totalAll + '</strong>total tickets</div>';
     });
 }
 
@@ -2228,6 +2272,7 @@ function showAdminPanel() {
     showScreen('adminScreen');
     renderPendingUsers();
     loadActiveUsers();
+    loadNotifyRouting();
 }
 
 function goBackFromAdmin() {
@@ -2381,7 +2426,7 @@ function editUser(uid) {
         }).join('');
 
         const overlay = document.createElement('div');
-        overlay.className = 'modal-overlay';
+        overlay.className = 'admin-modal';
         overlay.id = 'editUserModal';
         overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
         overlay.innerHTML = `<div class="modal-card">
@@ -2507,6 +2552,179 @@ async function deleteNode(node) {
 }
 
 // ============================================================
+// NOTIFICATION ROUTING
+// ============================================================
+const CATEGORIES = ['hvac','plumbing','electrical','equipment','structural','it','exterior','safety','other'];
+const CAT_LABELS = {hvac:'HVAC',plumbing:'Plumbing',electrical:'Electrical',equipment:'Equipment',structural:'Structural',it:'IT',exterior:'Exterior',safety:'Safety',other:'Other'};
+let notifyRouting = {};
+
+function loadNotifyRouting() {
+    db.ref('config/notifyRouting').once('value', snap => {
+        notifyRouting = snap.val() || {};
+        renderNotifyGrid();
+    });
+}
+
+function renderNotifyGrid() {
+    const container = document.getElementById('notifyGrid');
+    container.innerHTML = CATEGORIES.map(cat => {
+        const emails = notifyRouting[cat] || ['','',''];
+        return `<div style="margin-bottom:10px;padding:10px 12px;background:var(--border-light);border-radius:8px">
+            <div style="font-size:12px;font-weight:700;margin-bottom:6px;color:var(--text-mid)">${CAT_LABELS[cat]}</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <input class="form-input" style="flex:1;min-width:160px;font-size:12px;padding:5px 8px" placeholder="Email 1" id="nr-${cat}-0" value="${esc(emails[0]||'')}">
+                <input class="form-input" style="flex:1;min-width:160px;font-size:12px;padding:5px 8px" placeholder="Email 2" id="nr-${cat}-1" value="${esc(emails[1]||'')}">
+                <input class="form-input" style="flex:1;min-width:160px;font-size:12px;padding:5px 8px" placeholder="Email 3" id="nr-${cat}-2" value="${esc(emails[2]||'')}">
+            </div>
+        </div>`;
+    }).join('');
+}
+
+async function saveNotifyRouting() {
+    const routing = {};
+    CATEGORIES.forEach(cat => {
+        const emails = [0,1,2].map(i => document.getElementById(`nr-${cat}-${i}`).value.trim().toLowerCase()).filter(Boolean);
+        if (emails.length) routing[cat] = emails;
+    });
+    try {
+        await db.ref('config/notifyRouting').set(routing);
+        notifyRouting = routing;
+        showToast('Notification routing saved', 'success');
+    } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+    }
+}
+
+// ============================================================
+// ALL TICKETS SCREEN
+// ============================================================
+let allTicketsData = [];
+
+function showAllTickets(defaultStatus) {
+    showScreen('allTicketsScreen');
+    const statusSel = document.getElementById('atFilterStatus');
+    statusSel.value = defaultStatus || 'open';
+    
+    // Populate store filter
+    const type = document.getElementById('storeType').value;
+    document.getElementById('atFilterType').value = type || '';
+    populateAllTicketsStoreFilter();
+    
+    // Load all tickets
+    const listEl = document.getElementById('allTicketsList');
+    listEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted)"><span class="spinner spinner-dark"></span> Loading...</div>';
+    
+    db.ref('tickets').once('value', snap => {
+        allTicketsData = [];
+        snap.forEach(child => {
+            allTicketsData.push(child.val());
+        });
+        // Sort newest first
+        allTicketsData.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        filterAllTickets();
+    });
+}
+
+function populateAllTicketsStoreFilter() {
+    const type = document.getElementById('atFilterType').value;
+    const sel = document.getElementById('atFilterStore');
+    sel.innerHTML = '<option value="">All Stores</option>';
+    let filtered = stores;
+    if (type) filtered = stores.filter(s => s.type === type);
+    // Permission filter
+    if (currentUser.role !== 'Admin' && currentUser.stores !== 'all') {
+        const userStores = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
+        filtered = filtered.filter(s => userStores.includes(s.code));
+    }
+    filtered.sort((a, b) => a.name.localeCompare(b.name));
+    filtered.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.code;
+        opt.textContent = s.name;
+        sel.appendChild(opt);
+    });
+}
+
+function filterAllTickets() {
+    populateAllTicketsStoreFilter();
+    const status = document.getElementById('atFilterStatus').value;
+    const type = document.getElementById('atFilterType').value;
+    const storeCode = document.getElementById('atFilterStore').value;
+    
+    let filtered = allTicketsData;
+    
+    // Permission filter
+    if (currentUser.role !== 'Admin' && currentUser.stores !== 'all') {
+        const userStores = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
+        filtered = filtered.filter(t => userStores.includes(t.storeCode));
+    }
+    
+    // Status filter
+    if (status === 'open') {
+        filtered = filtered.filter(t => t.status && t.status !== 'closed' && t.status !== 'resolved');
+    } else if (status !== 'all') {
+        filtered = filtered.filter(t => (t.status || '').toLowerCase().replace(/\s+/g, '') === status);
+    }
+    
+    // Type filter
+    if (type) {
+        const typeCodes = stores.filter(s => s.type === type).map(s => s.code);
+        filtered = filtered.filter(t => typeCodes.includes(t.storeCode));
+    }
+    
+    // Store filter
+    if (storeCode) {
+        filtered = filtered.filter(t => t.storeCode === storeCode);
+    }
+    
+    const title = document.getElementById('allTicketsTitle');
+    title.textContent = status === 'all' ? `All Tickets (${filtered.length})` : `${status === 'open' ? 'Open' : capitalize(status)} Tickets (${filtered.length})`;
+    
+    const listEl = document.getElementById('allTicketsList');
+    if (filtered.length === 0) {
+        listEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted)">No tickets found</div>';
+        return;
+    }
+    
+    listEl.innerHTML = filtered.map(t => {
+        const brandIcon = BRAND_ICONS[t.brand] ? `<img src="${BRAND_ICONS[t.brand]}" style="height:14px;width:14px;object-fit:contain;border-radius:2px">` : '';
+        const timeAgo = getTimeAgo(t.createdAt);
+        const photoCount = t.photos ? t.photos.length : 0;
+        const shortDesc = (t.description || '').substring(0, 80) + ((t.description || '').length > 80 ? '...' : '');
+        const statusClass = (t.status || 'open').toLowerCase().replace(/\s+/g, '');
+        const prColor = t.priority === 'emergency' ? '#dc2626' : t.priority === 'urgent' ? '#d97706' : '#059669';
+        
+        return `<div class="ticket-card" onclick="openTicketFromAll('${esc(t.id)}')">
+            <div class="ticket-card-top">
+                <span class="ticket-id">${esc(t.id)}</span>
+                <span class="ticket-status s-${statusClass}">${(t.status || 'open').toUpperCase()}</span>
+            </div>
+            <div class="ticket-card-desc">
+                <span class="cat-emoji">${getCategoryEmoji(t.category)}</span> ${esc(shortDesc)}
+            </div>
+            <div class="ticket-card-meta">
+                <span style="color:${prColor}">● ${capitalize(t.priority || 'routine')}</span>
+                <span>${capitalize(t.category || '')}</span>
+                ${brandIcon}
+                <span>${timeAgo}</span>
+                <span style="color:var(--text-muted)">${esc(t.storeName || t.storeCode)}</span>
+                ${photoCount ? '<span>📷 ' + photoCount + '</span>' : ''}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function openTicketFromAll(ticketId) {
+    // Find ticket data and open the detail modal
+    const t = allTicketsData.find(x => x.id === ticketId);
+    if (!t) return;
+    // Set selectedStore context for the modal
+    const store = stores.find(s => s.code === t.storeCode);
+    if (store) selectedStore = store;
+    openTicketDetail(ticketId);
+}
+
+// ============================================================
 // VIEW AS (itsupport impersonation)
 // ============================================================
 let realUser = null; // stash the real itsupport user when impersonating
@@ -2518,7 +2736,7 @@ function showViewAsModal() {
         const entries = Object.entries(users).filter(([uid]) => uid !== currentUser.uid);
 
         const overlay = document.createElement('div');
-        overlay.className = 'modal-overlay';
+        overlay.className = 'admin-modal';
         overlay.id = 'viewAsModal';
         overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
         overlay.innerHTML = `<div class="modal-card">
@@ -2711,9 +2929,17 @@ async function submitTicket() {
             photoUrls.push(dataUrl);
         }
 
-        // Generate ticket ID
-        const ticketNum = Date.now().toString(36).toUpperCase();
-        const ticketId = `${selectedStore.code}-${ticketNum}`;
+        // Generate sequential ticket ID: STORE-CAT-0001
+        const catPrefix = {
+            hvac: 'HVAC', plumbing: 'PLM', electrical: 'ELEC', equipment: 'EQP',
+            structural: 'STR', it: 'IT', exterior: 'EXT', safety: 'SAF', other: 'GEN'
+        }[selectedCategory] || 'GEN';
+        
+        // Get next number from counter
+        const counterRef = db.ref(`counters/${selectedStore.code}/${catPrefix}`);
+        const counterSnap = await counterRef.transaction(val => (val || 0) + 1);
+        const num = String(counterSnap.snapshot.val()).padStart(4, '0');
+        const ticketId = `${selectedStore.code}-${catPrefix}-${num}`;
 
         // Create ticket in Firebase
         const ticket = {
@@ -3053,6 +3279,11 @@ function goHome() {
     document.getElementById('mapOverview').classList.add('hidden');
     selectedStore = null;
     if (activeTicketListener) { activeTicketListener(); activeTicketListener = null; }
+}
+
+function getCategoryEmoji(cat) {
+    const map = {hvac:'❄️',plumbing:'🔧',electrical:'⚡',equipment:'⚙️',structural:'🏗️',it:'💻',exterior:'🏪',safety:'🛡️',other:'📎'};
+    return map[cat] || '📎';
 }
 
 function fileToBase64(file) {
