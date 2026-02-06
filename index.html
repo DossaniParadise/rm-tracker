@@ -653,6 +653,14 @@ body {
     display: block;
     margin-top: 4px;
 }
+.priority-desc {
+    font-size: 10px;
+    color: var(--text-muted);
+    display: block;
+    margin-top: 1px;
+    font-weight: 400;
+}
+.priority-btn.selected .priority-desc { color: inherit; opacity: 0.7; }
 
 .priority-icon { font-size: 20px; }
 
@@ -1449,8 +1457,7 @@ body {
     <!-- Header -->
     <div class="app-header">
         <div class="header-left">
-            <span class="header-logo"><img src="logos/dpm-icon.png" alt="DPM" style="height:24px;vertical-align:middle"></span>
-            <span class="header-title">R&amp;M Tracker</span>
+            <a class="header-logo" href="#" onclick="goHome();return false" style="text-decoration:none;display:flex;align-items:center;gap:8px;cursor:pointer"><img src="logos/dpm-icon.png" alt="DPM" style="height:24px;vertical-align:middle"><span class="header-title">R&amp;M Tracker</span></a>
         </div>
         <div class="header-right">
             <div class="user-badge">
@@ -1478,7 +1485,7 @@ body {
                 </div>
 
                 <!-- Brand buttons - clickable, trigger store type + map -->
-                <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:20px">
+                <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:12px">
                     <button onclick="selectBrand('fastfood')" class="brand-pill" id="brandPill-fastfood">
                         <span class="brand-pill-icon"><img src="logos/bk-logo.png" alt=""></span>
                         <span>Fast Food</span>
@@ -1602,14 +1609,17 @@ body {
                             <button class="priority-btn p-routine" data-priority="routine" onclick="selectPriority(this)">
                                 <span class="priority-icon">🟢</span>
                                 <span class="priority-label">Routine</span>
+                                <span class="priority-desc">Up to 1 week</span>
                             </button>
                             <button class="priority-btn p-urgent" data-priority="urgent" onclick="selectPriority(this)">
                                 <span class="priority-icon">🟡</span>
                                 <span class="priority-label">Urgent</span>
+                                <span class="priority-desc">Within 72 hours</span>
                             </button>
                             <button class="priority-btn p-emergency" data-priority="emergency" onclick="selectPriority(this)">
                                 <span class="priority-icon">🔴</span>
                                 <span class="priority-label">Emergency</span>
+                                <span class="priority-desc">Within 24 hours</span>
                             </button>
                         </div>
                     </div>
@@ -2083,9 +2093,10 @@ function loadMapOverview(type) {
         const bounds = [];
         filtered.forEach(s => {
             if (!s.lat || !s.lng) return;
-            const counts = allTicketCounts[s.code] || { open: 0, total: 0 };
-            const color = counts.open === 0 ? '#34d399' : counts.open <= 2 ? '#fbbf24' : '#f87171';
-            const size = counts.open === 0 ? 10 : counts.open <= 2 ? 13 : 16;
+            const counts = allTicketCounts[s.code] || { open: 0, total: 0, score: 0, hasEmergency: false };
+            // Color: green = no issues, yellow = low severity, red = emergency or high score
+            const color = counts.open === 0 ? '#059669' : (counts.hasEmergency || counts.score >= 3) ? '#dc2626' : '#d97706';
+            const size = counts.open === 0 ? 10 : (counts.hasEmergency || counts.score >= 3) ? 16 : 13;
             
             const icon = L.divIcon({
                 className: '',
@@ -2138,16 +2149,25 @@ function loadMapOverview(type) {
 
 function fetchTicketCounts(codes, callback) {
     // Listen once for all tickets and count per store
+    // Priority weighting: emergency = auto red (score 3), urgent = 2, routine = 1
     db.ref('tickets').once('value', snap => {
         allTicketCounts = {};
-        codes.forEach(c => allTicketCounts[c] = { open: 0, total: 0 });
+        codes.forEach(c => allTicketCounts[c] = { open: 0, total: 0, score: 0, hasEmergency: false });
         snap.forEach(child => {
             const t = child.val();
             if (codes.includes(t.storeCode)) {
-                if (!allTicketCounts[t.storeCode]) allTicketCounts[t.storeCode] = { open: 0, total: 0 };
+                if (!allTicketCounts[t.storeCode]) allTicketCounts[t.storeCode] = { open: 0, total: 0, score: 0, hasEmergency: false };
                 allTicketCounts[t.storeCode].total++;
                 if (t.status && t.status !== 'closed' && t.status !== 'resolved') {
                     allTicketCounts[t.storeCode].open++;
+                    if (t.priority === 'emergency') {
+                        allTicketCounts[t.storeCode].score += 3;
+                        allTicketCounts[t.storeCode].hasEmergency = true;
+                    } else if (t.priority === 'urgent') {
+                        allTicketCounts[t.storeCode].score += 2;
+                    } else {
+                        allTicketCounts[t.storeCode].score += 1;
+                    }
                 }
             }
         });
@@ -2684,14 +2704,11 @@ async function submitTicket() {
     btn.disabled = true;
 
     try {
-        // Upload photos first
+        // Convert photos to base64 data URLs (stored directly in ticket)
         const photoUrls = [];
         for (const p of uploadedPhotos) {
-            const path = `tickets/${selectedStore.code}/${Date.now()}_${p.file.name}`;
-            const ref = storage.ref(path);
-            await ref.put(p.file);
-            const url = await ref.getDownloadURL();
-            photoUrls.push(url);
+            const dataUrl = await fileToBase64(p.file);
+            photoUrls.push(dataUrl);
         }
 
         // Generate ticket ID
@@ -3025,6 +3042,26 @@ function normalizeRole(r) {
     if (lower === 'admin') return 'Admin';
     if (lower === 'areacoach' || lower === 'area coach') return 'Area Coach';
     return 'Manager';
+}
+
+function goHome() {
+    showScreen('storeSelection');
+    document.getElementById('storeType').value = '';
+    document.querySelectorAll('.brand-pill').forEach(b => b.classList.remove('active'));
+    document.getElementById('storeSelect').innerHTML = '<option value="">Choose store...</option>';
+    document.getElementById('actionButtons').classList.add('hidden');
+    document.getElementById('mapOverview').classList.add('hidden');
+    selectedStore = null;
+    if (activeTicketListener) { activeTicketListener(); activeTicketListener = null; }
+}
+
+function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
 }
 
 function showToast(msg, type = 'success') {
