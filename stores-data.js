@@ -59,5 +59,5 @@ const stores = [
     {id:"NASH01",name:"Nashville Store",code:"NASH01",type:"cstore",brand:"nash",lat:33.9450,lng:-93.8400,address:"502 E. Mine, Nashville, AR 71852"},
     // CAR WASH
     {id:"CW001",name:"Scarborough Car Wash",code:"CW001",type:"carwash",brand:"cw",lat:32.3741146,lng:-96.8662758,address:"1448 FM 66, Waxahachie, TX 75167"},
-    {id:"CW002",name:"Scarborough Travel Stop",code:"CW002",type:"carwash",brand:"cw",lat:32.3782774,lng:-96.7708138,address:"3298 S Interstate Hwy 35 E, Waxahachie, TX 75165"},
+    {id:"CW002",name:"Scarborough Travel Stop",code:"CW002",type:"cstore",brand:"pqs",lat:32.3782774,lng:-96.7708138,address:"3298 S Interstate Hwy 35 E, Waxahachie, TX 75165"},
 ];
