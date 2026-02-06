@@ -3,139 +3,2063 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dossani Paradise R&M Tracker v1.1</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <title>Dossani Paradise R&M Tracker</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+    <style>
+/* ============================================================
+   DOSSANI PARADISE R&M TRACKER - COMPLETE STYLES
+   ============================================================ */
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+    --bg: #0c1021;
+    --card: #161c32;
+    --primary: #4a9eff;
+    --primary-light: rgba(74,158,255,0.12);
+    --primary-hover: #3a8ae6;
+    --accent: #fbbf24;
+    --accent-light: rgba(251,191,36,0.1);
+    --danger: #f87171;
+    --danger-light: rgba(248,113,113,0.1);
+    --warning: #fb923c;
+    --warning-light: rgba(251,146,60,0.1);
+    --info: #4a9eff;
+    --info-light: rgba(74,158,255,0.1);
+    --text: #e8eaf0;
+    --text-mid: #94a3b8;
+    --text-muted: #64748b;
+    --border: #252d4a;
+    --border-light: #1e2540;
+    --shadow-sm: 0 1px 4px rgba(0,0,0,0.3);
+    --shadow: 0 2px 12px rgba(0,0,0,0.25);
+    --shadow-lg: 0 8px 30px rgba(0,0,0,0.4);
+    --radius: 10px;
+    --radius-lg: 14px;
+
+    /* Status colors */
+    --status-open: #f87171;
+    --status-assigned: #a78bfa;
+    --status-inprogress: #4a9eff;
+    --status-waiting: #fbbf24;
+    --status-resolved: #34d399;
+    --status-closed: #64748b;
+}
+
+body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+}
+
+/* ---- Utility ---- */
+.hidden { display: none !important; }
+
+/* ---- Login Screen ---- */
+.login-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: var(--bg);
+    position: relative;
+    overflow: hidden;
+}
+
+.login-container::before {
+    content: '';
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(74,158,255,0.06) 0%, transparent 70%);
+    top: -200px;
+    right: -200px;
+    border-radius: 50%;
+}
+
+.login-card {
+    background: var(--card);
+    border-radius: 20px;
+    border: 1px solid var(--border); box-shadow: var(--shadow-lg);
+    padding: 48px 40px;
+    max-width: 420px;
+    width: 100%;
+    text-align: center;
+    position: relative;
+    z-index: 1;
+}
+
+.login-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--primary-light);
+    padding: 8px 18px;
+    border-radius: 30px;
+    margin-bottom: 24px;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--primary);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.login-title {
+    font-size: 26px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: var(--text);
+}
+
+.login-subtitle {
+    color: var(--text-muted);
+    margin-bottom: 32px;
+    font-size: 15px;
+}
+
+.form-input {
+    width: 100%;
+    padding: 14px 16px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 15px;
+    font-family: inherit;
+    transition: border-color 0.2s;
+    background: #121729; color: var(--text);
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    background: #fff;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 13px 24px;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 15px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+}
+
+.btn-full { width: 100%; }
+
+.btn-primary {
+    background: linear-gradient(135deg, #1a2a4a 0%, #0f1a30 100%); border-bottom: 1px solid var(--border);
+    color: #fff;
+}
+.btn-primary:hover {
+    background: var(--primary-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(26,95,58,0.3);
+}
+
+.btn-secondary {
+    background: #121729;
+    color: var(--text);
+}
+.btn-secondary:hover { background: var(--border); }
+
+.btn-accent {
+    background: var(--accent);
+    color: #fff;
+}
+.btn-accent:hover { background: #c49515; }
+
+.btn-danger {
+    background: var(--danger);
+    color: #fff;
+}
+.btn-danger:hover { background: #a93226; }
+
+.btn-ghost {
+    background: transparent;
+    color: var(--text-mid);
+    border: 1px solid var(--border);
+}
+.btn-ghost:hover { background: #121729; }
+
+.btn-sm {
+    padding: 8px 14px;
+    font-size: 13px;
+}
+
+.error-message {
+    background: var(--danger-light);
+    color: var(--danger);
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    margin-top: 16px;
+    font-size: 14px;
+    border: 1px solid rgba(248,113,113,0.2);
+}
+
+/* ---- App Shell ---- */
+.app-container {
+    display: none;
+    min-height: 100vh;
+    flex-direction: column;
+}
+
+/* Header */
+.app-header {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 64px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: var(--shadow-sm);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.header-logo {
+    font-size: 20px;
+}
+
+.header-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.user-badge {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.user-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--primary-light);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.user-meta { line-height: 1.3; }
+
+.user-name {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.user-role-tag {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.btn-logout {
+    background: none;
+    border: 1px solid var(--border);
+    padding: 7px 14px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text-mid);
+    transition: all 0.2s;
+}
+.btn-logout:hover { background: var(--danger-light); color: var(--danger); border-color: var(--danger); }
+
+/* Content */
+.app-content {
+    flex: 1;
+    padding: 24px;
+    max-width: 960px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+/* ---- Store Selection Card ---- */
+.store-card {
+    background: var(--card);
+    border-radius: var(--radius-lg);
+    padding: 32px;
+    box-shadow: var(--shadow);
+    margin-bottom: 24px;
+}
+
+.store-card-header {
+    margin-bottom: 24px;
+}
+
+.store-card-header h2 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.store-card-header p {
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 0;
+}
+
+.form-group { margin-bottom: 16px; }
+
+.form-label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 6px;
+    font-size: 13px;
+    color: var(--text-mid);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.form-select {
+    width: 100%;
+    padding: 12px 14px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 15px;
+    font-family: inherit;
+    background: #121729; color: var(--text);
+    cursor: pointer;
+    transition: all 0.2s;
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+}
+
+.form-select:focus {
+    outline: none;
+    border-color: var(--primary);
+    background-color: #1a2038;
+}
+
+/* ---- Action Cards ---- */
+.action-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-top: 20px;
+}
+
+.action-card {
+    background: var(--card);
+    border: 2px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 28px 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.action-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--primary);
+    transform: scaleX(0);
+    transition: transform 0.2s;
+}
+
+.action-card:hover {
+    border-color: var(--primary);
+    transform: translateY(-3px);
+    box-shadow: var(--shadow);
+}
+
+.action-card:hover::after { transform: scaleX(1); }
+
+.action-icon {
+    font-size: 36px;
+    margin-bottom: 10px;
+}
+
+.action-title {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.action-desc {
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+/* ---- Back Button ---- */
+.back-row {
+    margin-bottom: 20px;
+}
+
+.btn-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: none;
+    color: var(--text-mid);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 6px 2px;
+    font-family: inherit;
+}
+.btn-back:hover { color: var(--primary); }
+
+/* ============================================================
+   NEW ISSUE FORM
+   ============================================================ */
+.issue-form-card {
+    background: var(--card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.issue-form-header {
+    background: var(--primary);
+    color: #fff;
+    padding: 24px 32px;
+}
+
+.issue-form-header h2 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 2px;
+}
+
+.issue-form-header p {
+    font-size: 14px;
+    opacity: 0.8;
+}
+
+.issue-form-body {
+    padding: 28px 32px 32px;
+}
+
+.form-textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 15px;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 100px;
+    background: #121729; color: var(--text);
+    transition: border-color 0.2s;
+    line-height: 1.5;
+}
+
+.form-textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    background: #fff;
+}
+
+/* Category Picker */
+.category-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 10px;
+}
+
+.category-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 14px 10px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    background: #121729; color: var(--text);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+}
+
+.category-btn:hover {
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+
+.category-btn.selected {
+    border-color: var(--primary);
+    background: var(--primary-light);
+    box-shadow: 0 0 0 1px var(--primary);
+}
+
+.category-btn .cat-icon { font-size: 22px; }
+
+.category-btn .cat-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-mid);
+    text-align: center;
+}
+
+.category-btn.selected .cat-label { color: var(--primary); }
+
+/* Photo Upload */
+.photo-upload-area {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: #121729; color: var(--text);
+    position: relative;
+}
+
+.photo-upload-area:hover {
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+
+.photo-upload-area.has-photos {
+    border-style: solid;
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+
+.upload-icon { font-size: 32px; margin-bottom: 8px; }
+
+.upload-text {
+    font-size: 14px;
+    color: var(--text-mid);
+    font-weight: 500;
+}
+
+.upload-hint {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+.photo-preview-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.photo-preview {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 2px solid var(--border);
+}
+
+.photo-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.photo-remove {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    background: rgba(0,0,0,0.6);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+/* Priority Selector */
+.priority-options {
+    display: flex;
+    gap: 10px;
+}
+
+.priority-btn {
+    flex: 1;
+    padding: 12px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    background: #121729; color: var(--text);
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+    font-family: inherit;
+}
+
+.priority-btn:hover { border-color: var(--text-muted); }
+
+.priority-btn.selected { box-shadow: 0 0 0 1px currentColor; }
+
+.priority-btn.p-routine { }
+.priority-btn.p-routine.selected { border-color: var(--info); color: var(--info); background: var(--info-light); }
+
+.priority-btn.p-urgent { }
+.priority-btn.p-urgent.selected { border-color: var(--warning); color: var(--warning); background: var(--warning-light); }
+
+.priority-btn.p-emergency { }
+.priority-btn.p-emergency.selected { border-color: var(--danger); color: var(--danger); background: var(--danger-light); }
+
+.priority-label {
+    font-size: 13px;
+    font-weight: 700;
+    display: block;
+    margin-top: 4px;
+}
+
+.priority-icon { font-size: 20px; }
+
+.form-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-light);
+}
+
+.form-actions .btn { flex: 1; }
+
+/* ============================================================
+   EXISTING ISSUES / TICKET LIST
+   ============================================================ */
+.tickets-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.tickets-header h2 {
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.ticket-filters {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+}
+
+.filter-chip {
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    background: var(--card);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+    color: var(--text-mid);
+}
+
+.filter-chip:hover { border-color: var(--primary); color: var(--primary); }
+.filter-chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+.tickets-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.ticket-card {
+    background: var(--card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    transition: all 0.15s;
+    cursor: pointer;
+}
+
+.ticket-card:hover {
+    box-shadow: var(--shadow);
+    transform: translateY(-1px);
+}
+
+.ticket-card-inner {
+    padding: 18px 22px;
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+}
+
+.ticket-status-bar {
+    width: 4px;
+    min-height: 60px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    align-self: stretch;
+}
+
+.ticket-body { flex: 1; min-width: 0; }
+
+.ticket-top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+
+.ticket-id {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.ticket-status-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+}
+
+.status-open { background: rgba(248,113,113,0.12); color: var(--status-open); }
+.status-assigned { background: rgba(167,139,250,0.12); color: var(--status-assigned); }
+.status-inprogress { background: rgba(74,158,255,0.12); color: var(--status-inprogress); }
+.status-waiting { background: rgba(251,191,36,0.12); color: var(--status-waiting); }
+.status-resolved { background: rgba(52,211,153,0.12); color: var(--status-resolved); }
+.status-closed { background: rgba(100,116,139,0.12); color: var(--status-closed); }
+
+.ticket-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    line-height: 1.4;
+}
+
+.ticket-meta {
+    display: flex;
+    gap: 14px;
+    font-size: 12px;
+    color: var(--text-muted);
+    flex-wrap: wrap;
+}
+
+.ticket-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.priority-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.priority-dot.routine { background: var(--info); }
+.priority-dot.urgent { background: var(--warning); }
+.priority-dot.emergency { background: var(--danger); }
+
+/* ============================================================
+   TICKET DETAIL / MODAL
+   ============================================================ */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s;
+}
+
+.modal-overlay.open {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-content {
+    background: var(--card);
+    border-radius: var(--radius-lg);
+    max-width: 640px;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: var(--shadow-lg);
+    transform: translateY(10px);
+    transition: transform 0.2s;
+}
+
+.modal-overlay.open .modal-content { transform: translateY(0); }
+
+.modal-header {
+    padding: 22px 28px;
+    border-bottom: 1px solid var(--border-light);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    background: var(--card);
+    z-index: 1;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.modal-header h3 { font-size: 17px; font-weight: 700; }
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 22px;
+    cursor: pointer;
+    color: var(--text-muted);
+    padding: 4px;
+    line-height: 1;
+}
+.modal-close:hover { color: var(--text); }
+
+.modal-body { padding: 24px 28px; }
+
+.detail-section {
+    margin-bottom: 22px;
+}
+
+.detail-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+}
+
+.detail-value {
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+.detail-photos {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.detail-photo {
+    width: 100px;
+    height: 100px;
+    border-radius: 8px;
+    object-fit: cover;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    transition: transform 0.15s;
+}
+
+.detail-photo:hover { transform: scale(1.05); }
+
+/* Status update section in modal */
+.status-update-section {
+    background: #121729;
+    border-radius: var(--radius);
+    padding: 18px;
+    margin-top: 16px;
+}
+
+.status-update-section h4 {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+
+.status-select-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.status-option {
+    padding: 8px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--card);
+    cursor: pointer;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: inherit;
+    transition: all 0.15s;
+}
+
+.status-option:hover { border-color: var(--text-muted); }
+.status-option.active { border-color: var(--primary); background: var(--primary-light); }
+
+/* Activity log */
+.activity-log {
+    margin-top: 20px;
+    border-top: 1px solid var(--border-light);
+    padding-top: 18px;
+}
+
+.activity-log h4 {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+
+.activity-item {
+    display: flex;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-light);
+    font-size: 13px;
+}
+
+.activity-item:last-child { border-bottom: none; }
+
+.activity-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+    margin-top: 6px;
+    flex-shrink: 0;
+}
+
+.activity-text { color: var(--text-mid); line-height: 1.5; }
+.activity-text strong { color: var(--text); }
+.activity-time { color: var(--text-muted); font-size: 11px; display: block; margin-top: 2px; }
+
+/* ---- Empty State ---- */
+.empty-state {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--text-muted);
+}
+
+.empty-state .empty-icon { font-size: 48px; margin-bottom: 12px; }
+.empty-state h3 { font-size: 17px; color: var(--text-mid); margin-bottom: 6px; }
+.empty-state p { font-size: 14px; }
+
+/* ---- Toast ---- */
+.toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--text);
+    color: #fff;
+    padding: 12px 24px;
+    border-radius: var(--radius);
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: var(--shadow-lg);
+    z-index: 300;
+    opacity: 0;
+    transition: all 0.3s;
+    pointer-events: none;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+.toast.success { background: rgba(52,211,153,0.15); color: #34d399; border: 1px solid rgba(52,211,153,0.3); }
+.toast.error { background: rgba(248,113,113,0.15); color: #f87171; border: 1px solid rgba(248,113,113,0.3); }
+
+/* ---- Loading spinner ---- */
+.spinner {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    border: 2.5px solid rgba(255,255,255,0.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.spinner-dark {
+    border-color: rgba(0,0,0,0.1);
+    border-top-color: var(--primary);
+}
+
+/* ---- Image lightbox ---- */
+.lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 400;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.lightbox.open { opacity: 1; visibility: visible; }
+
+.lightbox img {
+    max-width: 90vw;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: 8px;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 600px) {
+    .app-header { padding: 0 14px; height: 56px; }
+    .header-title { font-size: 14px; }
+    .user-badge .user-meta { display: none; }
+    .app-content { padding: 16px; }
+    .store-card { padding: 20px; }
+    .form-row { grid-template-columns: 1fr; }
+    .action-grid { grid-template-columns: 1fr; }
+    .category-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
+    .priority-options { flex-direction: column; }
+    .status-select-grid { grid-template-columns: repeat(2, 1fr); }
+    .issue-form-body { padding: 20px; }
+    .issue-form-header { padding: 18px 20px; }
+    .modal-body { padding: 18px; }
+    .modal-header { padding: 16px 18px; }
+    .ticket-card-inner { padding: 14px 16px; }
+}
+    </style>
 </head>
 <body>
-    <!-- Login Screen -->
-    <div class="login-container" id="loginScreen">
-        <div class="login-card">
-            <div class="login-logo">🔧</div>
-            <h1 class="login-title">Dossani Paradise</h1>
-            <p class="login-subtitle">R&M Tracker v1.1</p>
-            
-            <!-- Login Form -->
-            <div id="loginForm">
-                <p style="color: var(--text-light); margin-bottom: 24px; font-size: 15px; line-height: 1.5;">
-                    Enter your email address to receive a secure sign-in link
-                </p>
-                <div class="form-group">
-                    <input 
-                        type="email" 
-                        id="loginEmail" 
-                        class="form-input" 
-                        placeholder="your@dossaniparadise.com" 
-                        autocomplete="email"
-                        style="font-size: 16px; padding: 16px; height: 52px;"
-                    >
-                </div>
-                
-                <button class="btn btn-primary" onclick="sendSignInLink()">
-                    Send Sign-In Link
-                </button>
-            </div>
-            
-            <!-- Email Sent Confirmation -->
-            <div id="emailSentMessage" class="hidden" style="text-align: center;">
-                <div style="font-size: 48px; margin-bottom: 16px;">📧</div>
-                <h3 style="margin-bottom: 8px;">Check your email!</h3>
-                <p style="color: var(--text-light); margin-bottom: 16px;">
-                    We sent a sign-in link to<br>
-                    <strong id="sentToEmail" style="color: var(--text);"></strong>
-                </p>
-                <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 12px; margin-bottom: 16px;">
-                    <p style="color: #856404; font-size: 14px; margin: 0;">
-                        ⚠️ <strong>Check your spam/junk folder</strong> if you don't see it
-                    </p>
-                </div>
-                <p style="color: var(--text-light); font-size: 14px; margin-bottom: 20px;">
-                    Click the link in the email to sign in.<br>
-                    You can close this tab.
-                </p>
-                <button class="btn" onclick="resendEmail()" style="background: var(--border); color: var(--text);">
-                    Send Another Link
-                </button>
-            </div>
-            
-            <div id="loginError" class="error-message hidden"></div>
-        </div>
-    </div>
 
-    <!-- Main App -->
-    <div class="app-container" id="appContainer">
-        <!-- Header -->
-        <div class="app-header">
-            <div>
-                <div class="header-title">Dossani Paradise R&M Tracker v1.0</div>
+<!-- ============================================================
+     LOGIN SCREEN
+     ============================================================ -->
+<div class="login-container" id="loginScreen">
+    <div class="login-card">
+        <img src="logos/dpm-logo.png" alt="DPM" style="height:44px;margin-bottom:18px;object-fit:contain">
+        <h1 class="login-title">R&amp;M Tracker</h1>
+        <p class="login-subtitle">Dossani Paradise Management</p>
+
+        <!-- Login Form -->
+        <div id="loginForm">
+            <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 14px;">
+                Enter your email to receive a secure sign-in link.
+            </p>
+            <div class="form-group">
+                <input
+                    type="email"
+                    id="loginEmail"
+                    class="form-input"
+                    placeholder="you@dossaniparadise.com"
+                    autocomplete="email"
+                >
             </div>
-            <div class="user-info">
-                <div>
+            <button class="btn btn-primary btn-full" onclick="sendSignInLink()" id="sendLinkBtn">
+                Send Sign-In Link
+            </button>
+        </div>
+
+        <!-- Email Sent Confirmation -->
+        <div id="emailSentMessage" class="hidden" style="text-align: center;">
+            <div style="font-size: 44px; margin-bottom: 12px;">📧</div>
+            <h3 style="margin-bottom: 6px; font-size: 18px;">Check your inbox</h3>
+            <p style="color: var(--text-muted); margin-bottom: 14px; font-size: 14px;">
+                We sent a sign-in link to<br>
+                <strong id="sentToEmail" style="color: var(--text);"></strong>
+            </p>
+            <div style="background: rgba(251,191,36,0.08); border: 1px solid rgba(251,191,36,0.25); border-radius: 8px; padding: 10px 14px; margin-bottom: 16px;">
+                <p style="color: var(--accent); font-size: 13px;">
+                    ⚠️ Check your <strong>spam/junk folder</strong> if you don't see it
+                </p>
+            </div>
+            <button class="btn btn-ghost btn-full" onclick="resendEmail()">
+                Send Another Link
+            </button>
+        </div>
+
+        <div id="loginError" class="error-message hidden"></div>
+    </div>
+</div>
+
+<!-- ============================================================
+     MAIN APP
+     ============================================================ -->
+<div class="app-container" id="appContainer">
+
+    <!-- Header -->
+    <div class="app-header">
+        <div class="header-left">
+            <span class="header-logo"><img src="logos/dpm-icon.png" alt="DPM" style="height:24px;vertical-align:middle"></span>
+            <span class="header-title">R&amp;M Tracker</span>
+        </div>
+        <div class="header-right">
+            <div class="user-badge">
+                <div class="user-avatar" id="userAvatar">?</div>
+                <div class="user-meta">
                     <div class="user-name" id="userName">Loading...</div>
-                    <span class="user-role" id="userRole">Loading...</span>
-                </div>
-                <button class="btn-logout" onclick="logout()">Logout</button>
-            </div>
-        </div>
-
-        <!-- Content -->
-        <div class="app-content">
-            <!-- Store Selection -->
-            <div id="storeSelection" class="store-select-card">
-                <h2 class="card-title">What store are you at?</h2>
-                <p class="card-subtitle">Select your location to get started</p>
-                
-                <div class="form-group">
-                    <label class="form-label">Store Type</label>
-                    <select class="form-select" id="storeType" onchange="filterStores()">
-                        <option value="">Select store type...</option>
-                        <option value="fastfood">Fast Food (BK / Subway)</option>
-                        <option value="cstore">C-Store (Paradise QS / 7-Eleven)</option>
-                        <option value="carwash">Car Wash</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Store Location</label>
-                    <select class="form-select" id="storeSelect" onchange="selectStore()">
-                        <option value="">Select a store...</option>
-                    </select>
-                </div>
-
-                <div id="actionButtons" class="action-buttons hidden">
-                    <div class="action-card" onclick="reportNewIssue()">
-                        <div class="action-icon">➕</div>
-                        <div class="action-title">Report New Issue</div>
-                        <div class="action-desc">Submit a new repair ticket</div>
-                    </div>
-                    <div class="action-card" onclick="checkExistingIssues()">
-                        <div class="action-icon">📋</div>
-                        <div class="action-title">Check Existing Issues</div>
-                        <div class="action-desc">View and update open tickets</div>
-                    </div>
+                    <div class="user-role-tag" id="userRole">...</div>
                 </div>
             </div>
-
-            <!-- Issue screens will go here -->
-            <div id="newIssueScreen" class="hidden">
-                <h2>New Issue Screen - Coming in Phase 2</h2>
-            </div>
-
-            <div id="existingIssuesScreen" class="hidden">
-                <h2>Existing Issues Screen - Coming in Phase 2</h2>
-            </div>
+            <button class="btn-logout" onclick="logout()">Sign Out</button>
         </div>
     </div>
 
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
+    <!-- Content Area -->
+    <div class="app-content">
 
-    <!-- Load separate config/data files -->
-    <script src="firebase-config.js"></script>
-    <script src="stores-data.js"></script>
-    <script src="app.js"></script>
+        <!-- ===== SCREEN: Store Selection ===== -->
+        <div id="storeSelection">
+            <div class="store-card">
+                <div class="store-card-header">
+                    <h2>Select Your Store</h2>
+                    <p>Choose a location to report or check issues</p>
+                </div>
+
+                <!-- Brand logos -->
+                <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:20px">
+                    <span style="display:inline-flex;align-items:center;gap:5px;background:var(--border-light);border:1px solid var(--border);border-radius:20px;padding:5px 12px 5px 7px;font-size:11px;font-weight:600;color:var(--text-mid)"><img src="logos/bk-logo.png" alt="" style="height:18px;width:18px;object-fit:contain;border-radius:3px"> Burger King</span>
+                    <span style="display:inline-flex;align-items:center;gap:5px;background:var(--border-light);border:1px solid var(--border);border-radius:20px;padding:5px 12px 5px 7px;font-size:11px;font-weight:600;color:var(--text-mid)"><img src="logos/pqs-logo.png" alt="" style="height:18px;width:18px;object-fit:contain;border-radius:3px"> Paradise QS</span>
+                    <span style="display:inline-flex;align-items:center;gap:5px;background:var(--border-light);border:1px solid var(--border);border-radius:20px;padding:5px 12px 5px 7px;font-size:11px;font-weight:600;color:var(--text-mid)"><img src="logos/subway-logo.png" alt="" style="height:18px;width:18px;object-fit:contain;border-radius:3px"> Subway</span>
+                    <span style="display:inline-flex;align-items:center;gap:5px;background:var(--border-light);border:1px solid var(--border);border-radius:20px;padding:5px 12px 5px 7px;font-size:11px;font-weight:600;color:var(--text-mid)"><img src="logos/711-logo.png" alt="" style="height:18px;width:18px;object-fit:contain;border-radius:3px"> 7-Eleven</span>
+                    <span style="display:inline-flex;align-items:center;gap:5px;background:var(--border-light);border:1px solid var(--border);border-radius:20px;padding:5px 12px 5px 7px;font-size:11px;font-weight:600;color:var(--text-mid)"><img src="logos/cw-logo.png" alt="" style="height:18px;width:18px;object-fit:contain;border-radius:3px"> Car Wash</span>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Store Type</label>
+                        <select class="form-select" id="storeType" onchange="filterStores()">
+                            <option value="">Choose type...</option>
+                            <option value="fastfood">Fast Food (BK / Subway)</option>
+                            <option value="cstore">C-Store (PQS / 7-Eleven / Nashville)</option>
+                            <option value="carwash">Car Wash</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Location</label>
+                        <select class="form-select" id="storeSelect" onchange="selectStore()">
+                            <option value="">Choose store...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="actionButtons" class="action-grid hidden">
+                    <div class="action-card" onclick="showNewIssueScreen()">
+                        <div class="action-icon">📝</div>
+                        <div class="action-title">Report New Issue</div>
+                        <div class="action-desc">Submit a repair ticket</div>
+                    </div>
+                    <div class="action-card" onclick="showExistingIssuesScreen()">
+                        <div class="action-icon">📋</div>
+                        <div class="action-title">Existing Tickets</div>
+                        <div class="action-desc">View and track open issues</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== SCREEN: New Issue Form ===== -->
+        <div id="newIssueScreen" class="hidden">
+            <div class="back-row">
+                <button class="btn-back" onclick="goBack()">← Back to store</button>
+            </div>
+
+            <div class="issue-form-card">
+                <div class="issue-form-header">
+                    <h2>Report New Issue</h2>
+                    <p id="newIssueStoreName">Store Name</p>
+                </div>
+
+                <div class="issue-form-body">
+                    <!-- Category -->
+                    <div class="form-group">
+                        <label class="form-label">Category</label>
+                        <div class="category-grid" id="categoryGrid">
+                            <button class="category-btn" data-cat="plumbing" onclick="selectCategory(this)">
+                                <span class="cat-icon">🚿</span>
+                                <span class="cat-label">Plumbing</span>
+                            </button>
+                            <button class="category-btn" data-cat="hvac" onclick="selectCategory(this)">
+                                <span class="cat-icon">❄️</span>
+                                <span class="cat-label">HVAC</span>
+                            </button>
+                            <button class="category-btn" data-cat="electrical" onclick="selectCategory(this)">
+                                <span class="cat-icon">⚡</span>
+                                <span class="cat-label">Electrical</span>
+                            </button>
+                            <button class="category-btn" data-cat="equipment" onclick="selectCategory(this)">
+                                <span class="cat-icon">⚙️</span>
+                                <span class="cat-label">Equipment</span>
+                            </button>
+                            <button class="category-btn" data-cat="structural" onclick="selectCategory(this)">
+                                <span class="cat-icon">🧱</span>
+                                <span class="cat-label">Structural</span>
+                            </button>
+                            <button class="category-btn" data-cat="exterior" onclick="selectCategory(this)">
+                                <span class="cat-icon">🏪</span>
+                                <span class="cat-label">Exterior</span>
+                            </button>
+                            <button class="category-btn" data-cat="safety" onclick="selectCategory(this)">
+                                <span class="cat-icon">🛡️</span>
+                                <span class="cat-label">Safety</span>
+                            </button>
+                            <button class="category-btn" data-cat="other" onclick="selectCategory(this)">
+                                <span class="cat-icon">📎</span>
+                                <span class="cat-label">Other</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Priority -->
+                    <div class="form-group">
+                        <label class="form-label">Priority</label>
+                        <div class="priority-options">
+                            <button class="priority-btn p-routine" data-priority="routine" onclick="selectPriority(this)">
+                                <span class="priority-icon">🟢</span>
+                                <span class="priority-label">Routine</span>
+                            </button>
+                            <button class="priority-btn p-urgent" data-priority="urgent" onclick="selectPriority(this)">
+                                <span class="priority-icon">🟡</span>
+                                <span class="priority-label">Urgent</span>
+                            </button>
+                            <button class="priority-btn p-emergency" data-priority="emergency" onclick="selectPriority(this)">
+                                <span class="priority-icon">🔴</span>
+                                <span class="priority-label">Emergency</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-textarea" id="issueDescription" placeholder="Describe the issue in detail. What's broken? Where exactly? When did it start?"></textarea>
+                    </div>
+
+                    <!-- Photos -->
+                    <div class="form-group">
+                        <label class="form-label">Photos <span style="font-weight:400; color: var(--text-muted);">(optional, up to 3)</span></label>
+                        <div class="photo-upload-area" id="photoUploadArea" onclick="document.getElementById('photoInput').click()">
+                            <div class="upload-icon">📷</div>
+                            <div class="upload-text">Tap to add photos</div>
+                            <div class="upload-hint">JPG or PNG, max 5MB each</div>
+                        </div>
+                        <input type="file" id="photoInput" accept="image/*" multiple style="display:none" onchange="handlePhotos(this)">
+                        <div class="photo-preview-grid" id="photoPreviewGrid"></div>
+                    </div>
+
+                    <!-- Submit -->
+                    <div class="form-actions">
+                        <button class="btn btn-secondary" onclick="goBack()">Cancel</button>
+                        <button class="btn btn-primary" onclick="submitTicket()" id="submitBtn">Submit Ticket</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== SCREEN: Existing Issues ===== -->
+        <div id="existingIssuesScreen" class="hidden">
+            <div class="back-row">
+                <button class="btn-back" onclick="goBack()">← Back to store</button>
+            </div>
+
+            <div class="tickets-header">
+                <h2>Tickets <span id="ticketStoreName" style="font-weight:400; color: var(--text-muted); font-size: 15px;"></span></h2>
+                <button class="btn btn-primary btn-sm" onclick="showNewIssueScreen()">+ New Ticket</button>
+            </div>
+
+            <div class="ticket-filters" id="ticketFilters">
+                <button class="filter-chip active" data-filter="all" onclick="filterTickets('all', this)">All</button>
+                <button class="filter-chip" data-filter="open" onclick="filterTickets('open', this)">Open</button>
+                <button class="filter-chip" data-filter="assigned" onclick="filterTickets('assigned', this)">Assigned</button>
+                <button class="filter-chip" data-filter="inprogress" onclick="filterTickets('inprogress', this)">In Progress</button>
+                <button class="filter-chip" data-filter="waiting" onclick="filterTickets('waiting', this)">Waiting</button>
+                <button class="filter-chip" data-filter="resolved" onclick="filterTickets('resolved', this)">Resolved</button>
+                <button class="filter-chip" data-filter="closed" onclick="filterTickets('closed', this)">Closed</button>
+            </div>
+
+            <div class="tickets-list" id="ticketsList">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- ============================================================
+     TICKET DETAIL MODAL
+     ============================================================ -->
+<div class="modal-overlay" id="ticketModal" onclick="if(event.target===this)closeModal()">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modalTicketId">Ticket #---</h3>
+            <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <div class="modal-body" id="modalBody">
+            <!-- Populated by JS -->
+        </div>
+    </div>
+</div>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+    <img id="lightboxImg" src="" alt="Photo">
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- ============================================================
+     FIREBASE SDK
+     ============================================================ -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
+<script src="stores-data.js"></script>
+<script src="users-data.js"></script>
+
+<script>
+// ============================================================
+// FIREBASE CONFIG
+// ============================================================
+const firebaseConfig = {
+    apiKey: "AIzaSyDf0W5a8UPpuZbo873nWfed6VvNExL4BjM",
+    authDomain: "dossani-paradise-rm-tracker.firebaseapp.com",
+    databaseURL: "https://dossani-paradise-rm-tracker-default-rtdb.firebaseio.com",
+    projectId: "dossani-paradise-rm-tracker",
+    storageBucket: "dossani-paradise-rm-tracker.firebasestorage.app",
+    messagingSenderId: "328034984226",
+    appId: "1:328034984226:web:2b2ddb58d935bec201857b"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.database();
+const storage = firebase.storage();
+
+// ============================================================
+// STORES & USERS DATA - loaded from external files
+// stores-data.js must define: const stores = [...]
+// users-data.js is reference only (actual auth is Firebase DB)
+// ============================================================
+
+// LOGO URLS - relative to index.html
+const BRAND_LOGOS = {
+    bk: 'logos/bk-logo.png',
+    sub: 'logos/subway-logo.png',
+    pqs: 'logos/pqs-logo.png',
+    '711': 'logos/711-logo.png',
+    cw: 'logos/cw-logo.png',
+    nash: 'logos/pqs-logo.png',
+    dpm: 'logos/dpm-icon.png'
+};
+
+// ============================================================
+// APP STATE
+// ============================================================
+let currentUser = null;
+let selectedStore = null;
+let selectedCategory = null;
+let selectedPriority = null;
+let uploadedPhotos = []; // { file, previewUrl }
+let currentTickets = [];
+let currentFilter = 'all';
+let activeTicketListener = null;
+
+// ============================================================
+// AUTH
+// ============================================================
+auth.onAuthStateChanged(async (user) => {
+    if (user) {
+        console.log('Signed in:', user.email);
+        await loadUserData(user);
+    } else if (auth.isSignInWithEmailLink(window.location.href)) {
+        handleEmailLinkSignIn();
+    } else {
+        showLoginScreen();
+    }
+});
+
+async function sendSignInLink() {
+    const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+    if (!email) { showError('Enter your email address.'); return; }
+
+    if (!email.endsWith('@dossaniparadise.com') && email !== 'scroadmart@att.net') {
+        showError('Only @dossaniparadise.com emails are allowed.');
+        return;
+    }
+
+    const btn = document.getElementById('sendLinkBtn');
+    btn.innerHTML = '<span class="spinner"></span>';
+    btn.disabled = true;
+
+    try {
+        await auth.sendSignInLinkToEmail(email, { url: window.location.href, handleCodeInApp: true });
+        window.localStorage.setItem('emailForSignIn', email);
+        document.getElementById('loginForm').classList.add('hidden');
+        document.getElementById('emailSentMessage').classList.remove('hidden');
+        document.getElementById('sentToEmail').textContent = email;
+    } catch (err) {
+        console.error('Send link error:', err);
+        showError(err.code === 'auth/invalid-email' ? 'Invalid email.' : 'Failed to send. Try again.');
+    } finally {
+        btn.innerHTML = 'Send Sign-In Link';
+        btn.disabled = false;
+    }
+}
+
+// Allow pressing Enter on email input
+document.getElementById('loginEmail').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') sendSignInLink();
+});
+
+async function handleEmailLinkSignIn() {
+    let email = window.localStorage.getItem('emailForSignIn');
+    if (!email) email = window.prompt('Confirm your email:');
+    if (!email) { showLoginScreen(); return; }
+
+    try {
+        await auth.signInWithEmailLink(email, window.location.href);
+        window.localStorage.removeItem('emailForSignIn');
+        window.history.replaceState({}, document.title, window.location.pathname);
+    } catch (err) {
+        console.error('Link sign-in error:', err);
+        const msgs = {
+            'auth/invalid-action-code': 'This link has expired or was already used. Request a new one.',
+            'auth/invalid-email': 'Invalid email. Try again.',
+            'auth/user-disabled': 'Account disabled. Contact IT.'
+        };
+        showError(msgs[err.code] || 'Sign-in failed: ' + err.message);
+        window.history.replaceState({}, document.title, window.location.pathname);
+        showLoginScreen();
+    }
+}
+
+function resendEmail() {
+    document.getElementById('emailSentMessage').classList.add('hidden');
+    document.getElementById('loginForm').classList.remove('hidden');
+}
+
+async function loadUserData(user) {
+    try {
+        const snap = await db.ref(`users/${user.uid}`).once('value');
+        const data = snap.val();
+
+        if (!data) {
+            showError('Account not set up. Contact IT at itsupport@dossaniparadise.com');
+            auth.signOut();
+            return;
+        }
+
+        currentUser = {
+            uid: user.uid,
+            email: user.email,
+            name: data.name || user.email.split('@')[0],
+            role: data.role || 'Manager',
+            stores: data.stores || []
+        };
+
+        showAppScreen();
+    } catch (err) {
+        console.error('Load user error:', err);
+        showError('Failed to load account. Try again.');
+    }
+}
+
+function logout() {
+    if (activeTicketListener) { activeTicketListener(); activeTicketListener = null; }
+    auth.signOut();
+}
+
+// ============================================================
+// SCREENS
+// ============================================================
+function showLoginScreen() {
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('appContainer').style.display = 'none';
+}
+
+function showAppScreen() {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('appContainer').style.display = 'flex';
+
+    // Populate header
+    const initials = currentUser.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+    document.getElementById('userAvatar').textContent = initials || '?';
+    document.getElementById('userName').textContent = currentUser.name;
+    document.getElementById('userRole').textContent = currentUser.role;
+
+    // Auto-select store for single-store managers
+    if (currentUser.role === 'Manager' && currentUser.stores && !Array.isArray(currentUser.stores)) {
+        // Single store string
+        const store = stores.find(s => s.code === currentUser.stores);
+        if (store) {
+            selectedStore = store;
+            document.getElementById('storeType').value = store.type;
+            filterStores();
+            document.getElementById('storeSelect').value = store.id;
+            selectStore();
+        }
+    }
+}
+
+function showError(msg) {
+    const el = document.getElementById('loginError');
+    el.textContent = msg;
+    el.classList.remove('hidden');
+    setTimeout(() => el.classList.add('hidden'), 8000);
+}
+
+function showScreen(screenId) {
+    ['storeSelection', 'newIssueScreen', 'existingIssuesScreen'].forEach(id => {
+        document.getElementById(id).classList.toggle('hidden', id !== screenId);
+    });
+}
+
+function goBack() {
+    showScreen('storeSelection');
+    resetNewIssueForm();
+    if (activeTicketListener) { activeTicketListener(); activeTicketListener = null; }
+}
+
+// ============================================================
+// STORE SELECTION
+// ============================================================
+function filterStores() {
+    const type = document.getElementById('storeType').value;
+    const sel = document.getElementById('storeSelect');
+    sel.innerHTML = '<option value="">Choose store...</option>';
+    document.getElementById('actionButtons').classList.add('hidden');
+    selectedStore = null;
+
+    if (!type) return;
+
+    let filtered = stores.filter(s => s.type === type);
+
+    // Permission filtering
+    if (currentUser.role !== 'Admin' && currentUser.stores !== 'all') {
+        const userStores = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
+        filtered = filtered.filter(s => userStores.includes(s.code));
+    }
+
+    filtered.sort((a, b) => a.name.localeCompare(b.name));
+    filtered.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.id;
+        opt.textContent = s.name;
+        sel.appendChild(opt);
+    });
+}
+
+function selectStore() {
+    const id = document.getElementById('storeSelect').value;
+    if (!id) { document.getElementById('actionButtons').classList.add('hidden'); selectedStore = null; return; }
+    selectedStore = stores.find(s => s.id === id);
+    document.getElementById('actionButtons').classList.remove('hidden');
+}
+
+// ============================================================
+// NEW ISSUE FORM
+// ============================================================
+function showNewIssueScreen() {
+    if (!selectedStore) return;
+    resetNewIssueForm();
+    document.getElementById('newIssueStoreName').textContent = selectedStore.name;
+    showScreen('newIssueScreen');
+}
+
+function resetNewIssueForm() {
+    selectedCategory = null;
+    selectedPriority = null;
+    uploadedPhotos = [];
+    document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('selected'));
+    document.querySelectorAll('.priority-btn').forEach(b => b.classList.remove('selected'));
+    document.getElementById('issueDescription').value = '';
+    document.getElementById('photoPreviewGrid').innerHTML = '';
+    document.getElementById('photoUploadArea').classList.remove('has-photos');
+    const btn = document.getElementById('submitBtn');
+    btn.innerHTML = 'Submit Ticket';
+    btn.disabled = false;
+}
+
+function selectCategory(el) {
+    document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedCategory = el.dataset.cat;
+}
+
+function selectPriority(el) {
+    document.querySelectorAll('.priority-btn').forEach(b => b.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedPriority = el.dataset.priority;
+}
+
+function handlePhotos(input) {
+    const files = Array.from(input.files).slice(0, 3 - uploadedPhotos.length);
+    files.forEach(file => {
+        if (file.size > 5 * 1024 * 1024) { toast('File too large (max 5MB)', 'error'); return; }
+        const url = URL.createObjectURL(file);
+        uploadedPhotos.push({ file, previewUrl: url });
+    });
+    renderPhotoPreview();
+    input.value = '';
+}
+
+function renderPhotoPreview() {
+    const grid = document.getElementById('photoPreviewGrid');
+    grid.innerHTML = '';
+    document.getElementById('photoUploadArea').classList.toggle('has-photos', uploadedPhotos.length > 0);
+
+    uploadedPhotos.forEach((p, i) => {
+        const div = document.createElement('div');
+        div.className = 'photo-preview';
+        div.innerHTML = `<img src="${p.previewUrl}" alt="Photo"><button class="photo-remove" onclick="removePhoto(${i})">✕</button>`;
+        grid.appendChild(div);
+    });
+}
+
+function removePhoto(i) {
+    URL.revokeObjectURL(uploadedPhotos[i].previewUrl);
+    uploadedPhotos.splice(i, 1);
+    renderPhotoPreview();
+}
+
+async function submitTicket() {
+    // Validate
+    if (!selectedCategory) { toast('Select a category', 'error'); return; }
+    if (!selectedPriority) { toast('Select a priority', 'error'); return; }
+    const desc = document.getElementById('issueDescription').value.trim();
+    if (!desc) { toast('Add a description', 'error'); return; }
+    if (desc.length < 10) { toast('Description too short', 'error'); return; }
+
+    const btn = document.getElementById('submitBtn');
+    btn.innerHTML = '<span class="spinner"></span> Submitting...';
+    btn.disabled = true;
+
+    try {
+        // Upload photos first
+        const photoUrls = [];
+        for (const p of uploadedPhotos) {
+            const path = `tickets/${selectedStore.code}/${Date.now()}_${p.file.name}`;
+            const ref = storage.ref(path);
+            await ref.put(p.file);
+            const url = await ref.getDownloadURL();
+            photoUrls.push(url);
+        }
+
+        // Generate ticket ID
+        const ticketNum = Date.now().toString(36).toUpperCase();
+        const ticketId = `${selectedStore.code}-${ticketNum}`;
+
+        // Create ticket in Firebase
+        const ticket = {
+            id: ticketId,
+            storeCode: selectedStore.code,
+            storeName: selectedStore.name,
+            brand: selectedStore.brand || '',
+            category: selectedCategory,
+            priority: selectedPriority,
+            description: desc,
+            photos: photoUrls,
+            status: 'open',
+            createdBy: currentUser.email,
+            createdByName: currentUser.name,
+            createdAt: firebase.database.ServerValue.TIMESTAMP,
+            updatedAt: firebase.database.ServerValue.TIMESTAMP,
+            activity: [{
+                action: 'created',
+                by: currentUser.name,
+                byEmail: currentUser.email,
+                timestamp: Date.now(),
+                note: 'Ticket created'
+            }]
+        };
+
+        await db.ref(`tickets/${ticketId}`).set(ticket);
+
+        toast('Ticket submitted!', 'success');
+
+        // Navigate to existing issues view for this store
+        setTimeout(() => showExistingIssuesScreen(), 600);
+    } catch (err) {
+        console.error('Submit error:', err);
+        toast('Failed to submit. Try again.', 'error');
+        btn.innerHTML = 'Submit Ticket';
+        btn.disabled = false;
+    }
+}
+
+// ============================================================
+// EXISTING ISSUES
+// ============================================================
+function showExistingIssuesScreen() {
+    if (!selectedStore) return;
+    showScreen('existingIssuesScreen');
+    document.getElementById('ticketStoreName').textContent = '— ' + selectedStore.name;
+    currentFilter = 'all';
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.toggle('active', c.dataset.filter === 'all'));
+    loadTickets();
+}
+
+function loadTickets() {
+    const listEl = document.getElementById('ticketsList');
+    listEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted);"><span class="spinner spinner-dark"></span><br><br>Loading tickets...</div>';
+
+    // Detach previous listener
+    if (activeTicketListener) { activeTicketListener(); }
+
+    // Real-time listener for this store's tickets
+    const ref = db.ref('tickets').orderByChild('storeCode').equalTo(selectedStore.code);
+
+    const handler = ref.on('value', (snap) => {
+        currentTickets = [];
+        snap.forEach(child => {
+            currentTickets.push({ ...child.val(), _key: child.key });
+        });
+        // Sort newest first
+        currentTickets.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        renderTickets();
+    });
+
+    activeTicketListener = () => ref.off('value', handler);
+}
+
+function filterTickets(filter, chipEl) {
+    currentFilter = filter;
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    if (chipEl) chipEl.classList.add('active');
+    renderTickets();
+}
+
+function renderTickets() {
+    const listEl = document.getElementById('ticketsList');
+    let tickets = currentTickets;
+
+    if (currentFilter !== 'all') {
+        tickets = tickets.filter(t => t.status === currentFilter);
+    }
+
+    if (tickets.length === 0) {
+        listEl.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">${currentFilter === 'all' ? '📭' : '🔍'}</div>
+                <h3>${currentFilter === 'all' ? 'No tickets yet' : 'No ' + currentFilter + ' tickets'}</h3>
+                <p>${currentFilter === 'all' ? 'All clear at this location!' : 'Try a different filter.'}</p>
+            </div>`;
+        return;
+    }
+
+    listEl.innerHTML = tickets.map(t => {
+        const statusLabel = {
+            open: 'Open', assigned: 'Assigned', inprogress: 'In Progress',
+            waiting: 'Waiting on Parts', resolved: 'Resolved', closed: 'Closed'
+        }[t.status] || t.status;
+
+        const catIcons = { plumbing:'🚿', hvac:'❄️', electrical:'⚡', equipment:'⚙️', structural:'🧱', exterior:'🏪', safety:'🛡️', other:'📎' };
+        const timeAgo = getTimeAgo(t.createdAt);
+        const brandLogo = t.brand && BRAND_LOGOS[t.brand] ? `<img src="${BRAND_LOGOS[t.brand]}" alt="" style="width:16px;height:16px;object-fit:contain;border-radius:3px;opacity:.7;vertical-align:middle">` : '';
+
+        return `
+        <div class="ticket-card" onclick="openTicketDetail('${t._key}')">
+            <div class="ticket-card-inner">
+                <div class="ticket-status-bar" style="background: var(--status-${t.status})"></div>
+                <div class="ticket-body">
+                    <div class="ticket-top-row">
+                        <span class="ticket-id">${t.id || t._key}</span>
+                        <span class="ticket-status-badge status-${t.status}">${statusLabel}</span>
+                    </div>
+                    <div class="ticket-title">${catIcons[t.category] || '📎'} ${escHtml(t.description.substring(0, 80))}${t.description.length > 80 ? '...' : ''}</div>
+                    <div class="ticket-meta">
+                        <span><span class="priority-dot ${t.priority}"></span> ${capitalize(t.priority)}</span>
+                        <span>${capitalize(t.category)}</span>
+                        <span>${brandLogo} ${timeAgo}</span>
+                        ${t.photos && t.photos.length ? '<span>📷 ' + t.photos.length + '</span>' : ''}
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// ============================================================
+// TICKET DETAIL MODAL
+// ============================================================
+function openTicketDetail(key) {
+    const t = currentTickets.find(x => x._key === key);
+    if (!t) return;
+
+    document.getElementById('modalTicketId').textContent = t.id || key;
+
+    const catIcons = { plumbing:'🚿', hvac:'❄️', electrical:'⚡', equipment:'⚙️', structural:'🧱', exterior:'🏪', safety:'🛡️', other:'📎' };
+    const statusLabel = {
+        open: 'Open', assigned: 'Assigned', inprogress: 'In Progress',
+        waiting: 'Waiting on Parts', resolved: 'Resolved', closed: 'Closed'
+    };
+
+    const canUpdateStatus = currentUser.role === 'Admin' || currentUser.role === 'Area Coach';
+
+    let html = `
+        <div class="detail-section">
+            <span class="ticket-status-badge status-${t.status}" style="font-size: 13px; padding: 5px 14px;">
+                ${statusLabel[t.status] || t.status}
+            </span>
+            <span style="margin-left: 10px; font-size: 13px;">
+                <span class="priority-dot ${t.priority}"></span> ${capitalize(t.priority)} Priority
+            </span>
+        </div>
+
+        <div class="detail-section">
+            <div class="detail-label">Category</div>
+            <div class="detail-value">${catIcons[t.category] || ''} ${capitalize(t.category)}</div>
+        </div>
+
+        <div class="detail-section">
+            <div class="detail-label">Description</div>
+            <div class="detail-value">${escHtml(t.description)}</div>
+        </div>`;
+
+    if (t.photos && t.photos.length) {
+        html += `
+        <div class="detail-section">
+            <div class="detail-label">Photos</div>
+            <div class="detail-photos">
+                ${t.photos.map(url => `<img src="${url}" class="detail-photo" onclick="openLightbox('${url}')">`).join('')}
+            </div>
+        </div>`;
+    }
+
+    html += `
+        <div class="detail-section">
+            <div class="detail-label">Reported By</div>
+            <div class="detail-value">${escHtml(t.createdByName || t.createdBy)} &middot; ${formatDate(t.createdAt)}</div>
+        </div>`;
+
+    // Status update for admins/coaches
+    if (canUpdateStatus) {
+        const statuses = ['open', 'assigned', 'inprogress', 'waiting', 'resolved', 'closed'];
+        html += `
+        <div class="status-update-section">
+            <h4>Update Status</h4>
+            <div class="status-select-grid">
+                ${statuses.map(s => `
+                    <button class="status-option ${t.status === s ? 'active' : ''}" onclick="updateTicketStatus('${key}', '${s}', this)">
+                        ${statusLabel[s]}
+                    </button>`).join('')}
+            </div>
+            <div style="margin-top: 8px;">
+                <textarea class="form-textarea" id="statusNote" placeholder="Add a note (optional)..." style="min-height: 60px; font-size: 13px;"></textarea>
+            </div>
+            <button class="btn btn-primary btn-sm" style="margin-top: 10px;" onclick="saveStatusUpdate('${key}')" id="saveStatusBtn">
+                Save Update
+            </button>
+        </div>`;
+    }
+
+    // Activity log
+    if (t.activity && t.activity.length) {
+        html += `
+        <div class="activity-log">
+            <h4>Activity</h4>
+            ${t.activity.slice().reverse().map(a => `
+                <div class="activity-item">
+                    <div class="activity-dot" style="background: var(--status-${a.action === 'created' ? 'open' : (a.newStatus || 'open')})"></div>
+                    <div>
+                        <div class="activity-text"><strong>${escHtml(a.by)}</strong> ${getActivityText(a)}</div>
+                        <div class="activity-time">${formatDate(a.timestamp)}</div>
+                    </div>
+                </div>
+            `).join('')}
+        </div>`;
+    }
+
+    document.getElementById('modalBody').innerHTML = html;
+    document.getElementById('ticketModal').classList.add('open');
+}
+
+let pendingStatusUpdate = null;
+
+function updateTicketStatus(key, status, el) {
+    document.querySelectorAll('.status-option').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    pendingStatusUpdate = { key, status };
+}
+
+async function saveStatusUpdate(key) {
+    const t = currentTickets.find(x => x._key === key);
+    if (!t) return;
+
+    const newStatus = pendingStatusUpdate ? pendingStatusUpdate.status : t.status;
+    const note = document.getElementById('statusNote')?.value?.trim() || '';
+
+    if (newStatus === t.status && !note) {
+        toast('No changes to save', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('saveStatusBtn');
+    btn.innerHTML = '<span class="spinner"></span>';
+    btn.disabled = true;
+
+    try {
+        const updates = {};
+        updates[`tickets/${key}/updatedAt`] = firebase.database.ServerValue.TIMESTAMP;
+
+        if (newStatus !== t.status) {
+            updates[`tickets/${key}/status`] = newStatus;
+        }
+
+        // Append activity
+        const activityItem = {
+            action: newStatus !== t.status ? 'status_change' : 'note',
+            by: currentUser.name,
+            byEmail: currentUser.email,
+            timestamp: Date.now(),
+            ...(newStatus !== t.status && { oldStatus: t.status, newStatus }),
+            ...(note && { note })
+        };
+
+        // Get current activity array length and push
+        const actSnap = await db.ref(`tickets/${key}/activity`).once('value');
+        const currentActivity = actSnap.val() || [];
+        currentActivity.push(activityItem);
+        updates[`tickets/${key}/activity`] = currentActivity;
+
+        await db.ref().update(updates);
+
+        toast('Ticket updated!', 'success');
+        closeModal();
+    } catch (err) {
+        console.error('Update error:', err);
+        toast('Update failed', 'error');
+    } finally {
+        btn.innerHTML = 'Save Update';
+        btn.disabled = false;
+    }
+}
+
+function closeModal() {
+    document.getElementById('ticketModal').classList.remove('open');
+    pendingStatusUpdate = null;
+}
+
+// ============================================================
+// LIGHTBOX
+// ============================================================
+function openLightbox(url) {
+    event.stopPropagation();
+    document.getElementById('lightboxImg').src = url;
+    document.getElementById('lightbox').classList.add('open');
+}
+
+function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('open');
+}
+
+// ============================================================
+// UTILITIES
+// ============================================================
+function toast(msg, type = '') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = 'toast show ' + type;
+    setTimeout(() => el.className = 'toast', 3000);
+}
+
+function escHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str || '';
+    return div.innerHTML;
+}
+
+function capitalize(s) {
+    return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+}
+
+function getTimeAgo(ts) {
+    if (!ts) return '';
+    const diff = Date.now() - ts;
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return mins + 'm ago';
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return hrs + 'h ago';
+    const days = Math.floor(hrs / 24);
+    if (days < 30) return days + 'd ago';
+    return formatDate(ts);
+}
+
+function formatDate(ts) {
+    if (!ts) return '';
+    const d = new Date(ts);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
+function getActivityText(a) {
+    if (a.action === 'created') return 'created this ticket';
+    if (a.action === 'status_change') {
+        const labels = { open:'Open', assigned:'Assigned', inprogress:'In Progress', waiting:'Waiting on Parts', resolved:'Resolved', closed:'Closed' };
+        let text = `changed status to <strong>${labels[a.newStatus] || a.newStatus}</strong>`;
+        if (a.note) text += ` — "${escHtml(a.note)}"`;
+        return text;
+    }
+    if (a.action === 'note') return `added a note: "${escHtml(a.note)}"`;
+    return a.action;
+}
+
+// Close modal on Escape
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        closeLightbox();
+        closeModal();
+    }
+});
+</script>
 </body>
 </html>
