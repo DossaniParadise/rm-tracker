@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dossani Paradise R&M Tracker</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
     <style>
 /* ============================================================
    DOSSANI PARADISE R&M TRACKER - COMPLETE STYLES
@@ -14,41 +14,41 @@
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
 :root {
-    --bg: #0c1021;
-    --card: #161c32;
-    --primary: #4a9eff;
-    --primary-light: rgba(74,158,255,0.12);
-    --primary-hover: #3a8ae6;
-    --accent: #fbbf24;
-    --accent-light: rgba(251,191,36,0.1);
-    --danger: #f87171;
-    --danger-light: rgba(248,113,113,0.1);
-    --warning: #fb923c;
-    --warning-light: rgba(251,146,60,0.1);
-    --info: #4a9eff;
-    --info-light: rgba(74,158,255,0.1);
-    --text: #e8eaf0;
-    --text-mid: #94a3b8;
-    --text-muted: #64748b;
-    --border: #252d4a;
-    --border-light: #1e2540;
-    --shadow-sm: 0 1px 4px rgba(0,0,0,0.3);
-    --shadow: 0 2px 12px rgba(0,0,0,0.25);
-    --shadow-lg: 0 8px 30px rgba(0,0,0,0.4);
+    --bg: #f5f3ef;
+    --card: #ffffff;
+    --primary: #2563eb;
+    --primary-light: #eff4ff;
+    --primary-hover: #1d4ed8;
+    --accent: #d97706;
+    --accent-light: #fef9ee;
+    --danger: #dc2626;
+    --danger-light: #fef2f2;
+    --warning: #ea580c;
+    --warning-light: #fff7ed;
+    --info: #2563eb;
+    --info-light: #eff4ff;
+    --text: #1e293b;
+    --text-mid: #475569;
+    --text-muted: #94a3b8;
+    --border: #e2e8f0;
+    --border-light: #f1f5f9;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-lg: 0 10px 25px rgba(0,0,0,0.08);
     --radius: 10px;
     --radius-lg: 14px;
 
     /* Status colors */
-    --status-open: #f87171;
-    --status-assigned: #a78bfa;
-    --status-inprogress: #4a9eff;
-    --status-waiting: #fbbf24;
-    --status-resolved: #34d399;
-    --status-closed: #64748b;
+    --status-open: #dc2626;
+    --status-assigned: #7c3aed;
+    --status-inprogress: #2563eb;
+    --status-waiting: #d97706;
+    --status-resolved: #059669;
+    --status-closed: #6b7280;
 }
 
 body {
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Inter', sans-serif;
     background: var(--bg);
     color: var(--text);
     line-height: 1.6;
@@ -75,7 +75,7 @@ body {
     position: absolute;
     width: 600px;
     height: 600px;
-    background: radial-gradient(circle, rgba(74,158,255,0.06) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(37,99,235,0.04) 0%, transparent 70%);
     top: -200px;
     right: -200px;
     border-radius: 50%;
@@ -84,7 +84,7 @@ body {
 .login-card {
     background: var(--card);
     border-radius: 20px;
-    border: 1px solid var(--border); box-shadow: var(--shadow-lg);
+    box-shadow: var(--shadow-lg);
     padding: 48px 40px;
     max-width: 420px;
     width: 100%;
@@ -129,7 +129,7 @@ body {
     font-size: 15px;
     font-family: inherit;
     transition: border-color 0.2s;
-    background: #121729; color: var(--text);
+    background: #fafaf8;
 }
 
 .form-input:focus {
@@ -157,7 +157,7 @@ body {
 .btn-full { width: 100%; }
 
 .btn-primary {
-    background: linear-gradient(135deg, #1a2a4a 0%, #0f1a30 100%); border-bottom: 1px solid var(--border);
+    background: var(--primary);
     color: #fff;
 }
 .btn-primary:hover {
@@ -167,7 +167,7 @@ body {
 }
 
 .btn-secondary {
-    background: #121729;
+    background: var(--border-light);
     color: var(--text);
 }
 .btn-secondary:hover { background: var(--border); }
@@ -189,7 +189,7 @@ body {
     color: var(--text-mid);
     border: 1px solid var(--border);
 }
-.btn-ghost:hover { background: #121729; }
+.btn-ghost:hover { background: var(--border-light); }
 
 .btn-sm {
     padding: 8px 14px;
@@ -353,12 +353,12 @@ body {
     border-radius: var(--radius);
     font-size: 15px;
     font-family: inherit;
-    background: #121729; color: var(--text);
+    background: #fafaf8;
     cursor: pointer;
     transition: all 0.2s;
     -webkit-appearance: none;
     appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23475569' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 14px center;
 }
@@ -366,7 +366,7 @@ body {
 .form-select:focus {
     outline: none;
     border-color: var(--primary);
-    background-color: #1a2038;
+    background-color: #fff;
 }
 
 /* ---- Action Cards ---- */
@@ -485,7 +485,7 @@ body {
     font-family: inherit;
     resize: vertical;
     min-height: 100px;
-    background: #121729; color: var(--text);
+    background: #fafaf8;
     transition: border-color 0.2s;
     line-height: 1.5;
 }
@@ -511,7 +511,7 @@ body {
     padding: 14px 10px;
     border: 2px solid var(--border);
     border-radius: var(--radius);
-    background: #121729; color: var(--text);
+    background: #fafaf8;
     cursor: pointer;
     transition: all 0.15s;
     font-family: inherit;
@@ -547,7 +547,7 @@ body {
     text-align: center;
     cursor: pointer;
     transition: all 0.2s;
-    background: #121729; color: var(--text);
+    background: #fafaf8;
     position: relative;
 }
 
@@ -627,7 +627,7 @@ body {
     padding: 12px;
     border: 2px solid var(--border);
     border-radius: var(--radius);
-    background: #121729; color: var(--text);
+    background: #fafaf8;
     cursor: pointer;
     text-align: center;
     transition: all 0.15s;
@@ -766,12 +766,12 @@ body {
     white-space: nowrap;
 }
 
-.status-open { background: rgba(248,113,113,0.12); color: var(--status-open); }
-.status-assigned { background: rgba(167,139,250,0.12); color: var(--status-assigned); }
-.status-inprogress { background: rgba(74,158,255,0.12); color: var(--status-inprogress); }
-.status-waiting { background: rgba(251,191,36,0.12); color: var(--status-waiting); }
-.status-resolved { background: rgba(52,211,153,0.12); color: var(--status-resolved); }
-.status-closed { background: rgba(100,116,139,0.12); color: var(--status-closed); }
+.status-open { background: #fef2f2; color: var(--status-open); }
+.status-assigned { background: #f5f3ff; color: var(--status-assigned); }
+.status-inprogress { background: #eff4ff; color: var(--status-inprogress); }
+.status-waiting { background: #fef9ee; color: var(--status-waiting); }
+.status-resolved { background: #ecfdf5; color: var(--status-resolved); }
+.status-closed { background: #f1f5f9; color: var(--status-closed); }
 
 .ticket-title {
     font-size: 15px;
@@ -907,7 +907,7 @@ body {
 
 /* Status update section in modal */
 .status-update-section {
-    background: #121729;
+    background: var(--border-light);
     border-radius: var(--radius);
     padding: 18px;
     margin-top: 16px;
@@ -1013,8 +1013,8 @@ body {
     transform: translateX(-50%) translateY(0);
 }
 
-.toast.success { background: rgba(52,211,153,0.15); color: #34d399; border: 1px solid rgba(52,211,153,0.3); }
-.toast.error { background: rgba(248,113,113,0.15); color: #f87171; border: 1px solid rgba(248,113,113,0.3); }
+.toast.success { background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
+.toast.error { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
 
 /* ---- Loading spinner ---- */
 .spinner {
@@ -1148,11 +1148,11 @@ body {
     color: var(--text) !important;
     border: 1px solid var(--border) !important;
     border-radius: 10px !important;
-    font-family: 'DM Sans', sans-serif !important;
+    font-family: 'Inter', sans-serif !important;
     box-shadow: var(--shadow-lg) !important;
 }
 .leaflet-popup-content { margin: 0 !important; }
-.leaflet-popup-tip { background: var(--card) !important; border: 1px solid var(--border) !important; }
+.leaflet-popup-tip { background: #fff !important; }
 .map-popup { padding: 14px; }
 .map-popup .mp-name { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
 .map-popup .mp-addr { font-size: 12px; color: var(--text-mid); margin-bottom: 8px; cursor: pointer; }
@@ -1236,7 +1236,7 @@ body {
 #adminScreen .admin-section-body { padding: 16px 20px; }
 
 .pending-card {
-    background: #121729;
+    background: var(--border-light);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 16px;
@@ -1249,7 +1249,7 @@ body {
 .pending-form .full { grid-column: 1 / -1; }
 .pending-form input, .pending-form select {
     padding: 8px 10px;
-    background: #0c1021;
+    background: #fafafa;
     border: 1px solid var(--border);
     border-radius: 6px;
     color: var(--text);
@@ -1291,9 +1291,9 @@ body {
     border-radius: 10px;
     flex-shrink: 0;
 }
-.user-row-role.admin { background: rgba(74,158,255,0.12); color: var(--primary); }
-.user-row-role.areacoach { background: rgba(167,139,250,0.12); color: #a78bfa; }
-.user-row-role.manager { background: rgba(52,211,153,0.12); color: #34d399; }
+.user-row-role.admin { background: #eff4ff; color: var(--primary); }
+.user-row-role.areacoach { background: #f5f3ff; color: #a78bfa; }
+.user-row-role.manager { background: #ecfdf5; color: #34d399; }
 .user-row-actions { display: flex; gap: 4px; flex-shrink: 0; }
 .user-row-actions button {
     background: none;
@@ -1384,7 +1384,7 @@ body {
                 We sent a sign-in link to<br>
                 <strong id="sentToEmail" style="color: var(--text);"></strong>
             </p>
-            <div style="background: rgba(251,191,36,0.08); border: 1px solid rgba(251,191,36,0.25); border-radius: 8px; padding: 10px 14px; margin-bottom: 16px;">
+            <div style="background: #fef9ee; border: 1px solid #fde68a; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px;">
                 <p style="color: var(--accent); font-size: 13px;">
                     ⚠️ Check your <strong>spam/junk folder</strong> if you don't see it
                 </p>
@@ -1417,8 +1417,8 @@ body {
                     <div class="user-role-tag" id="userRole">...</div>
                 </div>
             </div>
+            <button class="admin-btn hidden" id="adminBtn" onclick="showAdminPanel()">⚙️ <span class="badge hidden" id="pendingBadge">0</span></button>
             <button class="btn-logout" onclick="logout()">Sign Out</button>
-            <button class="admin-btn hidden" id="adminBtn" onclick="showAdminPanel()">⚙️ Admin <span class="badge hidden" id="pendingBadge">0</span></button>
         </div>
     </div>
 
@@ -1642,6 +1642,18 @@ body {
                     <div class="empty-state">Loading...</div>
                 </div>
             </div>
+
+            <!-- Database Cleanup -->
+            <div class="admin-section">
+                <div class="admin-section-header">
+                    <h3>🧹 Database Cleanup</h3>
+                </div>
+                <div class="admin-section-body" id="cleanupSection">
+                    <p style="font-size:13px;color:var(--text-mid);margin-bottom:12px">Remove old data nodes from the previous app version that are no longer needed.</p>
+                    <div id="cleanupNodes" style="margin-bottom:12px"></div>
+                    <button class="btn btn-secondary" onclick="scanOldNodes()" id="scanBtn">Scan for old data</button>
+                </div>
+            </div>
         </div>
 
     </div>
@@ -1807,12 +1819,17 @@ async function loadUserData(user) {
         const data = snap.val();
 
         if (!data) {
-            // Auto-register as pending
-            await db.ref(`pending/${user.uid}`).set({
-                email: user.email,
-                requestedAt: firebase.database.ServerValue.TIMESTAMP
-            });
-            showError('Your account is pending approval. An admin will set you up shortly.');
+            // Auto-register as pending - wrap in try/catch since rules might block
+            try {
+                await db.ref(`pending/${user.uid}`).set({
+                    email: user.email,
+                    requestedAt: firebase.database.ServerValue.TIMESTAMP
+                });
+                showError('Your account is pending approval. An admin will set you up shortly.');
+            } catch (e) {
+                console.warn('Could not write pending entry:', e);
+                showError('Account not set up yet. Contact IT at itsupport@dossaniparadise.com to get access.');
+            }
             auth.signOut();
             return;
         }
@@ -1972,7 +1989,7 @@ function loadMapOverview(type) {
     // Init or clear map
     if (!overviewMap) {
         overviewMap = L.map('overviewMap', { zoomControl: true, attributionControl: false }).setView([33.0, -96.5], 7);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
             maxZoom: 18
         }).addTo(overviewMap);
         // Fix tile rendering after hidden->visible
@@ -2332,6 +2349,57 @@ async function removeUser(uid, name) {
         await db.ref(`users/${uid}`).remove();
         showToast('User removed', 'success');
         loadActiveUsers();
+    } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+    }
+}
+
+// Database cleanup
+async function scanOldNodes() {
+    const btn = document.getElementById('scanBtn');
+    btn.textContent = 'Scanning...';
+    btn.disabled = true;
+    
+    const oldNodes = ['issues', 'stores', 'cameras', 'counters', 'config'];
+    const container = document.getElementById('cleanupNodes');
+    const found = [];
+    
+    for (const node of oldNodes) {
+        try {
+            const snap = await db.ref(node).once('value');
+            if (snap.exists()) {
+                const count = snap.numChildren();
+                found.push({ node, count });
+            }
+        } catch (e) { /* skip nodes we can't read */ }
+    }
+    
+    // Also check for stale user entries (UIDs in /users that have no matching pending and weird data)
+    
+    if (found.length === 0) {
+        container.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">✓ Database is clean. No old data found.</div>';
+    } else {
+        container.innerHTML = found.map(f => `
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--border-light);border-radius:8px;margin-bottom:6px">
+                <div>
+                    <strong style="font-size:13px">/${f.node}</strong>
+                    <span style="font-size:12px;color:var(--text-muted);margin-left:8px">${f.count} entries</span>
+                </div>
+                <button class="btn btn-secondary" style="font-size:11px;padding:4px 10px" onclick="deleteNode('${f.node}')">Delete</button>
+            </div>
+        `).join('');
+    }
+    
+    btn.textContent = 'Scan again';
+    btn.disabled = false;
+}
+
+async function deleteNode(node) {
+    if (!confirm(`Delete /${node} and all its data? This cannot be undone.`)) return;
+    try {
+        await db.ref(node).remove();
+        showToast(`/${node} deleted`, 'success');
+        scanOldNodes();
     } catch (err) {
         showToast('Error: ' + err.message, 'error');
     }
