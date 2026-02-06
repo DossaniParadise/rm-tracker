@@ -14,12 +14,38 @@
             <div class="login-logo">🔧</div>
             <h1 class="login-title">Dossani Paradise</h1>
             <p class="login-subtitle">R&M Tracker v1.0</p>
-            <button class="btn btn-microsoft" onclick="loginWithMicrosoft()">
-                <svg width="20" height="20" viewBox="0 0 23 23" fill="currentColor">
-                    <path d="M0 0h11v11H0zM12 0h11v11H12zM0 12h11v11H0zM12 12h11v11H12z"/>
-                </svg>
-                Sign in with Microsoft
-            </button>
+            
+            <!-- Login Form -->
+            <div id="loginForm">
+                <p style="color: var(--text-light); margin-bottom: 20px; font-size: 14px;">
+                    Enter your email to receive a sign-in link
+                </p>
+                <div class="form-group">
+                    <input type="email" id="loginEmail" class="form-input" placeholder="your@dossaniparadise.com" autocomplete="email">
+                </div>
+                
+                <button class="btn btn-primary" onclick="sendSignInLink()">
+                    Send Sign-In Link
+                </button>
+            </div>
+            
+            <!-- Email Sent Confirmation -->
+            <div id="emailSentMessage" class="hidden" style="text-align: center;">
+                <div style="font-size: 48px; margin-bottom: 16px;">📧</div>
+                <h3 style="margin-bottom: 8px;">Check your email!</h3>
+                <p style="color: var(--text-light); margin-bottom: 24px;">
+                    We sent a sign-in link to<br>
+                    <strong id="sentToEmail"></strong>
+                </p>
+                <p style="color: var(--text-light); font-size: 14px; margin-bottom: 16px;">
+                    Click the link in the email to sign in.<br>
+                    You can close this tab.
+                </p>
+                <button class="btn" onclick="resendEmail()" style="background: var(--border); color: var(--text);">
+                    Send Another Link
+                </button>
+            </div>
+            
             <div id="loginError" class="error-message hidden"></div>
         </div>
     </div>
