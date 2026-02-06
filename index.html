@@ -1183,6 +1183,49 @@ body {
 }
 
 /* ============================================================
+   BRAND PILL BUTTONS
+   ============================================================ */
+.brand-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #fff;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 20px 10px 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+}
+.brand-pill:hover {
+    border-color: var(--primary);
+    box-shadow: var(--shadow);
+}
+.brand-pill.active {
+    border-color: var(--primary);
+    background: var(--primary-light);
+    color: var(--primary);
+}
+.brand-pill-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: #f8f8f8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+.brand-pill-icon img {
+    width: 22px;
+    height: 22px;
+    object-fit: contain;
+}
+
+/* ============================================================
    ADMIN PANEL
    ============================================================ */
 .admin-btn {
@@ -1418,6 +1461,7 @@ body {
                 </div>
             </div>
             <button class="admin-btn hidden" id="adminBtn" onclick="showAdminPanel()">⚙️ <span class="badge hidden" id="pendingBadge">0</span></button>
+            <button class="admin-btn hidden" id="viewAsBtn" onclick="showViewAsModal()">👁 View As</button>
             <button class="btn-logout" onclick="logout()">Sign Out</button>
         </div>
     </div>
@@ -1433,13 +1477,20 @@ body {
                     <p>Choose a location to report or check issues</p>
                 </div>
 
-                <!-- Brand logos -->
-                <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:20px">
-                    <span style="display:inline-flex;align-items:center;gap:5px;background:var(--border-light);border:1px solid var(--border);border-radius:20px;padding:5px 12px 5px 7px;font-size:11px;font-weight:600;color:var(--text-mid)"><img src="logos/bk-logo.png" alt="" style="height:18px;width:18px;object-fit:contain;border-radius:3px"> Burger King</span>
-                    <span style="display:inline-flex;align-items:center;gap:5px;background:var(--border-light);border:1px solid var(--border);border-radius:20px;padding:5px 12px 5px 7px;font-size:11px;font-weight:600;color:var(--text-mid)"><img src="logos/pqs-logo.png" alt="" style="height:18px;width:18px;object-fit:contain;border-radius:3px"> Paradise QS</span>
-                    <span style="display:inline-flex;align-items:center;gap:5px;background:var(--border-light);border:1px solid var(--border);border-radius:20px;padding:5px 12px 5px 7px;font-size:11px;font-weight:600;color:var(--text-mid)"><img src="logos/subway-logo.png" alt="" style="height:18px;width:18px;object-fit:contain;border-radius:3px"> Subway</span>
-                    <span style="display:inline-flex;align-items:center;gap:5px;background:var(--border-light);border:1px solid var(--border);border-radius:20px;padding:5px 12px 5px 7px;font-size:11px;font-weight:600;color:var(--text-mid)"><img src="logos/711-logo.png" alt="" style="height:18px;width:18px;object-fit:contain;border-radius:3px"> 7-Eleven</span>
-                    <span style="display:inline-flex;align-items:center;gap:5px;background:var(--border-light);border:1px solid var(--border);border-radius:20px;padding:5px 12px 5px 7px;font-size:11px;font-weight:600;color:var(--text-mid)"><img src="logos/cw-logo.png" alt="" style="height:18px;width:18px;object-fit:contain;border-radius:3px"> Car Wash</span>
+                <!-- Brand buttons - clickable, trigger store type + map -->
+                <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:20px">
+                    <button onclick="selectBrand('fastfood')" class="brand-pill" id="brandPill-fastfood">
+                        <span class="brand-pill-icon"><img src="logos/bk-logo.png" alt=""></span>
+                        <span>Fast Food</span>
+                    </button>
+                    <button onclick="selectBrand('cstore')" class="brand-pill" id="brandPill-cstore">
+                        <span class="brand-pill-icon"><img src="logos/pqs-logo.png" alt=""></span>
+                        <span>C-Store</span>
+                    </button>
+                    <button onclick="selectBrand('carwash')" class="brand-pill" id="brandPill-carwash">
+                        <span class="brand-pill-icon"><img src="logos/cw-logo.png" alt=""></span>
+                        <span>Car Wash</span>
+                    </button>
                 </div>
 
                 <div class="form-row">
@@ -1447,8 +1498,8 @@ body {
                         <label class="form-label">Store Type</label>
                         <select class="form-select" id="storeType" onchange="filterStores()">
                             <option value="">Choose type...</option>
-                            <option value="fastfood">Fast Food (BK / Subway)</option>
-                            <option value="cstore">C-Store (PQS / 7-Eleven / Nashville)</option>
+                            <option value="fastfood">Fast Food</option>
+                            <option value="cstore">C-Store</option>
                             <option value="carwash">Car Wash</option>
                         </select>
                     </div>
@@ -1878,6 +1929,11 @@ function showAppScreen() {
         watchPendingUsers();
     }
 
+    // Show "View As" only for itsupport
+    if (currentUser.email === 'itsupport@dossaniparadise.com') {
+        document.getElementById('viewAsBtn').classList.remove('hidden');
+    }
+
     // Auto-select store for single-store managers
     if (currentUser.role === 'Manager' && currentUser.stores && !Array.isArray(currentUser.stores)) {
         const store = stores.find(s => s.code === currentUser.stores);
@@ -1959,11 +2015,29 @@ function isMultiStoreUser() {
     return currentUser && (currentUser.role === 'Admin' || currentUser.role === 'Area Coach');
 }
 
-// Override filterStores to also show map for multi-store users
+// Brand pill click → set dropdown + trigger map
+function selectBrand(type) {
+    document.getElementById('storeType').value = type;
+    // Update active pill styling
+    document.querySelectorAll('.brand-pill').forEach(b => b.classList.remove('active'));
+    const pill = document.getElementById('brandPill-' + type);
+    if (pill) pill.classList.add('active');
+    filterStores();
+}
+
+// Override filterStores to sync pill active state
 const _origFilterStores = filterStores;
 filterStores = function() {
     _origFilterStores();
     const type = document.getElementById('storeType').value;
+    
+    // Sync pill active state
+    document.querySelectorAll('.brand-pill').forEach(b => b.classList.remove('active'));
+    if (type) {
+        const pill = document.getElementById('brandPill-' + type);
+        if (pill) pill.classList.add('active');
+    }
+    
     const mapEl = document.getElementById('mapOverview');
     
     if (type && isMultiStoreUser()) {
@@ -2410,6 +2484,125 @@ async function deleteNode(node) {
     } catch (err) {
         showToast('Error: ' + err.message, 'error');
     }
+}
+
+// ============================================================
+// VIEW AS (itsupport impersonation)
+// ============================================================
+let realUser = null; // stash the real itsupport user when impersonating
+
+function showViewAsModal() {
+    // Load all active users from Firebase
+    db.ref('users').once('value', snap => {
+        const users = snap.val() || {};
+        const entries = Object.entries(users).filter(([uid]) => uid !== currentUser.uid);
+
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.id = 'viewAsModal';
+        overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+        overlay.innerHTML = `<div class="modal-card">
+            <h3>View As Another User</h3>
+            <p style="font-size:13px;color:var(--text-mid);margin-bottom:14px">See the app exactly as this user would. You'll keep your admin powers but see their stores and role.</p>
+            <div class="form-group">
+                <select class="form-select" id="viewAsSelect" style="font-size:14px">
+                    <option value="">Choose a user...</option>
+                    ${entries.sort((a,b) => (a[1].name||'').localeCompare(b[1].name||'')).map(([uid, u]) =>
+                        `<option value="${uid}">${esc(u.name || 'Unknown')} — ${esc(u.role || 'Manager')} (${esc(u.email || uid)})</option>`
+                    ).join('')}
+                </select>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-primary" onclick="doViewAs()">View As</button>
+                ${realUser ? '<button class="btn btn-accent" onclick="exitViewAs()">↩ Back to IT Support</button>' : ''}
+                <button class="btn btn-secondary" onclick="document.getElementById('viewAsModal').remove()">Cancel</button>
+            </div>
+        </div>`;
+        document.body.appendChild(overlay);
+    });
+}
+
+function doViewAs() {
+    const uid = document.getElementById('viewAsSelect').value;
+    if (!uid) return;
+
+    db.ref(`users/${uid}`).once('value', snap => {
+        const data = snap.val();
+        if (!data) { showToast('User not found', 'error'); return; }
+
+        // Stash real user if not already impersonating
+        if (!realUser) realUser = { ...currentUser };
+
+        // Impersonate
+        currentUser = {
+            uid: realUser.uid, // keep real auth UID for Firebase writes
+            email: data.email || '',
+            name: data.name || 'Unknown',
+            role: normalizeRole(data.role),
+            stores: data.stores || [],
+            _impersonating: data.name || data.email
+        };
+
+        document.getElementById('viewAsModal').remove();
+
+        // Reset UI
+        showScreen('storeSelection');
+        document.getElementById('storeType').value = '';
+        document.querySelectorAll('.brand-pill').forEach(b => b.classList.remove('active'));
+        document.getElementById('storeSelect').innerHTML = '<option value="">Choose store...</option>';
+        document.getElementById('actionButtons').classList.add('hidden');
+        document.getElementById('mapOverview').classList.add('hidden');
+        selectedStore = null;
+
+        // Update header
+        const initials = currentUser.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+        document.getElementById('userAvatar').textContent = initials || '?';
+        document.getElementById('userName').textContent = currentUser.name;
+        document.getElementById('userRole').innerHTML = currentUser.role + ' <span style="font-size:10px;color:var(--accent);font-weight:700">(viewing as)</span>';
+
+        // Keep admin + viewAs buttons visible
+        document.getElementById('adminBtn').classList.remove('hidden');
+        document.getElementById('viewAsBtn').classList.remove('hidden');
+
+        // Re-run auto-select for single-store managers
+        if (currentUser.role === 'Manager' && currentUser.stores && !Array.isArray(currentUser.stores)) {
+            const store = stores.find(s => s.code === currentUser.stores);
+            if (store) {
+                selectedStore = store;
+                document.getElementById('storeType').value = store.type;
+                filterStores();
+                document.getElementById('storeSelect').value = store.id;
+                selectStore();
+            }
+        }
+
+        showToast(`Viewing as ${currentUser.name}`, 'success');
+    });
+}
+
+function exitViewAs() {
+    if (!realUser) return;
+    currentUser = { ...realUser };
+    realUser = null;
+
+    document.getElementById('viewAsModal')?.remove();
+
+    // Reset UI
+    showScreen('storeSelection');
+    document.getElementById('storeType').value = '';
+    document.querySelectorAll('.brand-pill').forEach(b => b.classList.remove('active'));
+    document.getElementById('storeSelect').innerHTML = '<option value="">Choose store...</option>';
+    document.getElementById('actionButtons').classList.add('hidden');
+    document.getElementById('mapOverview').classList.add('hidden');
+    selectedStore = null;
+
+    // Restore header
+    const initials = currentUser.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+    document.getElementById('userAvatar').textContent = initials || '?';
+    document.getElementById('userName').textContent = currentUser.name;
+    document.getElementById('userRole').textContent = currentUser.role;
+
+    showToast('Back to IT Support', 'success');
 }
 
 // ============================================================
