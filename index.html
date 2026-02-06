@@ -1182,6 +1182,168 @@ body {
     .map-stats-bar { padding: 10px 16px; }
 }
 
+/* ============================================================
+   ADMIN PANEL
+   ============================================================ */
+.admin-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-mid);
+    cursor: pointer;
+    padding: 6px 10px;
+    font-size: 13px;
+    font-family: inherit;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+.admin-btn:hover { color: var(--primary); border-color: var(--primary); }
+.admin-btn .badge {
+    background: var(--danger);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 10px;
+    min-width: 18px;
+    text-align: center;
+}
+
+#adminScreen .admin-section {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    margin-bottom: 16px;
+    overflow: hidden;
+}
+#adminScreen .admin-section-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+#adminScreen .admin-section-header h3 {
+    font-size: 15px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+#adminScreen .admin-section-body { padding: 16px 20px; }
+
+.pending-card {
+    background: #121729;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 10px;
+}
+.pending-card:last-child { margin-bottom: 0; }
+.pending-email { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.pending-time { font-size: 11px; color: var(--text-muted); margin-bottom: 12px; }
+.pending-form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+.pending-form .full { grid-column: 1 / -1; }
+.pending-form input, .pending-form select {
+    padding: 8px 10px;
+    background: #0c1021;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 13px;
+    font-family: inherit;
+}
+.pending-form select { cursor: pointer; }
+.pending-actions { display: flex; gap: 6px; }
+.pending-actions .btn { font-size: 12px; padding: 7px 14px; }
+
+.user-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-light);
+}
+.user-row:last-child { border-bottom: none; }
+.user-row-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--primary-light);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+.user-row-info { flex: 1; min-width: 0; }
+.user-row-name { font-size: 13px; font-weight: 600; }
+.user-row-email { font-size: 11px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.user-row-role {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    flex-shrink: 0;
+}
+.user-row-role.admin { background: rgba(74,158,255,0.12); color: var(--primary); }
+.user-row-role.areacoach { background: rgba(167,139,250,0.12); color: #a78bfa; }
+.user-row-role.manager { background: rgba(52,211,153,0.12); color: #34d399; }
+.user-row-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.user-row-actions button {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-mid);
+    cursor: pointer;
+    padding: 4px 8px;
+    font-size: 12px;
+    font-family: inherit;
+}
+.user-row-actions button:hover { color: var(--primary); border-color: var(--primary); }
+.user-row-actions button.del:hover { color: var(--danger); border-color: var(--danger); }
+
+/* Edit user modal overlay */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+.modal-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    padding: 24px;
+    max-width: 480px;
+    width: 100%;
+}
+.modal-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+.modal-card .form-group { margin-bottom: 12px; }
+.modal-card .modal-actions { display: flex; gap: 8px; margin-top: 16px; }
+
+.empty-state {
+    text-align: center;
+    padding: 24px;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+@media (max-width: 600px) {
+    .pending-form { grid-template-columns: 1fr; }
+    .user-row { flex-wrap: wrap; }
+}
+
 </style>
 </head>
 <body>
@@ -1256,6 +1418,7 @@ body {
                 </div>
             </div>
             <button class="btn-logout" onclick="logout()">Sign Out</button>
+            <button class="admin-btn hidden" id="adminBtn" onclick="showAdminPanel()">⚙️ Admin <span class="badge hidden" id="pendingBadge">0</span></button>
         </div>
     </div>
 
@@ -1453,12 +1616,38 @@ body {
             </div>
         </div>
 
+        <!-- ===== SCREEN: Admin Panel ===== -->
+        <div id="adminScreen" class="hidden">
+            <div class="back-row">
+                <button class="btn btn-ghost" onclick="goBackFromAdmin()">← Back</button>
+                <h2>Admin Panel</h2>
+            </div>
+
+            <!-- Pending Users -->
+            <div class="admin-section">
+                <div class="admin-section-header">
+                    <h3>🕐 Pending Approval <span id="pendingCount" style="color:var(--text-muted);font-weight:400;font-size:13px"></span></h3>
+                </div>
+                <div class="admin-section-body" id="pendingList">
+                    <div class="empty-state">No pending users</div>
+                </div>
+            </div>
+
+            <!-- Active Users -->
+            <div class="admin-section">
+                <div class="admin-section-header">
+                    <h3>👥 Active Users <span id="activeCount" style="color:var(--text-muted);font-weight:400;font-size:13px"></span></h3>
+                </div>
+                <div class="admin-section-body" id="activeUsersList">
+                    <div class="empty-state">Loading...</div>
+                </div>
+            </div>
+        </div>
+
     </div>
 </div>
 
-<!-- ============================================================
-     TICKET DETAIL MODAL
-     ============================================================ -->
+<!-- Ticket Detail Modal -->
 <div class="modal-overlay" id="ticketModal" onclick="if(event.target===this)closeModal()">
     <div class="modal-content">
         <div class="modal-header">
@@ -1618,7 +1807,12 @@ async function loadUserData(user) {
         const data = snap.val();
 
         if (!data) {
-            showError('Account not set up. Contact IT at itsupport@dossaniparadise.com');
+            // Auto-register as pending
+            await db.ref(`pending/${user.uid}`).set({
+                email: user.email,
+                requestedAt: firebase.database.ServerValue.TIMESTAMP
+            });
+            showError('Your account is pending approval. An admin will set you up shortly.');
             auth.signOut();
             return;
         }
@@ -1661,9 +1855,14 @@ function showAppScreen() {
     document.getElementById('userName').textContent = currentUser.name;
     document.getElementById('userRole').textContent = currentUser.role;
 
+    // Show admin button for admins
+    if (currentUser.role === 'Admin') {
+        document.getElementById('adminBtn').classList.remove('hidden');
+        watchPendingUsers();
+    }
+
     // Auto-select store for single-store managers
     if (currentUser.role === 'Manager' && currentUser.stores && !Array.isArray(currentUser.stores)) {
-        // Single store string
         const store = stores.find(s => s.code === currentUser.stores);
         if (store) {
             selectedStore = store;
@@ -1683,7 +1882,7 @@ function showError(msg) {
 }
 
 function showScreen(screenId) {
-    ['storeSelection', 'newIssueScreen', 'existingIssuesScreen'].forEach(id => {
+    ['storeSelection', 'newIssueScreen', 'existingIssuesScreen', 'adminScreen'].forEach(id => {
         document.getElementById(id).classList.toggle('hidden', id !== screenId);
     });
 }
@@ -1888,6 +2087,255 @@ goBack = function() {
     _origGoBack();
     // Don't hide map - it stays visible on storeSelection if type is set
 };
+
+// ============================================================
+// ADMIN PANEL
+// ============================================================
+let pendingListener = null;
+let pendingUsers = {};
+
+function watchPendingUsers() {
+    if (pendingListener) return;
+    pendingListener = db.ref('pending').on('value', snap => {
+        pendingUsers = snap.val() || {};
+        const count = Object.keys(pendingUsers).length;
+        const badge = document.getElementById('pendingBadge');
+        if (count > 0) {
+            badge.textContent = count;
+            badge.classList.remove('hidden');
+        } else {
+            badge.classList.add('hidden');
+        }
+        // If admin panel is visible, refresh it
+        if (!document.getElementById('adminScreen').classList.contains('hidden')) {
+            renderPendingUsers();
+        }
+    });
+}
+
+function showAdminPanel() {
+    showScreen('adminScreen');
+    renderPendingUsers();
+    loadActiveUsers();
+}
+
+function goBackFromAdmin() {
+    showScreen('storeSelection');
+}
+
+function renderPendingUsers() {
+    const container = document.getElementById('pendingList');
+    const entries = Object.entries(pendingUsers);
+    const count = entries.length;
+    document.getElementById('pendingCount').textContent = count > 0 ? `(${count})` : '';
+
+    if (count === 0) {
+        container.innerHTML = '<div class="empty-state">No pending users</div>';
+        return;
+    }
+
+    container.innerHTML = entries.map(([uid, p]) => {
+        const timeStr = p.requestedAt ? new Date(p.requestedAt).toLocaleString() : 'Unknown';
+        const emailName = (p.email || '').split('@')[0];
+        // Try to guess name from email (first.last format)
+        const guessedName = emailName.includes('.') ?
+            emailName.split('.').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') :
+            emailName.charAt(0).toUpperCase() + emailName.slice(1);
+
+        return `<div class="pending-card" id="pending-${uid}">
+            <div class="pending-email">${esc(p.email || 'Unknown')}</div>
+            <div class="pending-time">Requested: ${timeStr}</div>
+            <div class="pending-form">
+                <input type="text" placeholder="Full name" id="pname-${uid}" value="${esc(guessedName)}">
+                <select id="prole-${uid}">
+                    <option value="Manager">Manager</option>
+                    <option value="Area Coach">Area Coach</option>
+                    <option value="Admin">Admin</option>
+                </select>
+                <select id="pstores-${uid}" class="full" multiple size="3" style="min-height:70px">
+                    ${stores.map(s => `<option value="${s.code}">${s.name}</option>`).join('')}
+                </select>
+                <div class="full" style="font-size:11px;color:var(--text-muted)">Hold Ctrl/Cmd to select multiple. For Admin, leave empty (gets all stores).</div>
+            </div>
+            <div class="pending-actions">
+                <button class="btn btn-primary" onclick="approveUser('${uid}')">Approve</button>
+                <button class="btn btn-secondary" onclick="denyUser('${uid}')">Deny</button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+async function approveUser(uid) {
+    const name = document.getElementById(`pname-${uid}`).value.trim();
+    const role = document.getElementById(`prole-${uid}`).value;
+    const storeSelect = document.getElementById(`pstores-${uid}`);
+    const selectedStores = Array.from(storeSelect.selectedOptions).map(o => o.value);
+
+    if (!name) { showToast('Enter a name', 'error'); return; }
+
+    let storeVal;
+    if (role === 'Admin') {
+        storeVal = 'all';
+    } else if (selectedStores.length === 0) {
+        showToast('Select at least one store', 'error');
+        return;
+    } else if (selectedStores.length === 1 && role === 'Manager') {
+        storeVal = selectedStores[0];
+    } else {
+        storeVal = selectedStores;
+    }
+
+    try {
+        await db.ref(`users/${uid}`).set({
+            name: name,
+            role: role,
+            stores: storeVal,
+            email: pendingUsers[uid]?.email || '',
+            approvedAt: firebase.database.ServerValue.TIMESTAMP,
+            approvedBy: currentUser.email
+        });
+        await db.ref(`pending/${uid}`).remove();
+        showToast(`${name} approved as ${role}`, 'success');
+    } catch (err) {
+        console.error('Approve error:', err);
+        showToast('Failed to approve: ' + err.message, 'error');
+    }
+}
+
+async function denyUser(uid) {
+    if (!confirm('Deny this user? They will need to request access again.')) return;
+    try {
+        await db.ref(`pending/${uid}`).remove();
+        showToast('User denied', 'success');
+    } catch (err) {
+        showToast('Failed: ' + err.message, 'error');
+    }
+}
+
+async function loadActiveUsers() {
+    const container = document.getElementById('activeUsersList');
+    try {
+        const snap = await db.ref('users').once('value');
+        const users = snap.val() || {};
+        const entries = Object.entries(users);
+        document.getElementById('activeCount').textContent = `(${entries.length})`;
+
+        if (entries.length === 0) {
+            container.innerHTML = '<div class="empty-state">No active users</div>';
+            return;
+        }
+
+        container.innerHTML = entries.map(([uid, u]) => {
+            const initials = (u.name || '?').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+            const roleClass = u.role === 'Admin' ? 'admin' : u.role === 'Area Coach' ? 'areacoach' : 'manager';
+            const storeStr = u.stores === 'all' ? 'All stores' :
+                Array.isArray(u.stores) ? u.stores.length + ' stores' :
+                u.stores || 'None';
+
+            return `<div class="user-row">
+                <div class="user-row-avatar">${initials}</div>
+                <div class="user-row-info">
+                    <div class="user-row-name">${esc(u.name || 'Unknown')}</div>
+                    <div class="user-row-email">${esc(u.email || uid)} · ${storeStr}</div>
+                </div>
+                <span class="user-row-role ${roleClass}">${u.role || 'Manager'}</span>
+                <div class="user-row-actions">
+                    <button onclick="editUser('${uid}')">Edit</button>
+                    <button class="del" onclick="removeUser('${uid}','${esc(u.name || '')}')">Remove</button>
+                </div>
+            </div>`;
+        }).join('');
+    } catch (err) {
+        container.innerHTML = '<div class="empty-state">Error loading users</div>';
+    }
+}
+
+function editUser(uid) {
+    db.ref(`users/${uid}`).once('value', snap => {
+        const u = snap.val();
+        if (!u) return;
+
+        const storesOptions = stores.map(s => {
+            const selected = u.stores === 'all' ? false :
+                Array.isArray(u.stores) ? u.stores.includes(s.code) :
+                u.stores === s.code;
+            return `<option value="${s.code}" ${selected ? 'selected' : ''}>${s.name}</option>`;
+        }).join('');
+
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.id = 'editUserModal';
+        overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+        overlay.innerHTML = `<div class="modal-card">
+            <h3>Edit User</h3>
+            <div class="form-group">
+                <label class="form-label">Name</label>
+                <input class="form-input" id="editName" value="${esc(u.name || '')}">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Email</label>
+                <input class="form-input" value="${esc(u.email || uid)}" disabled style="opacity:.5">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Role</label>
+                <select class="form-select" id="editRole">
+                    <option value="Manager" ${u.role === 'Manager' ? 'selected' : ''}>Manager</option>
+                    <option value="Area Coach" ${u.role === 'Area Coach' ? 'selected' : ''}>Area Coach</option>
+                    <option value="Admin" ${u.role === 'Admin' ? 'selected' : ''}>Admin</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Stores (Ctrl/Cmd+click for multiple; leave empty for Admin=all)</label>
+                <select class="form-select" id="editStores" multiple size="5" style="min-height:100px">${storesOptions}</select>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-primary" onclick="saveEditUser('${uid}')">Save</button>
+                <button class="btn btn-secondary" onclick="document.getElementById('editUserModal').remove()">Cancel</button>
+            </div>
+        </div>`;
+        document.body.appendChild(overlay);
+    });
+}
+
+async function saveEditUser(uid) {
+    const name = document.getElementById('editName').value.trim();
+    const role = document.getElementById('editRole').value;
+    const selected = Array.from(document.getElementById('editStores').selectedOptions).map(o => o.value);
+
+    if (!name) { showToast('Name required', 'error'); return; }
+
+    let storeVal;
+    if (role === 'Admin') {
+        storeVal = 'all';
+    } else if (selected.length === 0) {
+        showToast('Select at least one store', 'error');
+        return;
+    } else if (selected.length === 1 && role === 'Manager') {
+        storeVal = selected[0];
+    } else {
+        storeVal = selected;
+    }
+
+    try {
+        await db.ref(`users/${uid}`).update({ name, role, stores: storeVal });
+        document.getElementById('editUserModal').remove();
+        showToast('User updated', 'success');
+        loadActiveUsers();
+    } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+    }
+}
+
+async function removeUser(uid, name) {
+    if (!confirm(`Remove ${name || 'this user'}? They won't be able to sign in until re-approved.`)) return;
+    try {
+        await db.ref(`users/${uid}`).remove();
+        showToast('User removed', 'success');
+        loadActiveUsers();
+    } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+    }
+}
 
 // ============================================================
 // NEW ISSUE FORM
@@ -2300,6 +2748,14 @@ function escHtml(str) {
     const div = document.createElement('div');
     div.textContent = str || '';
     return div.innerHTML;
+}
+const esc = escHtml;
+
+function showToast(msg, type = 'success') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast ' + type + ' show';
+    setTimeout(() => t.className = 'toast', 3000);
 }
 
 function capitalize(s) {
