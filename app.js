@@ -1,6 +1,4 @@
-// Main Application Logic
-// DON'T EDIT UNLESS YOU KNOW WHAT YOU'RE DOING
-// To update users/stores, edit users-data.js and stores-data.js instead
+// Main Application Logic - SIMPLIFIED VERSION
 
 let currentUser = null;
 let selectedStore = null;
@@ -15,30 +13,25 @@ auth.onAuthStateChanged(async (user) => {
     }
 });
 
-// Handle redirect result (user coming back from Microsoft login)
-auth.getRedirectResult().then((result) => {
-    if (result.user) {
-        console.log('Redirect login successful:', result.user.email);
-    }
-}).catch((error) => {
-    console.error('Redirect error:', error);
-    showError(error.message);
-});
-
-// Microsoft Login
+// Simple Microsoft Login - Let Firebase handle everything
 async function loginWithMicrosoft() {
     try {
         const provider = new firebase.auth.OAuthProvider('microsoft.com');
-         provider.setCustomParameters({
-            tenant: 'common'  // Multi-tenant
-        });
         
-        // Use redirect instead of popup to avoid Cross-Origin-Opener-Policy issues
-        await auth.signInWithRedirect(provider);
-        // User will be redirected to Microsoft login, then back to the app
+        // Use popup for simplicity
+        const result = await auth.signInWithPopup(provider);
+        console.log('Login successful:', result.user.email);
     } catch (error) {
         console.error('Login error:', error);
-        showError(error.message);
+        
+        // If popup blocked, provide helpful message
+        if (error.code === 'auth/popup-blocked') {
+            showError('Popup was blocked! Please allow popups for this site and try again.');
+        } else if (error.code === 'auth/cancelled-popup-request') {
+            showError('Login cancelled. Please try again.');
+        } else {
+            showError(error.message);
+        }
     }
 }
 
@@ -55,8 +48,13 @@ async function loadUserData(user) {
             return;
         }
 
-        // Check email domain
-        if (!user.email.endsWith('@dossaniparadise.com') && user.email !== 'scroadmart@att.net') {
+        // Check email domain (allow @dossaniparadise.com and one exception)
+        const validDomains = ['@dossaniparadise.com', 'scroadmart@att.net'];
+        const isValidEmail = validDomains.some(domain => 
+            user.email.endsWith(domain) || user.email === domain
+        );
+        
+        if (!isValidEmail) {
             showError('Only @dossaniparadise.com emails are allowed.');
             auth.signOut();
             return;
@@ -101,7 +99,7 @@ function showError(message) {
     const errorEl = document.getElementById('loginError');
     errorEl.textContent = message;
     errorEl.classList.remove('hidden');
-    setTimeout(() => errorEl.classList.add('hidden'), 5000);
+    setTimeout(() => errorEl.classList.add('hidden'), 8000);
 }
 
 // Store Selection
@@ -121,6 +119,9 @@ function filterStores() {
     if (currentUser.role !== 'Admin' && currentUser.stores !== 'all') {
         userStores = filteredStores.filter(s => currentUser.stores.includes(s.code));
     }
+
+    // Sort alphabetically
+    userStores.sort((a, b) => a.name.localeCompare(b.name));
 
     // Populate dropdown
     userStores.forEach(store => {
@@ -146,13 +147,11 @@ function selectStore() {
 function reportNewIssue() {
     if (!selectedStore) return;
     console.log('Report new issue at:', selectedStore.name);
-    alert('Phase 2: New Issue Form - Coming Soon!');
-    // TODO: Show new issue form
+    alert('Phase 2: New Issue Form - Coming Soon!\n\nSelected store: ' + selectedStore.name);
 }
 
 function checkExistingIssues() {
     if (!selectedStore) return;
     console.log('Check existing issues at:', selectedStore.name);
-    alert('Phase 2: Existing Issues List - Coming Soon!');
-    // TODO: Show existing issues list
+    alert('Phase 2: Existing Issues List - Coming Soon!\n\nSelected store: ' + selectedStore.name);
 }
