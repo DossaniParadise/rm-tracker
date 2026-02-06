@@ -1838,7 +1838,7 @@ async function loadUserData(user) {
             uid: user.uid,
             email: user.email,
             name: data.name || user.email.split('@')[0],
-            role: data.role || 'Manager',
+            role: normalizeRole(data.role),
             stores: data.stores || []
         };
 
@@ -1872,8 +1872,8 @@ function showAppScreen() {
     document.getElementById('userName').textContent = currentUser.name;
     document.getElementById('userRole').textContent = currentUser.role;
 
-    // Show admin button for admins
-    if (currentUser.role === 'Admin') {
+    // Show admin button for admins (case-insensitive check)
+    if (currentUser.role && currentUser.role.toLowerCase() === 'admin') {
         document.getElementById('adminBtn').classList.remove('hidden');
         watchPendingUsers();
     }
@@ -2152,30 +2152,37 @@ function renderPendingUsers() {
     }
 
     container.innerHTML = entries.map(([uid, p]) => {
+        const email = (p.email || '').toLowerCase();
+        // Auto-lookup from USER_DIRECTORY
+        const known = (typeof USER_DIRECTORY !== 'undefined') ? USER_DIRECTORY[email] : null;
+        const guessedName = known ? known.name : email.split('@')[0].replace(/\./g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        const guessedRole = known ? known.role : 'Manager';
+        const guessedStores = known ? (known.stores === 'all' ? [] : Array.isArray(known.stores) ? known.stores : [known.stores]) : [];
+        const isKnown = !!known;
         const timeStr = p.requestedAt ? new Date(p.requestedAt).toLocaleString() : 'Unknown';
-        const emailName = (p.email || '').split('@')[0];
-        // Try to guess name from email (first.last format)
-        const guessedName = emailName.includes('.') ?
-            emailName.split('.').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') :
-            emailName.charAt(0).toUpperCase() + emailName.slice(1);
 
         return `<div class="pending-card" id="pending-${uid}">
-            <div class="pending-email">${esc(p.email || 'Unknown')}</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                <div class="pending-email">${esc(p.email || 'Unknown')}</div>
+                ${isKnown ? '<span style="font-size:11px;color:#059669;font-weight:600">✓ Found in directory</span>' : '<span style="font-size:11px;color:var(--accent);font-weight:600">⚠ Not in directory</span>'}
+            </div>
             <div class="pending-time">Requested: ${timeStr}</div>
             <div class="pending-form">
                 <input type="text" placeholder="Full name" id="pname-${uid}" value="${esc(guessedName)}">
                 <select id="prole-${uid}">
-                    <option value="Manager">Manager</option>
-                    <option value="Area Coach">Area Coach</option>
-                    <option value="Admin">Admin</option>
+                    <option value="Manager" ${guessedRole === 'Manager' ? 'selected' : ''}>Manager</option>
+                    <option value="Area Coach" ${guessedRole === 'Area Coach' ? 'selected' : ''}>Area Coach</option>
+                    <option value="Admin" ${guessedRole === 'Admin' ? 'selected' : ''}>Admin</option>
                 </select>
                 <select id="pstores-${uid}" class="full" multiple size="3" style="min-height:70px">
-                    ${stores.map(s => `<option value="${s.code}">${s.name}</option>`).join('')}
+                    ${stores.map(s => `<option value="${s.code}" ${guessedStores.includes(s.code) ? 'selected' : ''}>${s.name}</option>`).join('')}
                 </select>
-                <div class="full" style="font-size:11px;color:var(--text-muted)">Hold Ctrl/Cmd to select multiple. For Admin, leave empty (gets all stores).</div>
+                <div class="full" style="font-size:11px;color:var(--text-muted)">
+                    ${guessedRole === 'Admin' ? 'Admin gets all stores automatically.' : 'Hold Ctrl/Cmd to select multiple stores.'}
+                </div>
             </div>
             <div class="pending-actions">
-                <button class="btn btn-primary" onclick="approveUser('${uid}')">Approve</button>
+                <button class="btn btn-primary" onclick="approveUser('${uid}')">${isKnown ? '✓ Approve' : 'Approve'}</button>
                 <button class="btn btn-secondary" onclick="denyUser('${uid}')">Deny</button>
             </div>
         </div>`;
@@ -2818,6 +2825,14 @@ function escHtml(str) {
     return div.innerHTML;
 }
 const esc = escHtml;
+
+function normalizeRole(r) {
+    if (!r) return 'Manager';
+    const lower = r.toLowerCase();
+    if (lower === 'admin') return 'Admin';
+    if (lower === 'areacoach' || lower === 'area coach') return 'Area Coach';
+    return 'Manager';
+}
 
 function showToast(msg, type = 'success') {
     const t = document.getElementById('toast');
