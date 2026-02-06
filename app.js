@@ -29,8 +29,8 @@ auth.getRedirectResult().then((result) => {
 async function loginWithMicrosoft() {
     try {
         const provider = new firebase.auth.OAuthProvider('microsoft.com');
-        provider.setCustomParameters({
-            tenant: 'ba38caa7-6bf9-4989-880b-3f2741f8c9d7'  // Dossani Paradise tenant
+         provider.setCustomParameters({
+            tenant: 'common'  // Multi-tenant
         });
         
         // Use redirect instead of popup to avoid Cross-Origin-Opener-Policy issues
