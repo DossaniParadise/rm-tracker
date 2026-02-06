@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dossani Paradise R&M Tracker</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
     <style>
 /* ============================================================
@@ -1075,7 +1076,113 @@ body {
     .modal-header { padding: 16px 18px; }
     .ticket-card-inner { padding: 14px 16px; }
 }
-    </style>
+    
+/* ============================================================
+   MAP OVERVIEW
+   ============================================================ */
+#mapOverview { margin-bottom: 20px; }
+.map-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+.map-header {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.map-header h2 { font-size: 16px; font-weight: 700; }
+.map-legend {
+    display: flex;
+    gap: 12px;
+    font-size: 11px;
+    color: var(--text-mid);
+}
+.map-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.map-legend .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+}
+.dot-green { background: #34d399; }
+.dot-yellow { background: #fbbf24; }
+.dot-red { background: #f87171; }
+#overviewMap {
+    width: 100%;
+    height: 420px;
+    background: var(--bg);
+}
+.map-stats-bar {
+    padding: 12px 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 16px;
+    font-size: 12px;
+    color: var(--text-mid);
+    flex-wrap: wrap;
+}
+.map-stats-bar .mstat {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.map-stats-bar .mstat strong {
+    color: var(--text);
+    font-size: 16px;
+}
+
+/* Leaflet dark overrides */
+.leaflet-popup-content-wrapper {
+    background: var(--card) !important;
+    color: var(--text) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 10px !important;
+    font-family: 'DM Sans', sans-serif !important;
+    box-shadow: var(--shadow-lg) !important;
+}
+.leaflet-popup-content { margin: 0 !important; }
+.leaflet-popup-tip { background: var(--card) !important; border: 1px solid var(--border) !important; }
+.map-popup { padding: 14px; }
+.map-popup .mp-name { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
+.map-popup .mp-addr { font-size: 12px; color: var(--text-mid); margin-bottom: 8px; cursor: pointer; }
+.map-popup .mp-addr:hover { color: var(--primary); }
+.map-popup .mp-stats { display: flex; gap: 10px; margin-bottom: 10px; font-size: 12px; }
+.map-popup .mp-stat { text-align: center; }
+.map-popup .mp-stat strong { display: block; font-size: 18px; }
+.map-popup .mp-btns { display: flex; gap: 6px; }
+.map-popup .mp-btn {
+    flex: 1;
+    padding: 7px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--primary-light);
+    color: var(--primary);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    font-family: inherit;
+}
+.map-popup .mp-btn:hover { background: var(--primary); color: #fff; }
+
+@media (max-width: 600px) {
+    #overviewMap { height: 320px; }
+    .map-header { padding: 12px 16px; }
+    .map-stats-bar { padding: 10px 16px; }
+}
+
+</style>
 </head>
 <body>
 
@@ -1201,6 +1308,23 @@ body {
                         <div class="action-title">Existing Tickets</div>
                         <div class="action-desc">View and track open issues</div>
                     </div>
+                </div>
+            </div>
+
+
+            <!-- Map Overview (for Admin/Area Coach after type selection) -->
+            <div id="mapOverview" class="hidden">
+                <div class="map-card">
+                    <div class="map-header">
+                        <h2 id="mapTitle">Store Overview</h2>
+                        <div class="map-legend">
+                            <span><span class="dot dot-green"></span> No issues</span>
+                            <span><span class="dot dot-yellow"></span> 1-2 open</span>
+                            <span><span class="dot dot-red"></span> 3+ open</span>
+                        </div>
+                    </div>
+                    <div id="overviewMap"></div>
+                    <div class="map-stats-bar" id="mapStatsBar"></div>
                 </div>
             </div>
         </div>
@@ -1362,6 +1486,7 @@ body {
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="stores-data.js"></script>
 <script src="users-data.js"></script>
 
@@ -1604,6 +1729,165 @@ function selectStore() {
     selectedStore = stores.find(s => s.id === id);
     document.getElementById('actionButtons').classList.remove('hidden');
 }
+
+
+
+// ============================================================
+// MAP OVERVIEW (for Admin / Area Coach)
+// ============================================================
+let overviewMap = null;
+let mapMarkers = [];
+let allTicketCounts = {}; // { storeCode: { open: N, total: N } }
+
+function isMultiStoreUser() {
+    return currentUser && (currentUser.role === 'Admin' || currentUser.role === 'Area Coach');
+}
+
+// Override filterStores to also show map for multi-store users
+const _origFilterStores = filterStores;
+filterStores = function() {
+    _origFilterStores();
+    const type = document.getElementById('storeType').value;
+    const mapEl = document.getElementById('mapOverview');
+    
+    if (type && isMultiStoreUser()) {
+        mapEl.classList.remove('hidden');
+        loadMapOverview(type);
+    } else {
+        mapEl.classList.add('hidden');
+    }
+};
+
+function loadMapOverview(type) {
+    let filtered = stores.filter(s => s.type === type);
+    
+    // Permission filter
+    if (currentUser.role !== 'Admin' && currentUser.stores !== 'all') {
+        const us = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
+        filtered = filtered.filter(s => us.includes(s.code));
+    }
+    
+    const typeLabels = { fastfood: 'Fast Food Stores', cstore: 'C-Stores', carwash: 'Car Washes' };
+    document.getElementById('mapTitle').textContent = typeLabels[type] || 'Stores';
+    
+    // Init or clear map
+    if (!overviewMap) {
+        overviewMap = L.map('overviewMap', { zoomControl: true, attributionControl: false }).setView([33.0, -96.5], 7);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            maxZoom: 18
+        }).addTo(overviewMap);
+        // Fix tile rendering after hidden->visible
+        setTimeout(() => overviewMap.invalidateSize(), 100);
+    } else {
+        overviewMap.invalidateSize();
+    }
+    
+    // Clear old markers
+    mapMarkers.forEach(m => overviewMap.removeLayer(m));
+    mapMarkers = [];
+    
+    // Fetch open ticket counts for these stores
+    const codes = filtered.map(s => s.code);
+    fetchTicketCounts(codes, () => {
+        // Add markers
+        const bounds = [];
+        filtered.forEach(s => {
+            if (!s.lat || !s.lng) return;
+            const counts = allTicketCounts[s.code] || { open: 0, total: 0 };
+            const color = counts.open === 0 ? '#34d399' : counts.open <= 2 ? '#fbbf24' : '#f87171';
+            const size = counts.open === 0 ? 10 : counts.open <= 2 ? 13 : 16;
+            
+            const icon = L.divIcon({
+                className: '',
+                html: '<div style="width:'+size+'px;height:'+size+'px;border-radius:50%;background:'+color+';border:2px solid rgba(255,255,255,0.3);box-shadow:0 0 8px '+color+'55;'+(counts.open > 0 ? 'display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#000;' : '')+'">'+( counts.open > 0 ? counts.open : '')+'</div>',
+                iconSize: [size, size],
+                iconAnchor: [size/2, size/2]
+            });
+            
+            const marker = L.marker([s.lat, s.lng], { icon: icon }).addTo(overviewMap);
+            
+            const shortName = s.name.replace(/^Burger King /, 'BK ').replace(/^Paradise QS /, 'PQS ');
+            const mapsUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(s.address);
+            
+            marker.bindPopup(`<div class="map-popup">
+                <div class="mp-name">${shortName}</div>
+                <div class="mp-addr" onclick="window.open('${mapsUrl}','_blank')">${s.address}</div>
+                <div class="mp-stats">
+                    <div class="mp-stat"><strong style="color:${counts.open > 0 ? '#f87171' : '#34d399'}">${counts.open}</strong>open</div>
+                    <div class="mp-stat"><strong>${counts.total}</strong>total</div>
+                </div>
+                <div class="mp-btns">
+                    <button class="mp-btn" onclick="mapSelectStore('${s.id}','tickets')">View Tickets</button>
+                    <button class="mp-btn" onclick="mapSelectStore('${s.id}','new')">Report Issue</button>
+                </div>
+            </div>`, { maxWidth: 260, closeButton: false });
+            
+            mapMarkers.push(marker);
+            bounds.push([s.lat, s.lng]);
+        });
+        
+        if (bounds.length) {
+            overviewMap.fitBounds(bounds, { padding: [30, 30], maxZoom: 12 });
+        }
+        
+        // Stats bar
+        let totalOpen = 0, totalAll = 0, storesWithIssues = 0;
+        codes.forEach(c => {
+            const ct = allTicketCounts[c] || { open: 0, total: 0 };
+            totalOpen += ct.open;
+            totalAll += ct.total;
+            if (ct.open > 0) storesWithIssues++;
+        });
+        document.getElementById('mapStatsBar').innerHTML = 
+            '<div class="mstat"><strong>' + filtered.length + '</strong>stores</div>' +
+            '<div class="mstat"><strong style="color:#f87171">' + totalOpen + '</strong>open tickets</div>' +
+            '<div class="mstat"><strong>' + storesWithIssues + '</strong>need attention</div>' +
+            '<div class="mstat"><strong>' + totalAll + '</strong>total tickets</div>';
+    });
+}
+
+function fetchTicketCounts(codes, callback) {
+    // Listen once for all tickets and count per store
+    db.ref('tickets').once('value', snap => {
+        allTicketCounts = {};
+        codes.forEach(c => allTicketCounts[c] = { open: 0, total: 0 });
+        snap.forEach(child => {
+            const t = child.val();
+            if (codes.includes(t.storeCode)) {
+                if (!allTicketCounts[t.storeCode]) allTicketCounts[t.storeCode] = { open: 0, total: 0 };
+                allTicketCounts[t.storeCode].total++;
+                if (t.status && t.status !== 'closed' && t.status !== 'resolved') {
+                    allTicketCounts[t.storeCode].open++;
+                }
+            }
+        });
+        callback();
+    });
+}
+
+function mapSelectStore(storeId, action) {
+    // Set the dropdown and select the store
+    const store = stores.find(s => s.id === storeId);
+    if (!store) return;
+    selectedStore = store;
+    document.getElementById('storeSelect').value = storeId;
+    document.getElementById('actionButtons').classList.remove('hidden');
+    // Close any open popup
+    if (overviewMap) overviewMap.closePopup();
+    // Navigate
+    if (action === 'tickets') {
+        showExistingIssuesScreen();
+    } else {
+        showNewIssueScreen();
+    }
+}
+
+// Also hide map when going back
+const _origGoBack = goBack;
+goBack = function() {
+    _origGoBack();
+    // Don't hide map - it stays visible on storeSelection if type is set
+};
 
 // ============================================================
 // NEW ISSUE FORM
