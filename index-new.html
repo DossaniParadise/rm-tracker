@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dossani Paradise R&M Tracker v1.0</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Login Screen -->
+    <div class="login-container" id="loginScreen">
+        <div class="login-card">
+            <div class="login-logo">🔧</div>
+            <h1 class="login-title">Dossani Paradise</h1>
+            <p class="login-subtitle">R&M Tracker v1.0</p>
+            <button class="btn btn-microsoft" onclick="loginWithMicrosoft()">
+                <svg width="20" height="20" viewBox="0 0 23 23" fill="currentColor">
+                    <path d="M0 0h11v11H0zM12 0h11v11H12zM0 12h11v11H0zM12 12h11v11H12z"/>
+                </svg>
+                Sign in with Microsoft
+            </button>
+            <div id="loginError" class="error-message hidden"></div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div class="app-container" id="appContainer">
+        <!-- Header -->
+        <div class="app-header">
+            <div>
+                <div class="header-title">Dossani Paradise R&M Tracker v1.0</div>
+            </div>
+            <div class="user-info">
+                <div>
+                    <div class="user-name" id="userName">Loading...</div>
+                    <span class="user-role" id="userRole">Loading...</span>
+                </div>
+                <button class="btn-logout" onclick="logout()">Logout</button>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="app-content">
+            <!-- Store Selection -->
+            <div id="storeSelection" class="store-select-card">
+                <h2 class="card-title">What store are you at?</h2>
+                <p class="card-subtitle">Select your location to get started</p>
+                
+                <div class="form-group">
+                    <label class="form-label">Store Type</label>
+                    <select class="form-select" id="storeType" onchange="filterStores()">
+                        <option value="">Select store type...</option>
+                        <option value="fastfood">Fast Food (BK / Subway)</option>
+                        <option value="cstore">C-Store (Paradise QS / 7-Eleven)</option>
+                        <option value="carwash">Car Wash</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Store Location</label>
+                    <select class="form-select" id="storeSelect" onchange="selectStore()">
+                        <option value="">Select a store...</option>
+                    </select>
+                </div>
+
+                <div id="actionButtons" class="action-buttons hidden">
+                    <div class="action-card" onclick="reportNewIssue()">
+                        <div class="action-icon">➕</div>
+                        <div class="action-title">Report New Issue</div>
+                        <div class="action-desc">Submit a new repair ticket</div>
+                    </div>
+                    <div class="action-card" onclick="checkExistingIssues()">
+                        <div class="action-icon">📋</div>
+                        <div class="action-title">Check Existing Issues</div>
+                        <div class="action-desc">View and update open tickets</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Issue screens will go here -->
+            <div id="newIssueScreen" class="hidden">
+                <h2>New Issue Screen - Coming in Phase 2</h2>
+            </div>
+
+            <div id="existingIssuesScreen" class="hidden">
+                <h2>Existing Issues Screen - Coming in Phase 2</h2>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
+
+    <!-- Load separate config/data files -->
+    <script src="firebase-config.js"></script>
+    <script src="stores-data.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
