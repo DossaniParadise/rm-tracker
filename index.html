@@ -78,7 +78,12 @@
 [data-theme="dark"] .brand-pill-icon { background: #252b3b; }
 [data-theme="dark"] .form-input,
 [data-theme="dark"] .form-select,
-[data-theme="dark"] .form-textarea { background: #141821; color: var(--text); }
+[data-theme="dark"] .form-textarea { background: #141821; color: var(--text); border-color: var(--border); color-scheme: dark; }
+[data-theme="dark"] .form-select option { background: #1a1f2e; color: #e2e8f0; }
+[data-theme="dark"] .filter-chip { background: #1a1f2e; color: var(--text-mid); border-color: var(--border); }
+[data-theme="dark"] .filter-chip.active { background: var(--primary); color: #fff; }
+[data-theme="dark"] .btn-secondary { background: #1a1f2e; color: var(--text); border-color: var(--border); }
+[data-theme="dark"] .btn-back, [data-theme="dark"] .btn-ghost { color: var(--text-mid); }
 [data-theme="dark"] .toast.success { background: rgba(52,211,153,0.15); color: #34d399; border: 1px solid rgba(52,211,153,0.3); }
 [data-theme="dark"] .toast.error { background: rgba(248,113,113,0.15); color: #f87171; border: 1px solid rgba(248,113,113,0.3); }
 [data-theme="dark"] .pending-card { background: #141821; }
@@ -2822,7 +2827,7 @@ function filterAllTickets() {
     }
     
     listEl.innerHTML = filtered.map(t => {
-        const brandIcon = BRAND_ICONS[t.brand] ? `<img src="${BRAND_ICONS[t.brand]}" style="height:14px;width:14px;object-fit:contain;border-radius:2px">` : '';
+        const brandIcon = BRAND_LOGOS[t.brand] ? `<img src="${BRAND_LOGOS[t.brand]}" style="height:14px;width:14px;object-fit:contain;border-radius:2px">` : '';
         const timeAgo = getTimeAgo(t.createdAt);
         const photoCount = t.photos ? t.photos.length : 0;
         const shortDesc = (t.description || '').substring(0, 80) + ((t.description || '').length > 80 ? '...' : '');
