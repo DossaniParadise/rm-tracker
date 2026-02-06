@@ -9,30 +9,91 @@ auth.onAuthStateChanged(async (user) => {
         console.log('User signed in:', user.email);
         await loadUserData(user);
     } else {
-        showLoginScreen();
+        // Check if returning from email link
+        if (auth.isSignInWithEmailLink(window.location.href)) {
+            handleEmailLinkSignIn();
+        } else {
+            showLoginScreen();
+        }
     }
 });
 
-// Simple Microsoft Login - Let Firebase handle everything
-async function loginWithMicrosoft() {
+// Send passwordless sign-in email
+async function sendSignInLink() {
+    const email = document.getElementById('loginEmail').value;
+    
+    if (!email) {
+        showError('Please enter your email address');
+        return;
+    }
+    
+    // Validate email domain
+    if (!email.endsWith('@dossaniparadise.com') && email !== 'scroadmart@att.net') {
+        showError('Only @dossaniparadise.com emails are allowed');
+        return;
+    }
+    
+    const actionCodeSettings = {
+        url: window.location.href, // This page
+        handleCodeInApp: true
+    };
+    
     try {
-        const provider = new firebase.auth.OAuthProvider('microsoft.com');
+        await auth.sendSignInLinkToEmail(email, actionCodeSettings);
+        // Save email to localStorage to complete sign-in
+        window.localStorage.setItem('emailForSignIn', email);
         
-        // Use popup for simplicity
-        const result = await auth.signInWithPopup(provider);
-        console.log('Login successful:', result.user.email);
+        // Show success message
+        document.getElementById('loginForm').classList.add('hidden');
+        document.getElementById('emailSentMessage').classList.remove('hidden');
+        document.getElementById('sentToEmail').textContent = email;
     } catch (error) {
-        console.error('Login error:', error);
-        
-        // If popup blocked, provide helpful message
-        if (error.code === 'auth/popup-blocked') {
-            showError('Popup was blocked! Please allow popups for this site and try again.');
-        } else if (error.code === 'auth/cancelled-popup-request') {
-            showError('Login cancelled. Please try again.');
+        console.error('Error sending email:', error);
+        if (error.code === 'auth/invalid-email') {
+            showError('Invalid email address');
         } else {
-            showError(error.message);
+            showError('Error sending sign-in email. Please try again.');
         }
     }
+}
+
+// Handle sign-in from email link
+async function handleEmailLinkSignIn() {
+    let email = window.localStorage.getItem('emailForSignIn');
+    
+    if (!email) {
+        // User opened link on different device, ask for email
+        email = prompt('Please provide your email for confirmation:');
+    }
+    
+    if (!email) {
+        showError('Email required to complete sign-in');
+        return;
+    }
+    
+    try {
+        const result = await auth.signInWithEmailLink(email, window.location.href);
+        window.localStorage.removeItem('emailForSignIn');
+        console.log('Email link sign-in successful:', result.user.email);
+        
+        // Clear the link from URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+    } catch (error) {
+        console.error('Error signing in with email link:', error);
+        if (error.code === 'auth/invalid-action-code') {
+            showError('This sign-in link has expired or already been used');
+        } else if (error.code === 'auth/invalid-email') {
+            showError('Invalid email address');
+        } else {
+            showError('Error completing sign-in. Please try again.');
+        }
+    }
+}
+
+// Resend email link
+function resendEmail() {
+    document.getElementById('emailSentMessage').classList.add('hidden');
+    document.getElementById('loginForm').classList.remove('hidden');
 }
 
 // Load User Data from Firebase
