@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dossani Paradise R&M Tracker</title>
+    <title>Dossani Paradise Repair and Maintenance Tracker</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
     <style>
@@ -79,50 +79,137 @@
 [data-theme="dark"] .brand-pill { background: #1a1f2e; border-color: var(--border); color: var(--text); }
 [data-theme="dark"] .brand-pill:hover { border-color: var(--primary); }
 [data-theme="dark"] .brand-pill.active { background: rgba(91,156,246,0.15); border-color: var(--primary); color: var(--primary); }
+
+/* Cards & Containers */
 [data-theme="dark"] .store-card { background: var(--card); }
-[data-theme="dark"] .form-label { color: var(--text-mid); }
 [data-theme="dark"] .store-card-header h2 { color: var(--text); }
 [data-theme="dark"] .store-card-header p { color: var(--text-muted); }
 [data-theme="dark"] .action-card { background: #141821; border-color: var(--border); }
 [data-theme="dark"] .action-card:hover { border-color: var(--primary); background: #1a1f2e; }
 [data-theme="dark"] .action-title { color: var(--text); }
 [data-theme="dark"] .action-desc { color: var(--text-muted); }
+[data-theme="dark"] .issue-form-card { background: var(--card); }
+[data-theme="dark"] .issue-form-header { background: var(--primary); }
+[data-theme="dark"] .pending-card { background: #141821; }
+
+/* Admin sections */
 [data-theme="dark"] .admin-section { border-color: var(--border); }
-[data-theme="dark"] .admin-section-header { background: #141821; border-color: var(--border); }
+[data-theme="dark"] .admin-section-header { background: #141821; border-color: var(--border); color: var(--text); }
+[data-theme="dark"] .admin-section-header h3 { color: var(--text); }
 [data-theme="dark"] .admin-section-body { background: var(--card); }
+
+/* Form elements */
 [data-theme="dark"] .form-input,
 [data-theme="dark"] .form-select,
 [data-theme="dark"] .form-textarea { background: #141821; color: var(--text); border-color: var(--border); color-scheme: dark; }
 [data-theme="dark"] .form-select option { background: #1a1f2e; color: #e2e8f0; }
-[data-theme="dark"] .filter-chip { background: #1a1f2e; color: var(--text-mid); border-color: var(--border); }
-[data-theme="dark"] .filter-chip.active { background: var(--primary); color: #fff; }
+[data-theme="dark"] .form-label { color: var(--text-mid); }
+[data-theme="dark"] ::placeholder { color: #64748b !important; }
+
+/* Buttons */
 [data-theme="dark"] .btn-secondary { background: #1a1f2e; color: var(--text); border-color: var(--border); }
 [data-theme="dark"] .btn-back, [data-theme="dark"] .btn-ghost { color: var(--text-mid); }
+[data-theme="dark"] .filter-chip { background: #1a1f2e; color: var(--text-mid); border-color: var(--border); }
+[data-theme="dark"] .filter-chip.active { background: var(--primary); color: #fff; }
+
+/* Category & Priority buttons */
 [data-theme="dark"] .priority-label, [data-theme="dark"] .priority-desc { color: var(--text); }
-[data-theme="dark"] .priority-btn { background: #141821; border-color: var(--border); }
+[data-theme="dark"] .priority-btn { background: #141821; border-color: var(--border); color: var(--text); }
 [data-theme="dark"] .priority-btn:hover { border-color: var(--text-muted); }
+[data-theme="dark"] .priority-btn.selected { color: var(--primary); }
 [data-theme="dark"] .category-btn { background: #141821; border-color: var(--border); }
 [data-theme="dark"] .category-btn .cat-label { color: var(--text-mid); }
 [data-theme="dark"] .category-btn.selected .cat-label { color: var(--primary); }
+
+/* Ticket cards */
+[data-theme="dark"] .ticket-card { background: var(--card); border-color: var(--border); }
+[data-theme="dark"] .ticket-card-inner { color: var(--text); }
 [data-theme="dark"] .ticket-card-desc { color: var(--text); }
 [data-theme="dark"] .ticket-card-meta { color: var(--text-mid); }
 [data-theme="dark"] .ticket-id { color: var(--text-muted); }
+[data-theme="dark"] .ticket-title { color: var(--text); }
+[data-theme="dark"] .ticket-meta { color: var(--text-mid); }
+[data-theme="dark"] .ticket-top-row { color: var(--text); }
 
+/* Ticket status badges - dark bg variants */
+[data-theme="dark"] .status-open { background: rgba(239,68,68,0.15); }
+[data-theme="dark"] .status-assigned { background: rgba(139,92,246,0.15); }
+[data-theme="dark"] .status-inprogress { background: rgba(59,130,246,0.15); }
+[data-theme="dark"] .status-waiting { background: rgba(240,180,41,0.15); }
+[data-theme="dark"] .status-resolved { background: rgba(52,211,153,0.15); }
+[data-theme="dark"] .status-closed { background: rgba(100,116,139,0.15); }
+[data-theme="dark"] .s-open, [data-theme="dark"] .ticket-status { color: var(--text); }
+
+/* Modal */
+[data-theme="dark"] .modal-content { background: var(--card); border: 1px solid var(--border); }
+[data-theme="dark"] .modal-header { background: var(--card); border-color: var(--border); }
+[data-theme="dark"] .modal-header h3 { color: var(--text); }
+[data-theme="dark"] .modal-body { color: var(--text); }
+[data-theme="dark"] .modal-close { color: var(--text-muted); }
+[data-theme="dark"] .modal-close:hover { color: var(--text); }
+[data-theme="dark"] .detail-label { color: var(--text-muted); }
+[data-theme="dark"] .detail-value { color: var(--text); }
+[data-theme="dark"] .detail-value a { color: var(--primary); }
+
+/* Status update section in modal */
+[data-theme="dark"] .status-update-section { background: #141821; }
+[data-theme="dark"] .status-update-section h4 { color: var(--text); }
+[data-theme="dark"] .status-option { background: #1a1f2e; border-color: var(--border); color: var(--text); }
+[data-theme="dark"] .status-option:hover { border-color: var(--text-muted); color: var(--text); }
+[data-theme="dark"] .status-option.active { border-color: var(--primary); background: rgba(91,156,246,0.15); color: var(--primary); }
+
+/* Activity log */
+[data-theme="dark"] .activity-log { border-color: var(--border); }
+[data-theme="dark"] .activity-log h4 { color: var(--text); }
+[data-theme="dark"] .activity-item { border-color: var(--border); }
+[data-theme="dark"] .activity-text { color: var(--text-mid); }
+[data-theme="dark"] .activity-text strong { color: var(--text); }
+[data-theme="dark"] .activity-time { color: var(--text-muted); }
+
+/* Notification panel */
 [data-theme="dark"] .notify-panel { background: #1a1f2e; border-color: var(--border); }
-[data-theme="dark"] .notify-panel-header { border-color: var(--border); }
+[data-theme="dark"] .notify-panel-header { border-color: var(--border); color: var(--text); }
 [data-theme="dark"] .notify-item { border-color: var(--border); }
 [data-theme="dark"] .notify-item:hover { background: #141821; }
 [data-theme="dark"] .notify-item-title { color: var(--text); }
-[data-theme="dark"] .s-open, [data-theme="dark"] .ticket-status { color: var(--text); }
+
+/* Map */
+[data-theme="dark"] .map-title { color: var(--text); }
+[data-theme="dark"] .map-legend { color: var(--text-mid); }
+[data-theme="dark"] .map-stats-bar { border-color: var(--border); }
+[data-theme="dark"] .map-stats-bar .mstat { color: var(--text-mid); }
+
+/* Toast */
 [data-theme="dark"] .toast.success { background: rgba(52,211,153,0.15); color: #34d399; border: 1px solid rgba(52,211,153,0.3); }
 [data-theme="dark"] .toast.error { background: rgba(248,113,113,0.15); color: #f87171; border: 1px solid rgba(248,113,113,0.3); }
-[data-theme="dark"] .pending-card { background: #141821; }
-[data-theme="dark"] .leaflet-popup-content-wrapper { background: #1a1f2e !important; }
-[data-theme="dark"] .leaflet-popup-tip { background: #1a1f2e !important; }
 
+/* Leaflet popups */
+[data-theme="dark"] .leaflet-popup-content-wrapper { background: #1a1f2e !important; color: var(--text) !important; }
+[data-theme="dark"] .leaflet-popup-tip { background: #1a1f2e !important; }
+[data-theme="dark"] .leaflet-popup-content { color: var(--text) !important; }
+[data-theme="dark"] .leaflet-popup-content a { color: var(--primary) !important; }
+
+/* Login */
 [data-theme="dark"] .login-container { background: var(--bg); }
 [data-theme="dark"] .login-card { background: var(--card); border-color: var(--border); }
-[data-theme="dark"] .login-card input { background: #141821; color: var(--text); border-color: var(--border); }
+
+/* Empty states */
+[data-theme="dark"] .empty-state { color: var(--text-muted); }
+[data-theme="dark"] .empty-state h3 { color: var(--text-mid); }
+
+/* User rows in admin */
+[data-theme="dark"] .user-row { border-color: var(--border); }
+[data-theme="dark"] .user-row-name { color: var(--text); }
+[data-theme="dark"] .user-row-email { color: var(--text-muted); }
+[data-theme="dark"] .user-row-role { color: var(--text-mid); }
+
+/* Misc */
+[data-theme="dark"] .upload-text { color: var(--text-mid); }
+[data-theme="dark"] .upload-hint { color: var(--text-muted); }
+[data-theme="dark"] .photo-upload-area { border-color: var(--border); background: #141821; }
+[data-theme="dark"] .photo-preview { border-color: var(--border); }
+[data-theme="dark"] .header-title { color: var(--text); }
+[data-theme="dark"] h2, [data-theme="dark"] h3, [data-theme="dark"] h4 { color: var(--text); }
 
 body {
     font-family: 'Inter', sans-serif;
@@ -1668,7 +1755,7 @@ body {
 <div class="login-container" id="loginScreen">
     <div class="login-card">
         <img src="logos/dpm-logo.png" alt="DPM" style="height:44px;margin-bottom:18px;object-fit:contain">
-        <h1 class="login-title">R&amp;M Tracker</h1>
+        <h1 class="login-title">Repair &amp; Maintenance Tracker</h1>
         <p class="login-subtitle">Dossani Paradise Management</p>
 
         <!-- Login Form -->
@@ -1722,7 +1809,7 @@ body {
         <div class="header-left">
             <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle dark mode">🌙</button>
             <button class="theme-toggle" id="langToggle" onclick="toggleLang()" title="Español / English">EN</button>
-            <a class="header-logo" href="#" onclick="goHome();return false" style="text-decoration:none;display:flex;align-items:center;gap:8px;cursor:pointer"><img src="logos/dpm-icon.png" alt="DPM" style="height:24px;vertical-align:middle"><span class="header-title">R&amp;M Tracker</span></a>
+            <a class="header-logo" href="#" onclick="goHome();return false" style="text-decoration:none;display:flex;align-items:center;gap:8px;cursor:pointer"><img src="logos/dpm-icon.png" alt="DPM" style="height:24px;vertical-align:middle"><span class="header-title">Repair &amp; Maintenance</span></a>
         </div>
         <div class="header-right">
             <div class="user-badge">
