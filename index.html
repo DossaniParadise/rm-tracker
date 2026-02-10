@@ -1712,25 +1712,17 @@ body {
                                 <span class="cat-icon">🚿</span>
                                 <span class="cat-label">Plumbing</span>
                             </button>
-                            <button class="category-btn" data-cat="hvac" onclick="selectCategory(this)">
-                                <span class="cat-icon">❄️</span>
-                                <span class="cat-label">HVAC</span>
-                            </button>
-                            <button class="category-btn" data-cat="electrical" onclick="selectCategory(this)">
-                                <span class="cat-icon">⚡</span>
-                                <span class="cat-label">Electrical</span>
-                            </button>
                             <button class="category-btn" data-cat="equipment" onclick="selectCategory(this)">
                                 <span class="cat-icon">⚙️</span>
                                 <span class="cat-label">Equipment</span>
                             </button>
+                            <button class="category-btn" data-cat="it" onclick="selectCategory(this)">
+                                <span class="cat-icon">💻</span>
+                                <span class="cat-label">IT</span>
+                            </button>
                             <button class="category-btn" data-cat="structural" onclick="selectCategory(this)">
                                 <span class="cat-icon">🧱</span>
                                 <span class="cat-label">Structural</span>
-                            </button>
-                            <button class="category-btn" data-cat="exterior" onclick="selectCategory(this)">
-                                <span class="cat-icon">🏪</span>
-                                <span class="cat-label">Exterior</span>
                             </button>
                             <button class="category-btn" data-cat="safety" onclick="selectCategory(this)">
                                 <span class="cat-icon">🛡️</span>
@@ -1741,6 +1733,31 @@ body {
                                 <span class="cat-label">Other</span>
                             </button>
                         </div>
+                    </div>
+
+                    <!-- Interior / Exterior -->
+                    <div class="form-group">
+                        <label class="form-label">Location</label>
+                        <div class="priority-options" style="max-width:300px">
+                            <button class="priority-btn" data-loc="interior" onclick="selectLocation(this)" style="flex:1">
+                                <span class="priority-icon">🏠</span>
+                                <span class="priority-label">Interior</span>
+                            </button>
+                            <button class="priority-btn" data-loc="exterior" onclick="selectLocation(this)" style="flex:1">
+                                <span class="priority-icon">🏪</span>
+                                <span class="priority-label">Exterior</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Contact Info -->
+                    <div class="form-group">
+                        <label class="form-label">Your Name</label>
+                        <input class="form-input" type="text" id="contactName" placeholder="First and Last Name" autocomplete="name">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Your Contact Phone</label>
+                        <input class="form-input" type="tel" id="contactPhone" placeholder="555-123-4567" inputmode="tel" maxlength="12" oninput="formatPhone(this)">
                     </div>
 
                     <!-- Priority -->
@@ -1978,6 +1995,7 @@ const BRAND_LOGOS = {
 let currentUser = null;
 let selectedStore = null;
 let selectedCategory = null;
+let selectedLocation = null;
 let selectedPriority = null;
 let uploadedPhotos = []; // { file, previewUrl }
 let currentTickets = [];
@@ -2694,8 +2712,8 @@ async function deleteNode(node) {
 // ============================================================
 // NOTIFICATION ROUTING
 // ============================================================
-const CATEGORIES = ['hvac','plumbing','electrical','equipment','structural','it','exterior','safety','other'];
-const CAT_LABELS = {hvac:'HVAC',plumbing:'Plumbing',electrical:'Electrical',equipment:'Equipment',structural:'Structural',it:'IT',exterior:'Exterior',safety:'Safety',other:'Other'};
+const CATEGORIES = ['plumbing','equipment','it','structural','safety','other'];
+const CAT_LABELS = {plumbing:'Plumbing',equipment:'Equipment',it:'IT',structural:'Structural',safety:'Safety',other:'Other'};
 let notifyRouting = {};
 
 function loadNotifyRouting() {
@@ -2844,7 +2862,7 @@ function filterAllTickets() {
             </div>
             <div class="ticket-card-meta">
                 <span style="color:${prColor}">● ${capitalize(t.priority || 'routine')}</span>
-                <span>${capitalize(t.category || '')}</span>
+                <span>${capitalize(t.category || '')}${t.location ? ' · ' + capitalize(t.location) : ''}</span>
                 ${brandIcon}
                 <span>${timeAgo}</span>
                 <span style="color:var(--text-muted)">${esc(t.storeName || t.storeCode)}</span>
@@ -2990,16 +3008,21 @@ function showNewIssueScreen() {
     if (!selectedStore) return;
     resetNewIssueForm();
     document.getElementById('newIssueStoreName').textContent = selectedStore.name;
+    // Pre-fill contact name from logged-in user
+    document.getElementById('contactName').value = currentUser.name || '';
     showScreen('newIssueScreen');
 }
 
 function resetNewIssueForm() {
     selectedCategory = null;
     selectedPriority = null;
+    selectedLocation = null;
     uploadedPhotos = [];
     document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('selected'));
     document.querySelectorAll('.priority-btn').forEach(b => b.classList.remove('selected'));
     document.getElementById('issueDescription').value = '';
+    document.getElementById('contactName').value = '';
+    document.getElementById('contactPhone').value = '';
     document.getElementById('photoPreviewGrid').innerHTML = '';
     document.getElementById('photoUploadArea').classList.remove('has-photos');
     const btn = document.getElementById('submitBtn');
@@ -3011,6 +3034,23 @@ function selectCategory(el) {
     document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('selected'));
     el.classList.add('selected');
     selectedCategory = el.dataset.cat;
+}
+
+function selectLocation(el) {
+    el.parentElement.querySelectorAll('.priority-btn').forEach(b => b.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedLocation = el.dataset.loc;
+}
+
+function formatPhone(input) {
+    let v = input.value.replace(/\D/g, '').substring(0, 10);
+    if (v.length >= 7) {
+        input.value = v.substring(0,3) + '-' + v.substring(3,6) + '-' + v.substring(6);
+    } else if (v.length >= 4) {
+        input.value = v.substring(0,3) + '-' + v.substring(3);
+    } else {
+        input.value = v;
+    }
 }
 
 function selectPriority(el) {
@@ -3052,6 +3092,11 @@ function removePhoto(i) {
 async function submitTicket() {
     // Validate
     if (!selectedCategory) { toast('Select a category', 'error'); return; }
+    if (!selectedLocation) { toast('Select interior or exterior', 'error'); return; }
+    const contactName = document.getElementById('contactName').value.trim();
+    if (!contactName) { toast('Enter your name', 'error'); return; }
+    const contactPhone = document.getElementById('contactPhone').value.trim();
+    if (!contactPhone || contactPhone.replace(/\D/g,'').length < 10) { toast('Enter a valid phone number', 'error'); return; }
     if (!selectedPriority) { toast('Select a priority', 'error'); return; }
     const desc = document.getElementById('issueDescription').value.trim();
     if (!desc) { toast('Add a description', 'error'); return; }
@@ -3071,8 +3116,8 @@ async function submitTicket() {
 
         // Generate sequential ticket ID: STORE-CAT-0001
         const catPrefix = {
-            hvac: 'HVAC', plumbing: 'PLM', electrical: 'ELEC', equipment: 'EQP',
-            structural: 'STR', it: 'IT', exterior: 'EXT', safety: 'SAF', other: 'GEN'
+            plumbing: 'PLM', equipment: 'EQP', it: 'IT',
+            structural: 'STR', safety: 'SAF', other: 'GEN'
         }[selectedCategory] || 'GEN';
         
         // Get next number from counter
@@ -3088,6 +3133,9 @@ async function submitTicket() {
             storeName: selectedStore.name,
             brand: selectedStore.brand || '',
             category: selectedCategory,
+            location: selectedLocation,
+            contactName: contactName,
+            contactPhone: contactPhone,
             priority: selectedPriority,
             description: desc,
             photos: photoUrls,
@@ -3185,7 +3233,7 @@ function renderTickets() {
             waiting: 'Waiting on Parts', resolved: 'Resolved', closed: 'Closed'
         }[t.status] || t.status;
 
-        const catIcons = { plumbing:'🚿', hvac:'❄️', electrical:'⚡', equipment:'⚙️', structural:'🧱', exterior:'🏪', safety:'🛡️', other:'📎' };
+        const catIcons = { plumbing:'🚿', equipment:'⚙️', it:'💻', structural:'🧱', safety:'🛡️', other:'📎' };
         const timeAgo = getTimeAgo(t.createdAt);
         const brandLogo = t.brand && BRAND_LOGOS[t.brand] ? `<img src="${BRAND_LOGOS[t.brand]}" alt="" style="width:16px;height:16px;object-fit:contain;border-radius:3px;opacity:.7;vertical-align:middle">` : '';
 
@@ -3201,9 +3249,10 @@ function renderTickets() {
                     <div class="ticket-title">${catIcons[t.category] || '📎'} ${escHtml(t.description.substring(0, 80))}${t.description.length > 80 ? '...' : ''}</div>
                     <div class="ticket-meta">
                         <span><span class="priority-dot ${t.priority}"></span> ${capitalize(t.priority)}</span>
-                        <span>${capitalize(t.category)}</span>
+                        <span>${capitalize(t.category)}${t.location ? ' · ' + capitalize(t.location) : ''}</span>
                         <span>${brandLogo} ${timeAgo}</span>
                         ${t.photos && t.photos.length ? '<span>📷 ' + t.photos.length + '</span>' : ''}
+                        ${t.contactPhone ? '<span>📞</span>' : ''}
                     </div>
                 </div>
             </div>
@@ -3220,7 +3269,7 @@ function openTicketDetail(key) {
 
     document.getElementById('modalTicketId').textContent = t.id || key;
 
-    const catIcons = { plumbing:'🚿', hvac:'❄️', electrical:'⚡', equipment:'⚙️', structural:'🧱', exterior:'🏪', safety:'🛡️', other:'📎' };
+    const catIcons = { plumbing:'🚿', equipment:'⚙️', it:'💻', structural:'🧱', safety:'🛡️', other:'📎' };
     const statusLabel = {
         open: 'Open', assigned: 'Assigned', inprogress: 'In Progress',
         waiting: 'Waiting on Parts', resolved: 'Resolved', closed: 'Closed'
@@ -3240,13 +3289,15 @@ function openTicketDetail(key) {
 
         <div class="detail-section">
             <div class="detail-label">Category</div>
-            <div class="detail-value">${catIcons[t.category] || ''} ${capitalize(t.category)}</div>
+            <div class="detail-value">${catIcons[t.category] || ''} ${capitalize(t.category)}${t.location ? ' &middot; ' + capitalize(t.location) : ''}</div>
         </div>
 
         <div class="detail-section">
             <div class="detail-label">Description</div>
             <div class="detail-value">${escHtml(t.description)}</div>
-        </div>`;
+        </div>
+
+        ${t.contactName || t.contactPhone ? '<div class="detail-section"><div class="detail-label">Contact</div><div class="detail-value">' + (t.contactName ? escHtml(t.contactName) : '') + (t.contactPhone ? ' &middot; <a href="tel:' + t.contactPhone.replace(/\D/g,'') + '" style="color:var(--primary);text-decoration:none;font-weight:600">' + escHtml(t.contactPhone) + '</a>' : '') + '</div></div>' : ''}`;
 
     if (t.photos && t.photos.length) {
         html += `
@@ -3463,7 +3514,7 @@ function toggleTheme() {
 })();
 
 function getCategoryEmoji(cat) {
-    const map = {hvac:'❄️',plumbing:'🔧',electrical:'⚡',equipment:'⚙️',structural:'🏗️',it:'💻',exterior:'🏪',safety:'🛡️',other:'📎'};
+    const map = {plumbing:'🚿',equipment:'⚙️',it:'💻',structural:'🧱',safety:'🛡️',other:'📎'};
     return map[cat] || '📎';
 }
 
