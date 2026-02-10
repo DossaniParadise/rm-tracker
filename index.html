@@ -76,6 +76,20 @@
     --status-closed: #64748b;
 }
 [data-theme="dark"] .brand-pill-icon { background: #252b3b; }
+[data-theme="dark"] .brand-pill { background: #1a1f2e; border-color: var(--border); color: var(--text); }
+[data-theme="dark"] .brand-pill:hover { border-color: var(--primary); }
+[data-theme="dark"] .brand-pill.active { background: rgba(91,156,246,0.15); border-color: var(--primary); color: var(--primary); }
+[data-theme="dark"] .store-card { background: var(--card); }
+[data-theme="dark"] .form-label { color: var(--text-mid); }
+[data-theme="dark"] .store-card-header h2 { color: var(--text); }
+[data-theme="dark"] .store-card-header p { color: var(--text-muted); }
+[data-theme="dark"] .action-card { background: #141821; border-color: var(--border); }
+[data-theme="dark"] .action-card:hover { border-color: var(--primary); background: #1a1f2e; }
+[data-theme="dark"] .action-title { color: var(--text); }
+[data-theme="dark"] .action-desc { color: var(--text-muted); }
+[data-theme="dark"] .admin-section { border-color: var(--border); }
+[data-theme="dark"] .admin-section-header { background: #141821; border-color: var(--border); }
+[data-theme="dark"] .admin-section-body { background: var(--card); }
 [data-theme="dark"] .form-input,
 [data-theme="dark"] .form-select,
 [data-theme="dark"] .form-textarea { background: #141821; color: var(--text); border-color: var(--border); color-scheme: dark; }
@@ -2015,6 +2029,44 @@ body {
                 </div>
             </div>
 
+            <!-- Add User -->
+            <div class="admin-section">
+                <div class="admin-section-header">
+                    <h3>➕ Add New User</h3>
+                </div>
+                <div class="admin-section-body" id="addUserSection">
+                    <div style="display:grid;gap:12px">
+                        <div class="form-group" style="margin:0">
+                            <label class="form-label">Name</label>
+                            <input class="form-input" type="text" id="newUserName" placeholder="Full name">
+                        </div>
+                        <div class="form-group" style="margin:0">
+                            <label class="form-label">Email</label>
+                            <input class="form-input" type="email" id="newUserEmail" placeholder="user@dossaniparadise.com">
+                        </div>
+                        <div class="form-group" style="margin:0">
+                            <label class="form-label">Role</label>
+                            <select class="form-select" id="newUserRole">
+                                <option value="">Choose role...</option>
+                                <option value="Admin">Admin</option>
+                                <option value="Area Coach">Area Coach</option>
+                                <option value="Manager">Manager</option>
+                                <option value="Technician">Technician</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin:0">
+                            <label class="form-label">Ticket Categories (for notification routing)</label>
+                            <div id="newUserCats" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px"></div>
+                        </div>
+                        <div class="form-group" style="margin:0">
+                            <label class="form-label">Store Access <button class="btn btn-ghost" style="font-size:11px;padding:2px 8px;margin-left:8px" onclick="toggleAllNewUserStores()">Select All / None</button></label>
+                            <div id="newUserStores" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:4px;margin-top:6px;max-height:300px;overflow-y:auto;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--bg)"></div>
+                        </div>
+                        <button class="btn btn-primary" onclick="addNewUser()">Add User to System</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Database Cleanup -->
             <div class="admin-section">
                 <div class="admin-section-header">
@@ -2201,22 +2253,42 @@ function resendEmail() {
 async function loadUserData(user) {
     try {
         const snap = await db.ref(`users/${user.uid}`).once('value');
-        const data = snap.val();
+        let data = snap.val();
 
         if (!data) {
-            // Auto-register as pending - wrap in try/catch since rules might block
-            try {
-                await db.ref(`pending/${user.uid}`).set({
+            // Check if user was pre-approved by admin
+            const emailKey = user.email.toLowerCase().replace(/\./g, ',');
+            const preSnap = await db.ref(`preApproved/${emailKey}`).once('value');
+            const preData = preSnap.val();
+
+            if (preData) {
+                // Auto-activate pre-approved user
+                data = {
+                    name: preData.name,
                     email: user.email,
-                    requestedAt: firebase.database.ServerValue.TIMESTAMP
-                });
-                showError('Your account is pending approval. An admin will set you up shortly.');
-            } catch (e) {
-                console.warn('Could not write pending entry:', e);
-                showError('Account not set up yet. Contact IT at itsupport@dossaniparadise.com to get access.');
+                    role: preData.role,
+                    stores: preData.stores,
+                    status: 'active',
+                    activatedAt: firebase.database.ServerValue.TIMESTAMP
+                };
+                await db.ref(`users/${user.uid}`).set(data);
+                // Clean up pre-approval entry
+                await db.ref(`preApproved/${emailKey}`).remove();
+            } else {
+                // Auto-register as pending
+                try {
+                    await db.ref(`pending/${user.uid}`).set({
+                        email: user.email,
+                        requestedAt: firebase.database.ServerValue.TIMESTAMP
+                    });
+                    showError('Your account is pending approval. An admin will set you up shortly.');
+                } catch (e) {
+                    console.warn('Could not write pending entry:', e);
+                    showError('Account not set up yet. Contact IT at itsupport@dossaniparadise.com to get access.');
+                }
+                auth.signOut();
+                return;
             }
-            auth.signOut();
-            return;
         }
 
         currentUser = {
@@ -2559,6 +2631,7 @@ function showAdminPanel() {
     renderPendingUsers();
     loadActiveUsers();
     loadNotifyRouting();
+    renderAddUserForm();
 }
 
 function goBackFromAdmin() {
@@ -2787,6 +2860,103 @@ async function removeUser(uid, name) {
 }
 
 // Database cleanup
+// ============================================================
+// ADD NEW USER
+// ============================================================
+function renderAddUserForm() {
+    const catsEl = document.getElementById('newUserCats');
+    const allCats = ['plumbing', 'equipment', 'it', 'structural', 'safety', 'other'];
+    catsEl.innerHTML = allCats.map(cat => `
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg)">
+            <input type="checkbox" class="new-user-cat" value="${cat}"> ${capitalize(cat)}
+        </label>
+    `).join('');
+
+    const storesEl = document.getElementById('newUserStores');
+    storesEl.innerHTML = stores.map(s => `
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;white-space:nowrap">
+            <input type="checkbox" class="new-user-store" value="${s.code}"> ${s.name.length > 25 ? s.name.substring(0,25) + '...' : s.name}
+        </label>
+    `).join('');
+}
+
+let allNewUserStoresSelected = false;
+function toggleAllNewUserStores() {
+    allNewUserStoresSelected = !allNewUserStoresSelected;
+    document.querySelectorAll('.new-user-store').forEach(cb => cb.checked = allNewUserStoresSelected);
+}
+
+async function addNewUser() {
+    const name = document.getElementById('newUserName').value.trim();
+    const email = document.getElementById('newUserEmail').value.trim().toLowerCase();
+    const role = document.getElementById('newUserRole').value;
+
+    if (!name) { toast('Enter a name', 'error'); return; }
+    if (!email || !email.includes('@')) { toast('Enter a valid email', 'error'); return; }
+    if (!role) { toast('Select a role', 'error'); return; }
+
+    const selectedStores = [...document.querySelectorAll('.new-user-store:checked')].map(cb => cb.value);
+    const selectedCats = [...document.querySelectorAll('.new-user-cat:checked')].map(cb => cb.value);
+
+    if (selectedStores.length === 0 && role !== 'Admin') {
+        toast('Select at least one store', 'error');
+        return;
+    }
+
+    // Determine stores value
+    let storesVal;
+    if (role === 'Admin') {
+        storesVal = 'all';
+    } else if (selectedStores.length === 1) {
+        storesVal = selectedStores[0];
+    } else {
+        storesVal = selectedStores;
+    }
+
+    // Save user to Firebase (pre-approved, ready to sign in)
+    const userData = {
+        name: name,
+        email: email,
+        role: role,
+        stores: storesVal,
+        status: 'active',
+        addedAt: firebase.database.ServerValue.TIMESTAMP,
+        addedBy: currentUser.email
+    };
+
+    try {
+        // Store under a sanitized email key
+        const emailKey = email.replace(/\./g, ',');
+        await db.ref(`preApproved/${emailKey}`).set(userData);
+
+        // Also update notification routing for selected categories
+        if (selectedCats.length > 0) {
+            const routingSnap = await db.ref('config/notifyRouting').once('value');
+            const routing = routingSnap.val() || {};
+            for (const cat of selectedCats) {
+                if (!routing[cat]) routing[cat] = [];
+                if (!routing[cat].includes(email)) {
+                    routing[cat].push(email);
+                }
+            }
+            await db.ref('config/notifyRouting').set(routing);
+            notifyRouting = routing;
+        }
+
+        toast(`User ${name} added successfully`, 'success');
+
+        // Clear form
+        document.getElementById('newUserName').value = '';
+        document.getElementById('newUserEmail').value = '';
+        document.getElementById('newUserRole').value = '';
+        document.querySelectorAll('.new-user-store').forEach(cb => cb.checked = false);
+        document.querySelectorAll('.new-user-cat').forEach(cb => cb.checked = false);
+        allNewUserStoresSelected = false;
+    } catch (err) {
+        toast('Error: ' + err.message, 'error');
+    }
+}
+
 async function scanOldNodes() {
     const btn = document.getElementById('scanBtn');
     btn.textContent = 'Scanning...';
@@ -2888,17 +3058,20 @@ let notifyTickets = [];
 let notifyListener = null;
 
 function initNotificationCenter() {
-    // Show bell for users who are in routing config
+    // Always show bell - every logged-in user can see their relevant tickets
+    document.getElementById('notifyBtn').classList.remove('hidden');
+
+    // Determine which stores this user can see
+    const isAdmin = currentUser.role === 'Admin' || currentUser.stores === 'all';
+    const myStores = isAdmin ? null : (Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores]);
+
+    // Check notification routing for category filtering
     const myEmail = currentUser.email.toLowerCase();
-    const myCategories = [];
+    const myRoutedCategories = [];
     for (const [cat, emails] of Object.entries(notifyRouting)) {
         if (emails.some(e => e.toLowerCase() === myEmail)) {
-            myCategories.push(cat);
+            myRoutedCategories.push(cat);
         }
-    }
-    // Also show for admins (they see all)
-    if (currentUser.role === 'Admin' || myCategories.length > 0) {
-        document.getElementById('notifyBtn').classList.remove('hidden');
     }
 
     // Watch open tickets
@@ -2908,11 +3081,15 @@ function initNotificationCenter() {
         snap.forEach(child => {
             const t = child.val();
             t._key = child.key;
-            if (t.status && t.status !== 'closed' && t.status !== 'resolved') {
-                // Admin sees all; others see only their routed categories
-                if (currentUser.role === 'Admin' || myCategories.includes(t.category)) {
-                    notifyTickets.push(t);
-                }
+            if (!t.status || t.status === 'closed' || t.status === 'resolved') return;
+
+            // Store access check
+            const canSeeStore = isAdmin || (myStores && myStores.includes(t.storeCode));
+            // Category routing check (if user has routing entries, also show those)
+            const isRouted = myRoutedCategories.length > 0 && myRoutedCategories.includes(t.category);
+
+            if (canSeeStore || isRouted) {
+                notifyTickets.push(t);
             }
         });
         // Sort: emergency first, then urgent, then by date
