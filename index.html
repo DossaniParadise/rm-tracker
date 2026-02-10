@@ -84,6 +84,22 @@
 [data-theme="dark"] .filter-chip.active { background: var(--primary); color: #fff; }
 [data-theme="dark"] .btn-secondary { background: #1a1f2e; color: var(--text); border-color: var(--border); }
 [data-theme="dark"] .btn-back, [data-theme="dark"] .btn-ghost { color: var(--text-mid); }
+[data-theme="dark"] .priority-label, [data-theme="dark"] .priority-desc { color: var(--text); }
+[data-theme="dark"] .priority-btn { background: #141821; border-color: var(--border); }
+[data-theme="dark"] .priority-btn:hover { border-color: var(--text-muted); }
+[data-theme="dark"] .category-btn { background: #141821; border-color: var(--border); }
+[data-theme="dark"] .category-btn .cat-label { color: var(--text-mid); }
+[data-theme="dark"] .category-btn.selected .cat-label { color: var(--primary); }
+[data-theme="dark"] .ticket-card-desc { color: var(--text); }
+[data-theme="dark"] .ticket-card-meta { color: var(--text-mid); }
+[data-theme="dark"] .ticket-id { color: var(--text-muted); }
+
+[data-theme="dark"] .notify-panel { background: #1a1f2e; border-color: var(--border); }
+[data-theme="dark"] .notify-panel-header { border-color: var(--border); }
+[data-theme="dark"] .notify-item { border-color: var(--border); }
+[data-theme="dark"] .notify-item:hover { background: #141821; }
+[data-theme="dark"] .notify-item-title { color: var(--text); }
+[data-theme="dark"] .s-open, [data-theme="dark"] .ticket-status { color: var(--text); }
 [data-theme="dark"] .toast.success { background: rgba(52,211,153,0.15); color: #34d399; border: 1px solid rgba(52,211,153,0.3); }
 [data-theme="dark"] .toast.error { background: rgba(248,113,113,0.15); color: #f87171; border: 1px solid rgba(248,113,113,0.3); }
 [data-theme="dark"] .pending-card { background: #141821; }
@@ -712,6 +728,7 @@ body {
 .priority-btn:hover { border-color: var(--text-muted); }
 
 .priority-btn.selected { box-shadow: 0 0 0 1px currentColor; }
+.priority-btn[data-loc].selected { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
 
 .priority-btn.p-routine { }
 .priority-btn.p-routine.selected { border-color: var(--info); color: var(--info); background: var(--info-light); }
@@ -806,6 +823,40 @@ body {
 .ticket-card:hover {
     box-shadow: var(--shadow);
     transform: translateY(-1px);
+}
+
+/* All Tickets view card layout */
+.ticket-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+.ticket-card-desc {
+    font-size: 14px;
+    color: var(--text);
+    margin-bottom: 6px;
+    line-height: 1.4;
+}
+.ticket-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-mid);
+    align-items: center;
+}
+.ticket-card-meta span { white-space: nowrap; }
+
+/* All tickets card needs padding since it doesn't use ticket-card-inner */
+.ticket-card > .ticket-card-top:first-child {
+    padding: 16px 18px 0;
+}
+.ticket-card > .ticket-card-desc {
+    padding: 0 18px;
+}
+.ticket-card > .ticket-card-meta {
+    padding: 0 18px 14px;
 }
 
 .ticket-card-inner {
@@ -1163,6 +1214,8 @@ body {
     .user-badge .user-meta { display: none; }
     .user-avatar { width: 28px; height: 28px; font-size: 11px; }
     .admin-btn { font-size: 11px; padding: 4px 8px; }
+    .notify-panel { right: 4px; width: calc(100vw - 8px); top: 50px; max-height: 60vh; }
+    .notify-item { padding: 10px 12px; }
     .btn-logout { font-size: 11px; padding: 4px 10px; }
     .app-content { padding: 8px; }
     .store-card { padding: 14px; }
@@ -1512,6 +1565,51 @@ body {
 .user-row-actions button:hover { color: var(--primary); border-color: var(--primary); }
 .user-row-actions button.del:hover { color: var(--danger); border-color: var(--danger); }
 
+/* Notification Panel */
+.notify-panel {
+    position: fixed;
+    top: 56px;
+    right: 12px;
+    width: 380px;
+    max-width: calc(100vw - 24px);
+    max-height: 70vh;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    z-index: 300;
+    overflow: hidden;
+    display: none;
+}
+.notify-panel.open { display: flex; flex-direction: column; }
+.notify-panel-header {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 700;
+    font-size: 14px;
+}
+.notify-panel-body {
+    overflow-y: auto;
+    flex: 1;
+    max-height: calc(70vh - 50px);
+}
+.notify-item {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-light);
+    cursor: pointer;
+    transition: background 0.1s;
+    font-size: 13px;
+}
+.notify-item:hover { background: var(--border-light); }
+.notify-item-title { font-weight: 600; margin-bottom: 2px; color: var(--text); }
+.notify-item-meta { font-size: 11px; color: var(--text-muted); display: flex; gap: 8px; flex-wrap: wrap; }
+.notify-item .pri-urgent { color: #d97706; }
+.notify-item .pri-emergency { color: #dc2626; font-weight: 700; }
+.notify-empty { padding: 30px; text-align: center; color: var(--text-muted); font-size: 13px; }
+
 /* Admin/dynamic modal overlay */
 .admin-modal {
     position: fixed;
@@ -1621,8 +1719,20 @@ body {
                 </div>
             </div>
             <button class="admin-btn hidden" id="adminBtn" onclick="showAdminPanel()">⚙️ <span class="badge hidden" id="pendingBadge">0</span></button>
+            <button class="admin-btn hidden" id="notifyBtn" onclick="toggleNotifyPanel()" style="position:relative">🔔 <span class="badge hidden" id="notifyBadge" style="background:#dc2626">0</span></button>
             <button class="admin-btn hidden" id="viewAsBtn" onclick="showViewAsModal()">👁 View As</button>
             <button class="btn-logout" onclick="logout()" data-i18n="sign_out">Sign Out</button>
+        </div>
+    </div>
+
+    <!-- Notification Panel (dropdown) -->
+    <div class="notify-panel" id="notifyPanel">
+        <div class="notify-panel-header">
+            <span data-i18n="notifications">Notifications</span>
+            <button onclick="toggleNotifyPanel()" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-muted)">✕</button>
+        </div>
+        <div class="notify-panel-body" id="notifyPanelBody">
+            <div class="notify-empty">Loading...</div>
         </div>
     </div>
 
@@ -1750,12 +1860,12 @@ body {
                     <!-- Interior / Exterior -->
                     <div class="form-group">
                         <label class="form-label" data-i18n="form_location">Location</label>
-                        <div class="priority-options" style="max-width:300px">
-                            <button class="priority-btn" data-loc="interior" onclick="selectLocation(this)" style="flex:1">
+                        <div class="priority-options" style="max-width:280px">
+                            <button class="priority-btn" data-loc="interior" onclick="selectLocation(this)">
                                 <span class="priority-icon">🏠</span>
                                 <span class="priority-label" data-i18n="loc_interior">Interior</span>
                             </button>
-                            <button class="priority-btn" data-loc="exterior" onclick="selectLocation(this)" style="flex:1">
+                            <button class="priority-btn" data-loc="exterior" onclick="selectLocation(this)">
                                 <span class="priority-icon">🏪</span>
                                 <span class="priority-label" data-i18n="loc_exterior">Exterior</span>
                             </button>
@@ -2157,6 +2267,12 @@ function showAppScreen() {
     if (currentUser.email === 'itsupport@dossaniparadise.com') {
         document.getElementById('viewAsBtn').classList.remove('hidden');
     }
+
+    // Load notification routing config
+    db.ref('config/notifyRouting').once('value', snap => {
+        notifyRouting = snap.val() || {};
+        initNotificationCenter();
+    });
 
     // Auto-select store for single-store managers
     if (currentUser.role === 'Manager' && currentUser.stores && !Array.isArray(currentUser.stores)) {
@@ -2676,7 +2792,7 @@ async function scanOldNodes() {
     btn.textContent = 'Scanning...';
     btn.disabled = true;
     
-    const oldNodes = ['issues', 'stores', 'cameras', 'counters', 'config'];
+    const oldNodes = ['issues', 'stores', 'cameras'];
     const container = document.getElementById('cleanupNodes');
     const found = [];
     
@@ -2764,6 +2880,115 @@ async function saveNotifyRouting() {
         showToast('Error: ' + err.message, 'error');
     }
 }
+
+// ============================================================
+// NOTIFICATION CENTER
+// ============================================================
+let notifyTickets = [];
+let notifyListener = null;
+
+function initNotificationCenter() {
+    // Show bell for users who are in routing config
+    const myEmail = currentUser.email.toLowerCase();
+    const myCategories = [];
+    for (const [cat, emails] of Object.entries(notifyRouting)) {
+        if (emails.some(e => e.toLowerCase() === myEmail)) {
+            myCategories.push(cat);
+        }
+    }
+    // Also show for admins (they see all)
+    if (currentUser.role === 'Admin' || myCategories.length > 0) {
+        document.getElementById('notifyBtn').classList.remove('hidden');
+    }
+
+    // Watch open tickets
+    if (notifyListener) notifyListener();
+    notifyListener = db.ref('tickets').on('value', snap => {
+        notifyTickets = [];
+        snap.forEach(child => {
+            const t = child.val();
+            t._key = child.key;
+            if (t.status && t.status !== 'closed' && t.status !== 'resolved') {
+                // Admin sees all; others see only their routed categories
+                if (currentUser.role === 'Admin' || myCategories.includes(t.category)) {
+                    notifyTickets.push(t);
+                }
+            }
+        });
+        // Sort: emergency first, then urgent, then by date
+        const priOrder = { emergency: 0, urgent: 1, routine: 2 };
+        notifyTickets.sort((a, b) => (priOrder[a.priority] || 2) - (priOrder[b.priority] || 2) || (b.createdAt || 0) - (a.createdAt || 0));
+        updateNotifyBadge();
+    });
+}
+
+function updateNotifyBadge() {
+    const badge = document.getElementById('notifyBadge');
+    const count = notifyTickets.length;
+    if (count > 0) {
+        badge.textContent = count > 99 ? '99+' : count;
+        badge.classList.remove('hidden');
+    } else {
+        badge.classList.add('hidden');
+    }
+}
+
+function toggleNotifyPanel() {
+    const panel = document.getElementById('notifyPanel');
+    const isOpen = panel.classList.contains('open');
+    if (isOpen) {
+        panel.classList.remove('open');
+        return;
+    }
+    panel.classList.add('open');
+    renderNotifyPanel();
+}
+
+function renderNotifyPanel() {
+    const body = document.getElementById('notifyPanelBody');
+    if (notifyTickets.length === 0) {
+        body.innerHTML = '<div class="notify-empty">No open tickets for your categories</div>';
+        return;
+    }
+    body.innerHTML = notifyTickets.map(t => {
+        const priClass = t.priority === 'emergency' ? 'pri-emergency' : t.priority === 'urgent' ? 'pri-urgent' : '';
+        const timeAgo = getTimeAgo(t.createdAt);
+        const store = stores.find(s => s.code === t.storeCode);
+        const storeName = store ? store.name.replace(/^Burger King /, 'BK ').replace(/^Paradise QS /, 'PQS ') : t.storeCode;
+        return `<div class="notify-item" onclick="notifyGoToTicket('${esc(t._key || t.id)}', '${esc(t.storeCode)}')">
+            <div class="notify-item-title">${getCategoryEmoji(t.category)} ${esc((t.description || '').substring(0, 60))}${(t.description||'').length > 60 ? '...' : ''}</div>
+            <div class="notify-item-meta">
+                <span class="${priClass}">● ${capitalize(t.priority || 'routine')}</span>
+                <span>${capitalize(t.category)}${t.location ? ' · ' + capitalize(t.location) : ''}</span>
+                <span>${storeName}</span>
+                <span>${timeAgo}</span>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function notifyGoToTicket(key, storeCode) {
+    document.getElementById('notifyPanel').classList.remove('open');
+    const store = stores.find(s => s.code === storeCode);
+    if (store) {
+        selectedStore = store;
+        const t = notifyTickets.find(x => (x._key === key || x.id === key));
+        if (t) {
+            if (!t._key) t._key = key;
+            if (!currentTickets.find(x => x._key === key)) currentTickets.push(t);
+        }
+        openTicketDetail(key);
+    }
+}
+
+// Close notify panel on outside click
+document.addEventListener('click', (e) => {
+    const panel = document.getElementById('notifyPanel');
+    const btn = document.getElementById('notifyBtn');
+    if (panel && panel.classList.contains('open') && !panel.contains(e.target) && !btn.contains(e.target)) {
+        panel.classList.remove('open');
+    }
+});
 
 // ============================================================
 // ALL TICKETS SCREEN
@@ -2885,12 +3110,14 @@ function filterAllTickets() {
 }
 
 function openTicketFromAll(ticketId) {
-    // Find ticket data and open the detail modal
     const t = allTicketsData.find(x => x.id === ticketId);
     if (!t) return;
-    // Set selectedStore context for the modal
     const store = stores.find(s => s.code === t.storeCode);
     if (store) selectedStore = store;
+    // Inject into currentTickets so openTicketDetail can find it
+    if (!t._key) t._key = ticketId;
+    const existing = currentTickets.find(x => x._key === ticketId);
+    if (!existing) currentTickets.push(t);
     openTicketDetail(ticketId);
 }
 
