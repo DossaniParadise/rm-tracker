@@ -262,7 +262,7 @@ body {
 }
 
 
-/* Theme Toggle */
+/* Theme & Language Toggle */
 .theme-toggle {
     background: none;
     border: 1px solid var(--border);
@@ -270,14 +270,17 @@ body {
     width: 32px;
     height: 32px;
     cursor: pointer;
-    font-size: 16px;
+    font-size: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.2s;
     flex-shrink: 0;
+    font-family: inherit;
+    font-weight: 700;
+    color: var(--text-mid);
 }
-.theme-toggle:hover { border-color: var(--primary); background: var(--primary-light); }
+.theme-toggle:hover { border-color: var(--primary); background: var(--primary-light); color: var(--primary); }
 /* Header */
 .app-header {
     background: var(--card);
@@ -363,7 +366,7 @@ body {
 /* Content */
 .app-content {
     flex: 1;
-    padding: 24px;
+    padding: clamp(8px, 2.5vw, 24px);
     max-width: 960px;
     margin: 0 auto;
     width: 100%;
@@ -373,9 +376,9 @@ body {
 .store-card {
     background: var(--card);
     border-radius: var(--radius-lg);
-    padding: 32px;
+    padding: clamp(14px, 3vw, 32px);
     box-shadow: var(--shadow);
-    margin-bottom: 24px;
+    margin-bottom: 16px;
 }
 
 .store-card-header {
@@ -565,7 +568,7 @@ body {
 /* Category Picker */
 .category-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: 10px;
 }
 
@@ -573,14 +576,16 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     gap: 6px;
     padding: 14px 10px;
     border: 2px solid var(--border);
     border-radius: var(--radius);
-    background: #fafaf8;
+    background: var(--border-light);
     cursor: pointer;
     transition: all 0.15s;
     font-family: inherit;
+    min-height: 80px;
 }
 
 .category-btn:hover {
@@ -594,7 +599,7 @@ body {
     box-shadow: 0 0 0 1px var(--primary);
 }
 
-.category-btn .cat-icon { font-size: 22px; }
+.category-btn .cat-icon { font-size: 22px; display: flex; align-items: center; justify-content: center; height: 28px; }
 
 .category-btn .cat-label {
     font-size: 12px;
@@ -693,11 +698,15 @@ body {
     padding: 12px;
     border: 2px solid var(--border);
     border-radius: var(--radius);
-    background: #fafaf8;
+    background: var(--border-light);
     cursor: pointer;
     text-align: center;
     transition: all 0.15s;
     font-family: inherit;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
 
 .priority-btn:hover { border-color: var(--text-muted); }
@@ -728,7 +737,7 @@ body {
 }
 .priority-btn.selected .priority-desc { color: inherit; opacity: 0.7; }
 
-.priority-icon { font-size: 20px; }
+.priority-icon { font-size: 20px; display: flex; align-items: center; justify-content: center; height: 24px; }
 
 .form-actions {
     display: flex;
@@ -957,6 +966,8 @@ body {
 }
 
 .detail-value {
+    user-select: text;
+    -webkit-user-select: text;
     font-size: 15px;
     line-height: 1.5;
 }
@@ -1175,7 +1186,7 @@ body {
     .map-stats-bar { padding: 8px 12px; gap: 10px; }
     .map-stats-bar .mstat strong { font-size: 14px; }
     .map-stats-bar .mstat { font-size: 11px; }
-    .category-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 6px; }
+    .category-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; }
     .category-btn { padding: 10px 6px; }
     .cat-icon { font-size: 20px; }
     .cat-label { font-size: 11px; }
@@ -1598,6 +1609,7 @@ body {
     <div class="app-header">
         <div class="header-left">
             <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle dark mode">🌙</button>
+            <button class="theme-toggle" id="langToggle" onclick="toggleLang()" title="Español / English">EN</button>
             <a class="header-logo" href="#" onclick="goHome();return false" style="text-decoration:none;display:flex;align-items:center;gap:8px;cursor:pointer"><img src="logos/dpm-icon.png" alt="DPM" style="height:24px;vertical-align:middle"><span class="header-title">R&amp;M Tracker</span></a>
         </div>
         <div class="header-right">
@@ -1610,7 +1622,7 @@ body {
             </div>
             <button class="admin-btn hidden" id="adminBtn" onclick="showAdminPanel()">⚙️ <span class="badge hidden" id="pendingBadge">0</span></button>
             <button class="admin-btn hidden" id="viewAsBtn" onclick="showViewAsModal()">👁 View As</button>
-            <button class="btn-logout" onclick="logout()">Sign Out</button>
+            <button class="btn-logout" onclick="logout()" data-i18n="sign_out">Sign Out</button>
         </div>
     </div>
 
@@ -1621,8 +1633,8 @@ body {
         <div id="storeSelection">
             <div class="store-card">
                 <div class="store-card-header">
-                    <h2>Select Your Store</h2>
-                    <p>Choose a location to report or check issues</p>
+                    <h2 data-i18n="select_store">Select Your Store</h2>
+                    <p data-i18n="select_store_sub">Choose a location to report or check issues</p>
                 </div>
 
                 <!-- Brand buttons - clickable, trigger store type + map -->
@@ -1643,7 +1655,7 @@ body {
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label">Store Type</label>
+                        <label class="form-label" data-i18n="store_type">Store Type</label>
                         <select class="form-select" id="storeType" onchange="filterStores()">
                             <option value="">Choose type...</option>
                             <option value="fastfood">Fast Food</option>
@@ -1652,7 +1664,7 @@ body {
                         </select>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Location</label>
+                        <label class="form-label" data-i18n="form_location">Location</label>
                         <select class="form-select" id="storeSelect" onchange="selectStore()">
                             <option value="">Choose store...</option>
                         </select>
@@ -1694,107 +1706,107 @@ body {
         <!-- ===== SCREEN: New Issue Form ===== -->
         <div id="newIssueScreen" class="hidden">
             <div class="back-row">
-                <button class="btn-back" onclick="goBack()">← Back to store</button>
+                <button class="btn-back" onclick="goBack()" data-i18n="back_store">← Back to store</button>
             </div>
 
             <div class="issue-form-card">
                 <div class="issue-form-header">
-                    <h2>Report New Issue</h2>
+                    <h2 data-i18n="report_new">Report New Issue</h2>
                     <p id="newIssueStoreName">Store Name</p>
                 </div>
 
                 <div class="issue-form-body">
                     <!-- Category -->
                     <div class="form-group">
-                        <label class="form-label">Category</label>
+                        <label class="form-label" data-i18n="form_category">Category</label>
                         <div class="category-grid" id="categoryGrid">
                             <button class="category-btn" data-cat="plumbing" onclick="selectCategory(this)">
                                 <span class="cat-icon">🚿</span>
-                                <span class="cat-label">Plumbing</span>
+                                <span class="cat-label" data-i18n="cat_plumbing">Plumbing</span>
                             </button>
                             <button class="category-btn" data-cat="equipment" onclick="selectCategory(this)">
                                 <span class="cat-icon">⚙️</span>
-                                <span class="cat-label">Equipment</span>
+                                <span class="cat-label" data-i18n="cat_equipment">Equipment</span>
                             </button>
                             <button class="category-btn" data-cat="it" onclick="selectCategory(this)">
                                 <span class="cat-icon">💻</span>
-                                <span class="cat-label">IT</span>
+                                <span class="cat-label" data-i18n="cat_it">IT</span>
                             </button>
                             <button class="category-btn" data-cat="structural" onclick="selectCategory(this)">
                                 <span class="cat-icon">🧱</span>
-                                <span class="cat-label">Structural</span>
+                                <span class="cat-label" data-i18n="cat_structural">Structural</span>
                             </button>
                             <button class="category-btn" data-cat="safety" onclick="selectCategory(this)">
                                 <span class="cat-icon">🛡️</span>
-                                <span class="cat-label">Safety</span>
+                                <span class="cat-label" data-i18n="cat_safety">Safety</span>
                             </button>
                             <button class="category-btn" data-cat="other" onclick="selectCategory(this)">
                                 <span class="cat-icon">📎</span>
-                                <span class="cat-label">Other</span>
+                                <span class="cat-label" data-i18n="cat_other">Other</span>
                             </button>
                         </div>
                     </div>
 
                     <!-- Interior / Exterior -->
                     <div class="form-group">
-                        <label class="form-label">Location</label>
+                        <label class="form-label" data-i18n="form_location">Location</label>
                         <div class="priority-options" style="max-width:300px">
                             <button class="priority-btn" data-loc="interior" onclick="selectLocation(this)" style="flex:1">
                                 <span class="priority-icon">🏠</span>
-                                <span class="priority-label">Interior</span>
+                                <span class="priority-label" data-i18n="loc_interior">Interior</span>
                             </button>
                             <button class="priority-btn" data-loc="exterior" onclick="selectLocation(this)" style="flex:1">
                                 <span class="priority-icon">🏪</span>
-                                <span class="priority-label">Exterior</span>
+                                <span class="priority-label" data-i18n="loc_exterior">Exterior</span>
                             </button>
                         </div>
                     </div>
 
                     <!-- Contact Info -->
                     <div class="form-group">
-                        <label class="form-label">Your Name</label>
-                        <input class="form-input" type="text" id="contactName" placeholder="First and Last Name" autocomplete="name">
+                        <label class="form-label" data-i18n="form_name">Your Name</label>
+                        <input class="form-input" type="text" id="contactName" placeholder="Name of person reporting issue" autocomplete="off">
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Your Contact Phone</label>
+                        <label class="form-label" data-i18n="form_phone">Your Contact Phone</label>
                         <input class="form-input" type="tel" id="contactPhone" placeholder="555-123-4567" inputmode="tel" maxlength="12" oninput="formatPhone(this)">
                     </div>
 
                     <!-- Priority -->
                     <div class="form-group">
-                        <label class="form-label">Priority</label>
+                        <label class="form-label" data-i18n="form_priority">Priority</label>
                         <div class="priority-options">
                             <button class="priority-btn p-routine" data-priority="routine" onclick="selectPriority(this)">
                                 <span class="priority-icon">🟢</span>
-                                <span class="priority-label">Routine</span>
-                                <span class="priority-desc">Up to 1 week</span>
+                                <span class="priority-label" data-i18n="p_routine">Routine</span>
+                                <span class="priority-desc" data-i18n="p_routine_desc">Up to 1 week</span>
                             </button>
                             <button class="priority-btn p-urgent" data-priority="urgent" onclick="selectPriority(this)">
                                 <span class="priority-icon">🟡</span>
-                                <span class="priority-label">Urgent</span>
-                                <span class="priority-desc">Within 72 hours</span>
+                                <span class="priority-label" data-i18n="p_urgent">Urgent</span>
+                                <span class="priority-desc" data-i18n="p_urgent_desc">Within 72 hours</span>
                             </button>
                             <button class="priority-btn p-emergency" data-priority="emergency" onclick="selectPriority(this)">
                                 <span class="priority-icon">🔴</span>
-                                <span class="priority-label">Emergency</span>
-                                <span class="priority-desc">Within 24 hours</span>
+                                <span class="priority-label" data-i18n="p_emergency">Emergency</span>
+                                <span class="priority-desc" data-i18n="p_emergency_desc">Within 24 hours</span>
                             </button>
                         </div>
                     </div>
 
                     <!-- Description -->
                     <div class="form-group">
-                        <label class="form-label">Description</label>
+                        <label class="form-label" data-i18n="form_description">Description</label>
                         <textarea class="form-textarea" id="issueDescription" placeholder="Describe the issue in detail. What's broken? Where exactly? When did it start?"></textarea>
                     </div>
 
                     <!-- Photos -->
                     <div class="form-group">
-                        <label class="form-label">Photos <span style="font-weight:400; color: var(--text-muted);">(optional, up to 3)</span></label>
+                        <label class="form-label" data-i18n="form_photos">Photos <span style="font-weight:400; color: var(--text-muted);" data-i18n="form_photos_hint">(required, at least 1, up to 3)</span></label>
                         <div class="photo-upload-area" id="photoUploadArea" onclick="document.getElementById('photoInput').click()">
                             <div class="upload-icon">📷</div>
-                            <div class="upload-text">Tap to add photos</div>
-                            <div class="upload-hint">JPG or PNG, max 5MB each</div>
+                            <div class="upload-text" data-i18n="tap_photos">Tap to add photos</div>
+                            <div class="upload-hint" data-i18n="photo_hint">JPG or PNG, max 5MB each</div>
                         </div>
                         <input type="file" id="photoInput" accept="image/*" multiple style="display:none" onchange="handlePhotos(this)">
                         <div class="photo-preview-grid" id="photoPreviewGrid"></div>
@@ -3008,8 +3020,7 @@ function showNewIssueScreen() {
     if (!selectedStore) return;
     resetNewIssueForm();
     document.getElementById('newIssueStoreName').textContent = selectedStore.name;
-    // Pre-fill contact name from logged-in user
-    document.getElementById('contactName').value = currentUser.name || '';
+
     showScreen('newIssueScreen');
 }
 
@@ -3098,6 +3109,7 @@ async function submitTicket() {
     const contactPhone = document.getElementById('contactPhone').value.trim();
     if (!contactPhone || contactPhone.replace(/\D/g,'').length < 10) { toast('Enter a valid phone number', 'error'); return; }
     if (!selectedPriority) { toast('Select a priority', 'error'); return; }
+    if (uploadedPhotos.length === 0) { toast('Add at least 1 photo', 'error'); return; }
     const desc = document.getElementById('issueDescription').value.trim();
     if (!desc) { toast('Add a description', 'error'); return; }
     if (desc.length < 10) { toast('Description too short', 'error'); return; }
@@ -3505,12 +3517,114 @@ function toggleTheme() {
     const saved = localStorage.getItem('theme');
     if (saved === 'dark') {
         document.documentElement.setAttribute('data-theme', 'dark');
-        // Toggle button will be updated after DOM loads
         setTimeout(() => {
             const btn = document.getElementById('themeToggle');
             if (btn) btn.textContent = '☀️';
         }, 0);
     }
+})();
+
+// ============================================================
+// LANGUAGE / i18n
+// ============================================================
+let currentLang = localStorage.getItem('lang') || 'en';
+
+const TRANSLATIONS = {
+    es: {
+        // Store selection
+        select_store: 'Selecciona Tu Tienda',
+        select_store_sub: 'Elige una ubicación para reportar o ver problemas',
+        store_type: 'Tipo de Tienda',
+        location_label: 'Ubicación',
+        // Form
+        report_new: 'Reportar Nuevo Problema',
+        form_category: 'Categoría',
+        form_location: 'Ubicación',
+        form_name: 'Tu Nombre',
+        form_phone: 'Tu Teléfono de Contacto',
+        form_priority: 'Prioridad',
+        form_description: 'Descripción',
+        form_photos: 'Fotos',
+        form_photos_hint: '(requerida, al menos 1, máximo 3)',
+        // Categories
+        cat_plumbing: 'Plomería',
+        cat_equipment: 'Equipo',
+        cat_it: 'IT',
+        cat_structural: 'Estructural',
+        cat_safety: 'Seguridad',
+        cat_other: 'Otro',
+        // Location
+        loc_interior: 'Interior',
+        loc_exterior: 'Exterior',
+        // Priority
+        p_routine: 'Rutina',
+        p_routine_desc: 'Hasta 1 semana',
+        p_urgent: 'Urgente',
+        p_urgent_desc: 'Dentro de 72 horas',
+        p_emergency: 'Emergencia',
+        p_emergency_desc: 'Dentro de 24 horas',
+        // Actions
+        report_issue: 'Reportar Nuevo Problema',
+        view_tickets: 'Ver Tickets Existentes',
+        back_store: '← Volver a la tienda',
+        sign_out: 'Cerrar Sesión',
+        tap_photos: 'Toca para añadir fotos',
+        photo_hint: 'JPG o PNG, máximo 5MB cada una',
+    }
+};
+
+function toggleLang() {
+    currentLang = currentLang === 'en' ? 'es' : 'en';
+    localStorage.setItem('lang', currentLang);
+    applyLang();
+}
+
+function applyLang() {
+    const btn = document.getElementById('langToggle');
+    if (btn) btn.textContent = currentLang === 'en' ? 'EN' : 'ES';
+
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (currentLang === 'es' && TRANSLATIONS.es[key]) {
+            if (!el.getAttribute('data-orig')) {
+                el.setAttribute('data-orig', el.textContent);
+            }
+            el.textContent = TRANSLATIONS.es[key];
+        } else if (currentLang === 'en' && el.getAttribute('data-orig')) {
+            el.textContent = el.getAttribute('data-orig');
+        }
+    });
+
+    // Update placeholders
+    const nameInput = document.getElementById('contactName');
+    if (nameInput) nameInput.placeholder = currentLang === 'es' ? 'Nombre de la persona reportando' : 'Name of person reporting issue';
+    const phoneInput = document.getElementById('contactPhone');
+    if (phoneInput) phoneInput.placeholder = currentLang === 'es' ? '555-123-4567' : '555-123-4567';
+    const descInput = document.getElementById('issueDescription');
+    if (descInput) descInput.placeholder = currentLang === 'es'
+        ? 'Describe el problema en detalle. ¿Qué está roto? ¿Dónde exactamente? ¿Cuándo empezó?'
+        : "Describe the issue in detail. What's broken? Where exactly? When did it start?";
+
+    // Submit button
+    const submitBtn = document.getElementById('submitBtn');
+    if (submitBtn && !submitBtn.disabled) {
+        submitBtn.textContent = currentLang === 'es' ? 'Enviar Ticket' : 'Submit Ticket';
+    }
+
+    // Store select placeholder
+    const storeSel = document.getElementById('storeSelect');
+    if (storeSel && storeSel.options[0]) {
+        storeSel.options[0].textContent = currentLang === 'es' ? 'Elige tienda...' : 'Choose store...';
+    }
+    const typeSel = document.getElementById('storeType');
+    if (typeSel && typeSel.options[0]) {
+        typeSel.options[0].textContent = currentLang === 'es' ? 'Elige tipo...' : 'Choose type...';
+    }
+}
+
+// Apply saved language on load
+(function() {
+    setTimeout(applyLang, 100);
 })();
 
 function getCategoryEmoji(cat) {
