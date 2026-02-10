@@ -2313,6 +2313,12 @@ async function loadUserData(user) {
 
 function logout() {
     if (activeTicketListener) { activeTicketListener(); activeTicketListener = null; }
+    if (notifyListenerRef && notifyListenerCallback) {
+        notifyListenerRef.off('value', notifyListenerCallback);
+        notifyListenerRef = null;
+        notifyListenerCallback = null;
+    }
+    notifyTickets = [];
     auth.signOut();
 }
 
@@ -3077,48 +3083,93 @@ async function saveNotifyRouting() {
 // NOTIFICATION CENTER
 // ============================================================
 let notifyTickets = [];
-let notifyListener = null;
+let notifyListenerRef = null;
+let notifyListenerCallback = null;
 
 function initNotificationCenter() {
-    // Always show bell - every logged-in user can see their relevant tickets
+    // Show bell for every logged-in user
     document.getElementById('notifyBtn').classList.remove('hidden');
+
+    // Properly detach previous listener if any
+    if (notifyListenerRef && notifyListenerCallback) {
+        notifyListenerRef.off('value', notifyListenerCallback);
+        notifyListenerRef = null;
+        notifyListenerCallback = null;
+    }
 
     // Determine which stores this user can see
     const isAdmin = currentUser.role === 'Admin' || currentUser.stores === 'all';
-    const myStores = isAdmin ? null : (Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores]);
+    let myStores = null;
+    if (!isAdmin) {
+        myStores = Array.isArray(currentUser.stores) ? currentUser.stores : 
+                   (currentUser.stores ? [currentUser.stores] : []);
+    }
 
-    // Check notification routing for category filtering
-    const myEmail = currentUser.email.toLowerCase();
+    // Check notification routing for category-based visibility
+    const myEmail = currentUser.email ? currentUser.email.toLowerCase() : '';
     const myRoutedCategories = [];
-    for (const [cat, emails] of Object.entries(notifyRouting)) {
-        if (emails.some(e => e.toLowerCase() === myEmail)) {
-            myRoutedCategories.push(cat);
+    if (notifyRouting && typeof notifyRouting === 'object') {
+        for (const [cat, emails] of Object.entries(notifyRouting)) {
+            if (Array.isArray(emails) && emails.some(e => e.toLowerCase() === myEmail)) {
+                myRoutedCategories.push(cat);
+            }
         }
     }
 
-    // Watch open tickets
-    if (notifyListener) notifyListener();
-    notifyListener = db.ref('tickets').on('value', snap => {
+    console.log('[Notifications] Init for', currentUser.name, 
+        '| isAdmin:', isAdmin, 
+        '| myStores:', myStores, 
+        '| routedCats:', myRoutedCategories);
+
+    // Create the callback
+    notifyListenerCallback = function(snap) {
         notifyTickets = [];
         snap.forEach(child => {
             const t = child.val();
+            if (!t) return;
             t._key = child.key;
+
+            // Skip closed/resolved tickets
             if (!t.status || t.status === 'closed' || t.status === 'resolved') return;
 
-            // Store access check
-            const canSeeStore = isAdmin || (myStores && myStores.includes(t.storeCode));
-            // Category routing check (if user has routing entries, also show those)
-            const isRouted = myRoutedCategories.length > 0 && myRoutedCategories.includes(t.category);
+            // Store access check: admin sees all, others check store list
+            let canSee = false;
+            if (isAdmin) {
+                canSee = true;
+            } else if (myStores && myStores.length > 0 && t.storeCode) {
+                canSee = myStores.includes(t.storeCode);
+            }
 
-            if (canSeeStore || isRouted) {
+            // Category routing: if user is routed for this category, also show it
+            if (!canSee && myRoutedCategories.length > 0 && t.category) {
+                canSee = myRoutedCategories.includes(t.category);
+            }
+
+            if (canSee) {
                 notifyTickets.push(t);
             }
         });
-        // Sort: emergency first, then urgent, then by date
+
+        // Sort: emergency first, then urgent, then routine, then by newest
         const priOrder = { emergency: 0, urgent: 1, routine: 2 };
-        notifyTickets.sort((a, b) => (priOrder[a.priority] || 2) - (priOrder[b.priority] || 2) || (b.createdAt || 0) - (a.createdAt || 0));
+        notifyTickets.sort((a, b) => 
+            (priOrder[a.priority] || 2) - (priOrder[b.priority] || 2) || 
+            (b.createdAt || 0) - (a.createdAt || 0)
+        );
+
+        console.log('[Notifications] Found', notifyTickets.length, 'tickets for', currentUser.name);
         updateNotifyBadge();
-    });
+
+        // If panel is open, refresh it live
+        const panel = document.getElementById('notifyPanel');
+        if (panel && panel.classList.contains('open')) {
+            renderNotifyPanel();
+        }
+    };
+
+    // Attach listener
+    notifyListenerRef = db.ref('tickets');
+    notifyListenerRef.on('value', notifyListenerCallback);
 }
 
 function updateNotifyBadge() {
@@ -3146,18 +3197,21 @@ function toggleNotifyPanel() {
 function renderNotifyPanel() {
     const body = document.getElementById('notifyPanelBody');
     if (notifyTickets.length === 0) {
-        body.innerHTML = '<div class="notify-empty">No open tickets for your categories</div>';
+        const lang = currentLang === 'es' ? 'No hay tickets abiertos' : 'No open tickets';
+        body.innerHTML = '<div class="notify-empty">' + lang + '</div>';
         return;
     }
+    const lang = currentLang === 'es';
     body.innerHTML = notifyTickets.map(t => {
         const priClass = t.priority === 'emergency' ? 'pri-emergency' : t.priority === 'urgent' ? 'pri-urgent' : '';
         const timeAgo = getTimeAgo(t.createdAt);
         const store = stores.find(s => s.code === t.storeCode);
         const storeName = store ? store.name.replace(/^Burger King /, 'BK ').replace(/^Paradise QS /, 'PQS ') : t.storeCode;
+        const priLabel = lang ? ({routine:'Rutina',urgent:'Urgente',emergency:'Emergencia'}[t.priority]||t.priority) : capitalize(t.priority || 'routine');
         return `<div class="notify-item" onclick="notifyGoToTicket('${esc(t._key || t.id)}', '${esc(t.storeCode)}')">
             <div class="notify-item-title">${getCategoryEmoji(t.category)} ${esc((t.description || '').substring(0, 60))}${(t.description||'').length > 60 ? '...' : ''}</div>
             <div class="notify-item-meta">
-                <span class="${priClass}">● ${capitalize(t.priority || 'routine')}</span>
+                <span class="${priClass}">● ${priLabel}</span>
                 <span>${capitalize(t.category)}${t.location ? ' · ' + capitalize(t.location) : ''}</span>
                 <span>${storeName}</span>
                 <span>${timeAgo}</span>
@@ -3398,6 +3452,17 @@ function doViewAs() {
         document.getElementById('adminBtn').classList.remove('hidden');
         document.getElementById('viewAsBtn').classList.remove('hidden');
 
+        // Show/hide All Locations pill based on impersonated user's role
+        const allPill = document.getElementById('brandPill-all');
+        const allOpt = document.querySelector('.admin-only-opt');
+        if (currentUser.role === 'Admin' || currentUser.stores === 'all') {
+            if (allPill) allPill.classList.remove('hidden');
+            if (allOpt) allOpt.classList.remove('hidden');
+        } else {
+            if (allPill) allPill.classList.add('hidden');
+            if (allOpt) allOpt.classList.add('hidden');
+        }
+
         // Re-run auto-select for single-store managers
         if (currentUser.role === 'Manager' && currentUser.stores && !Array.isArray(currentUser.stores)) {
             const store = stores.find(s => s.code === currentUser.stores);
@@ -3436,6 +3501,12 @@ function exitViewAs() {
     document.getElementById('userAvatar').textContent = initials || '?';
     document.getElementById('userName').textContent = currentUser.name;
     document.getElementById('userRole').textContent = currentUser.role;
+
+    // Restore All Locations for admin
+    if (currentUser.role === 'Admin' || currentUser.stores === 'all') {
+        document.getElementById('brandPill-all').classList.remove('hidden');
+        document.querySelector('.admin-only-opt')?.classList.remove('hidden');
+    }
 
     initNotificationCenter();
     showToast('Back to IT Support', 'success');
@@ -3998,6 +4069,8 @@ const TRANSLATIONS = {
         sign_out: 'Cerrar Sesión',
         tap_photos: 'Toca para añadir fotos',
         photo_hint: 'JPG o PNG, máximo 5MB cada una',
+        notifications: 'Notificaciones',
+        all_locations: 'Todas las Ubicaciones',
     }
 };
 
