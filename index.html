@@ -1763,6 +1763,10 @@ body {
 
                 <!-- Brand buttons - clickable, trigger store type + map -->
                 <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:12px">
+                    <button onclick="selectBrand('all')" class="brand-pill hidden" id="brandPill-all">
+                        <span class="brand-pill-icon" style="background:var(--primary);color:#fff;font-size:14px;font-weight:700">📍</span>
+                        <span>All Locations</span>
+                    </button>
                     <button onclick="selectBrand('fastfood')" class="brand-pill" id="brandPill-fastfood">
                         <span class="brand-pill-icon"><img src="logos/bk-logo.png" alt=""></span>
                         <span>Fast Food</span>
@@ -1782,6 +1786,7 @@ body {
                         <label class="form-label" data-i18n="store_type">Store Type</label>
                         <select class="form-select" id="storeType" onchange="filterStores()">
                             <option value="">Choose type...</option>
+                            <option value="all" class="admin-only-opt hidden">All Locations</option>
                             <option value="fastfood">Fast Food</option>
                             <option value="cstore">C-Store</option>
                             <option value="carwash">Car Wash</option>
@@ -2082,10 +2087,10 @@ body {
             <!-- Notification Routing -->
             <div class="admin-section">
                 <div class="admin-section-header">
-                    <h3>📧 Notification Routing</h3>
+                    <h3>🔔 Notification Routing</h3>
                 </div>
                 <div class="admin-section-body" id="notifySection">
-                    <p style="font-size:13px;color:var(--text-mid);margin-bottom:14px">Set up to 3 email addresses per category. These contacts will be notified when a ticket is created.</p>
+                    <p style="font-size:13px;color:var(--text-mid);margin-bottom:14px">Set up to 3 users per category. These users will see matching tickets in their notification bell when they log in.</p>
                     <div id="notifyGrid"></div>
                     <button class="btn btn-primary" onclick="saveNotifyRouting()" style="margin-top:12px">Save Routing</button>
                 </div>
@@ -2335,6 +2340,12 @@ function showAppScreen() {
         watchPendingUsers();
     }
 
+    // Show "All Locations" pill for admins
+    if (currentUser.role === 'Admin' || currentUser.stores === 'all') {
+        document.getElementById('brandPill-all').classList.remove('hidden');
+        document.querySelectorAll('.admin-only-opt').forEach(el => el.classList.remove('hidden'));
+    }
+
     // Show "View As" only for itsupport
     if (currentUser.email === 'itsupport@dossaniparadise.com') {
         document.getElementById('viewAsBtn').classList.remove('hidden');
@@ -2430,7 +2441,6 @@ function isMultiStoreUser() {
 // Brand pill click → set dropdown + trigger map
 function selectBrand(type) {
     document.getElementById('storeType').value = type;
-    // Update active pill styling
     document.querySelectorAll('.brand-pill').forEach(b => b.classList.remove('active'));
     const pill = document.getElementById('brandPill-' + type);
     if (pill) pill.classList.add('active');
@@ -2458,10 +2468,22 @@ filterStores = function() {
     } else {
         mapEl.classList.add('hidden');
     }
+    
+    // For 'all' type, also show all stores in dropdown
+    if (type === 'all') {
+        const storeSelect = document.getElementById('storeSelect');
+        let allStores = [...stores];
+        if (currentUser.role !== 'Admin' && currentUser.stores !== 'all') {
+            const us = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
+            allStores = allStores.filter(s => us.includes(s.code));
+        }
+        storeSelect.innerHTML = '<option value="">Choose store...</option>' +
+            allStores.map(s => '<option value="' + s.id + '">' + s.name + '</option>').join('');
+    }
 };
 
 function loadMapOverview(type) {
-    let filtered = stores.filter(s => s.type === type);
+    let filtered = type === 'all' ? [...stores] : stores.filter(s => s.type === type);
     
     // Permission filter
     if (currentUser.role !== 'Admin' && currentUser.stores !== 'all') {
@@ -2469,7 +2491,7 @@ function loadMapOverview(type) {
         filtered = filtered.filter(s => us.includes(s.code));
     }
     
-    const typeLabels = { fastfood: 'Fast Food Stores', cstore: 'C-Stores', carwash: 'Car Washes' };
+    const typeLabels = { all: 'All Locations', fastfood: 'Fast Food Stores', cstore: 'C-Stores', carwash: 'Car Washes' };
     document.getElementById('mapTitle').textContent = typeLabels[type] || 'Stores';
     
     // Init or clear map
@@ -2543,7 +2565,7 @@ function loadMapOverview(type) {
         });
         document.getElementById('mapStatsBar').innerHTML = 
             '<div class="mstat"><strong>' + filtered.length + '</strong>stores</div>' +
-            '<div class="mstat" style="cursor:pointer" onclick="showAllTickets(\'open\')"><strong style="color:#dc2626">' + totalOpen + '</strong>open tickets</div>' +
+            '<div class="mstat" style="cursor:pointer" onclick="showAllTickets(\'open\')"><strong style="color:' + (totalOpen > 0 ? '#dc2626' : '#059669') + '">' + totalOpen + '</strong>open tickets</div>' +
             '<div class="mstat" style="cursor:pointer" onclick="showAllTickets(\'open\')"><strong>' + storesWithIssues + '</strong>need attention</div>' +
             '<div class="mstat" style="cursor:pointer" onclick="showAllTickets(\'all\')"><strong>' + totalAll + '</strong>total tickets</div>';
     });
@@ -3388,6 +3410,7 @@ function doViewAs() {
             }
         }
 
+        initNotificationCenter();
         showToast(`Viewing as ${currentUser.name}`, 'success');
     });
 }
@@ -3414,6 +3437,7 @@ function exitViewAs() {
     document.getElementById('userName').textContent = currentUser.name;
     document.getElementById('userRole').textContent = currentUser.role;
 
+    initNotificationCenter();
     showToast('Back to IT Support', 'success');
 }
 
