@@ -287,6 +287,18 @@ function showAppScreen() {
 
     // Load vendor list
     loadVendors();
+
+    // Role-specific home screens
+    if (currentUser.role === 'Technician') {
+        showScreen('techDashboard');
+        initTechDashboard();
+        return; // Techs get their own dedicated view
+    }
+
+    // Admin summary dashboard
+    if (currentUser.role === 'Admin') {
+        loadAdminSummary();
+    }
 }
 
 function showError(msg) {
@@ -297,13 +309,22 @@ function showError(msg) {
 }
 
 function showScreen(screenId) {
-    ['storeSelection', 'newIssueScreen', 'existingIssuesScreen', 'allTicketsScreen', 'adminScreen'].forEach(id => {
+    ['techDashboard', 'adminSummary', 'storeSelection', 'newIssueScreen', 'existingIssuesScreen', 'allTicketsScreen', 'adminScreen'].forEach(id => {
         document.getElementById(id).classList.toggle('hidden', id !== screenId);
     });
+    // Admin summary shows alongside storeSelection for admins
+    if (screenId === 'storeSelection' && currentUser && currentUser.role === 'Admin') {
+        document.getElementById('adminSummary').classList.remove('hidden');
+    }
 }
 
 function goBack() {
-    showScreen('storeSelection');
+    if (currentUser && currentUser.role === 'Technician') {
+        showScreen('techDashboard');
+        loadTechJobs();
+    } else {
+        showScreen('storeSelection');
+    }
     resetNewIssueForm();
     if (activeTicketListener) { activeTicketListener(); activeTicketListener = null; }
 }
@@ -1295,6 +1316,371 @@ function toggleDateFields() {
 }
 
 // ============================================================
+// TECHNICIAN DASHBOARD
+// ============================================================
+let techJobs = [];
+let techFilter = 'active'; // 'active' | 'all' | 'completed'
+let activeClockIn = null; // { ticketKey, ticketId, storeName, startTime }
+let clockTimerInterval = null;
+let clockOutPhotos = [];
+let clockOutStatus = 'inprogress';
+
+function initTechDashboard() {
+    // Check for active clock-in from Firebase
+    db.ref('timeEntries').orderByChild('techEmail').equalTo(currentUser.email).once('value', snap => {
+        const entries = snap.val() || {};
+        // Find any entry that has no endTime (still clocked in)
+        for (const [key, entry] of Object.entries(entries)) {
+            if (!entry.endTime) {
+                activeClockIn = {
+                    entryKey: key,
+                    ticketKey: entry.ticketKey,
+                    ticketId: entry.ticketId,
+                    storeName: entry.storeName,
+                    startTime: entry.startTime
+                };
+                showClockBanner();
+                break;
+            }
+        }
+        loadTechJobs();
+    });
+}
+
+function loadTechJobs() {
+    db.ref('tickets').once('value', snap => {
+        const allTickets = [];
+        snap.forEach(child => { allTickets.push({ _key: child.key, ...child.val() }); });
+        
+        // Get stores this tech has access to
+        const techStores = currentUser.stores === 'all' ? stores.map(s => s.code) :
+            (Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores]);
+        
+        // Filter: tickets at tech's stores that are assigned to this tech OR unassigned/open
+        techJobs = allTickets.filter(t => {
+            if (!techStores.includes(t.storeCode)) return false;
+            // Show tickets assigned to this tech, or open/assigned tickets at their stores
+            if (t.assignedTo === currentUser.email) return true;
+            if (t.status === 'open' || t.status === 'assigned') return true;
+            if (t.status === 'inprogress' || t.status === 'waiting') return true;
+            if (t.status === 'resolved' || t.status === 'closed') return true;
+            return false;
+        });
+        
+        renderTechDashboard();
+    });
+}
+
+function renderTechDashboard() {
+    // Stats
+    const myAssigned = techJobs.filter(t => t.assignedTo === currentUser.email && t.status !== 'closed' && t.status !== 'resolved');
+    const allOpen = techJobs.filter(t => t.status !== 'closed' && t.status !== 'resolved');
+    const urgent = allOpen.filter(t => t.priority === 'emergency' || t.priority === 'urgent');
+    const completed = techJobs.filter(t => t.assignedTo === currentUser.email && (t.status === 'resolved' || t.status === 'closed'));
+
+    document.getElementById('techStats').innerHTML = `
+        <div class="tech-stat-card" onclick="filterTechJobs('active',null)">
+            <div class="tsc-num" style="color:#d97706">${myAssigned.length}</div>
+            <div class="tsc-label">My Jobs</div>
+        </div>
+        <div class="tech-stat-card" onclick="filterTechJobs('all',null)">
+            <div class="tsc-num" style="color:#2563eb">${allOpen.length}</div>
+            <div class="tsc-label">Open Tickets</div>
+        </div>
+        <div class="tech-stat-card">
+            <div class="tsc-num" style="color:#dc2626">${urgent.length}</div>
+            <div class="tsc-label">Urgent</div>
+        </div>
+        <div class="tech-stat-card" onclick="filterTechJobs('completed',null)">
+            <div class="tsc-num" style="color:#059669">${completed.length}</div>
+            <div class="tsc-label">Completed</div>
+        </div>`;
+
+    // Filter jobs
+    let displayJobs;
+    if (techFilter === 'active') {
+        displayJobs = techJobs.filter(t => t.assignedTo === currentUser.email && t.status !== 'closed' && t.status !== 'resolved');
+    } else if (techFilter === 'completed') {
+        displayJobs = techJobs.filter(t => t.assignedTo === currentUser.email && (t.status === 'resolved' || t.status === 'closed'));
+    } else {
+        displayJobs = techJobs.filter(t => t.status !== 'closed' && t.status !== 'resolved');
+    }
+
+    // Sort: emergency first, then urgent, then by date
+    displayJobs.sort((a, b) => {
+        const p = { emergency: 0, urgent: 1, routine: 2 };
+        const pd = (p[a.priority] || 2) - (p[b.priority] || 2);
+        if (pd !== 0) return pd;
+        return (b.createdAt || 0) - (a.createdAt || 0);
+    });
+
+    const listEl = document.getElementById('techJobList');
+    if (displayJobs.length === 0) {
+        const msg = techFilter === 'active' ? 'No jobs assigned to you' : techFilter === 'completed' ? 'No completed jobs yet' : 'No open tickets';
+        listEl.innerHTML = `<div class="empty-state" style="padding:40px;text-align:center;color:var(--text-muted)">${msg}</div>`;
+        return;
+    }
+
+    const statusLabel = { open:'Open', assigned:'Assigned', inprogress:'In Progress', waiting:'Waiting', resolved:'Resolved', closed:'Closed' };
+    const catIcons = { plumbing:'🚿', equipment:'⚙️', it:'💻', structural:'🧱', safety:'🛡️', other:'📎' };
+    const isClocked = activeClockIn !== null;
+
+    listEl.innerHTML = displayJobs.map(t => {
+        const storeName = (stores.find(s => s.code === t.storeCode) || {}).name || t.storeCode;
+        const shortStore = storeName.replace(/^Burger King /, 'BK ').replace(/^Paradise QS /, 'PQS ');
+        const isMyJob = t.assignedTo === currentUser.email;
+        const isActiveJob = activeClockIn && activeClockIn.ticketKey === t._key;
+        const prBadge = {routine:'<span class="priority-word p-routine">Routine</span>',urgent:'<span class="priority-word p-urgent">Urgent</span>',emergency:'<span class="priority-word p-emergency">Emergency</span>'}[t.priority] || '';
+        const desc = (t.description || '').substring(0, 100) + ((t.description || '').length > 100 ? '...' : '');
+        const time = getTimeAgo(t.createdAt);
+
+        let actionBtn = '';
+        if (isActiveJob) {
+            actionBtn = `<button class="btn btn-sm" style="background:#dc2626;color:#fff;border:none;padding:8px 16px;border-radius:8px;font-weight:600;cursor:pointer" onclick="event.stopPropagation();showClockOutPrompt()">⏹ Clock Out</button>`;
+        } else if (isMyJob && !isClocked && t.status !== 'resolved' && t.status !== 'closed') {
+            actionBtn = `<button class="btn-clock-in" onclick="event.stopPropagation();clockIn('${t._key}','${escHtml(t.id)}','${escHtml(shortStore)}')">▶ Clock In</button>`;
+        } else if (isMyJob && isClocked && !isActiveJob) {
+            actionBtn = `<button class="btn-clock-in" disabled title="Finish current job first">▶ Clock In</button>`;
+        }
+
+        return `<div class="tech-job-card ${isActiveJob ? 'active-job' : ''}" onclick="techOpenTicket('${t._key}')">
+            <div class="tjc-main">
+                <div class="tjc-top">
+                    <span class="tjc-store">${escHtml(shortStore)}</span>
+                    <span class="tjc-id">${escHtml(t.id || t._key)}</span>
+                    ${prBadge}
+                </div>
+                <div class="tjc-desc">${catIcons[t.category] || ''} ${escHtml(desc)}</div>
+                <div class="tjc-meta">
+                    <span class="ticket-status-badge status-${t.status}" style="font-size:11px;padding:2px 8px">${statusLabel[t.status] || t.status}</span>
+                    <span style="color:var(--text-muted)">${time}</span>
+                    ${isMyJob ? '<span style="color:#059669;font-weight:600">Assigned to you</span>' : ''}
+                </div>
+            </div>
+            <div class="tjc-actions">
+                ${actionBtn}
+                <button class="btn-view-ticket" onclick="event.stopPropagation();techOpenTicket('${t._key}')">View Details</button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function filterTechJobs(filter, btn) {
+    techFilter = filter;
+    document.querySelectorAll('#techDashboard .filter-chip').forEach(c => c.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    else document.querySelector(`#techDashboard .filter-chip[data-filter="${filter}"]`)?.classList.add('active');
+    renderTechDashboard();
+}
+
+function techOpenTicket(key) {
+    const t = techJobs.find(x => x._key === key);
+    if (!t) return;
+    currentTickets = [t];
+    openTicketDetail(key);
+}
+
+// Clock In
+function clockIn(ticketKey, ticketId, storeName) {
+    if (activeClockIn) { toast('Already clocked into a job. Clock out first.', 'error'); return; }
+    
+    const now = Date.now();
+    const entry = {
+        techEmail: currentUser.email,
+        techName: currentUser.name,
+        ticketKey: ticketKey,
+        ticketId: ticketId,
+        storeName: storeName,
+        startTime: now,
+        endTime: null
+    };
+    
+    const ref = db.ref('timeEntries').push();
+    ref.set(entry).then(() => {
+        activeClockIn = { entryKey: ref.key, ticketKey, ticketId, storeName, startTime: now };
+        // Update ticket status to in progress
+        db.ref('tickets/' + ticketKey + '/status').set('inprogress');
+        db.ref('tickets/' + ticketKey + '/assignedTo').set(currentUser.email);
+        db.ref('tickets/' + ticketKey + '/assigneeType').set('tech');
+        // Add activity
+        db.ref('tickets/' + ticketKey + '/activity').push({
+            action: 'status',
+            by: currentUser.name,
+            oldStatus: 'assigned',
+            newStatus: 'inprogress',
+            note: 'Clocked in',
+            timestamp: now
+        });
+        showClockBanner();
+        toast('Clocked in!', 'success');
+        loadTechJobs();
+    }).catch(err => { toast('Failed to clock in: ' + err.message, 'error'); });
+}
+
+function showClockBanner() {
+    if (!activeClockIn) return;
+    const banner = document.getElementById('techClockBanner');
+    banner.classList.remove('hidden');
+    document.getElementById('tcbTicketId').textContent = activeClockIn.ticketId;
+    document.getElementById('tcbStoreName').textContent = activeClockIn.storeName;
+    
+    // Start timer
+    if (clockTimerInterval) clearInterval(clockTimerInterval);
+    clockTimerInterval = setInterval(updateClockTimer, 1000);
+    updateClockTimer();
+}
+
+function updateClockTimer() {
+    if (!activeClockIn) return;
+    const elapsed = Date.now() - activeClockIn.startTime;
+    const h = Math.floor(elapsed / 3600000);
+    const m = Math.floor((elapsed % 3600000) / 60000);
+    const s = Math.floor((elapsed % 60000) / 1000);
+    document.getElementById('tcbTimer').textContent =
+        String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+}
+
+function showClockOutPrompt() {
+    if (!activeClockIn) return;
+    clockOutPhotos = [];
+    clockOutStatus = 'inprogress';
+    
+    const elapsed = Date.now() - activeClockIn.startTime;
+    const mins = Math.round(elapsed / 60000);
+    
+    document.getElementById('clockOutInfo').innerHTML = `
+        <div style="font-size:14px;margin-bottom:4px"><strong>${escHtml(activeClockIn.ticketId)}</strong> at ${escHtml(activeClockIn.storeName)}</div>
+        <div style="font-size:13px;color:var(--text-muted)">Time on job: ${mins} minute${mins !== 1 ? 's' : ''}</div>`;
+    
+    const statusOptions = ['inprogress', 'waiting', 'resolved'];
+    const statusLabels = { inprogress: 'Still In Progress', waiting: 'Waiting on Parts', resolved: 'Resolved' };
+    document.getElementById('clockOutStatusGrid').innerHTML = statusOptions.map(s =>
+        `<button class="status-option ${s === clockOutStatus ? 'active' : ''}" onclick="clockOutStatus='${s}';this.parentElement.querySelectorAll('.status-option').forEach(b=>b.classList.remove('active'));this.classList.add('active')">${statusLabels[s]}</button>`
+    ).join('');
+    
+    document.getElementById('clockOutNotes').value = '';
+    document.getElementById('clockOutPhotoPreview').innerHTML = '';
+    document.getElementById('clockOutModal').classList.add('open');
+}
+
+function handleClockOutPhotos(input) {
+    const files = Array.from(input.files).slice(0, 3 - clockOutPhotos.length);
+    files.forEach(file => {
+        if (file.size > 5 * 1024 * 1024) { toast('File too large (max 5MB)', 'error'); return; }
+        clockOutPhotos.push(file);
+        const reader = new FileReader();
+        reader.onload = e => {
+            const preview = document.getElementById('clockOutPhotoPreview');
+            const idx = clockOutPhotos.length - 1;
+            preview.innerHTML += `<div style="position:relative;display:inline-block">
+                <img src="${e.target.result}" style="width:56px;height:56px;border-radius:8px;object-fit:cover;border:1px solid var(--border)">
+                <button onclick="clockOutPhotos.splice(${idx},1);this.parentElement.remove()" style="position:absolute;top:-4px;right:-4px;background:#dc2626;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;line-height:18px">✕</button>
+            </div>`;
+        };
+        reader.readAsDataURL(file);
+    });
+    input.value = '';
+}
+
+async function confirmClockOut() {
+    if (!activeClockIn) return;
+    
+    const btn = document.getElementById('clockOutBtn');
+    btn.innerHTML = '<span class="spinner"></span> Saving...';
+    btn.disabled = true;
+
+    try {
+        const now = Date.now();
+        const notes = document.getElementById('clockOutNotes').value.trim();
+        
+        // Convert photos
+        const photoUrls = [];
+        for (const f of clockOutPhotos) {
+            const dataUrl = await fileToBase64(f);
+            photoUrls.push(dataUrl);
+        }
+        
+        // Update time entry
+        await db.ref('timeEntries/' + activeClockIn.entryKey).update({ endTime: now });
+        
+        // Update ticket status
+        await db.ref('tickets/' + activeClockIn.ticketKey + '/status').set(clockOutStatus);
+        
+        // Add activity
+        const activity = {
+            action: 'status',
+            by: currentUser.name,
+            oldStatus: 'inprogress',
+            newStatus: clockOutStatus,
+            note: notes ? 'Clocked out — "' + notes + '"' : 'Clocked out',
+            timestamp: now
+        };
+        if (photoUrls.length) activity.photos = photoUrls;
+        await db.ref('tickets/' + activeClockIn.ticketKey + '/activity').push(activity);
+        
+        // Clear clock-in state
+        if (clockTimerInterval) clearInterval(clockTimerInterval);
+        activeClockIn = null;
+        clockOutPhotos = [];
+        
+        document.getElementById('techClockBanner').classList.add('hidden');
+        document.getElementById('clockOutModal').classList.remove('open');
+        toast('Clocked out!', 'success');
+        loadTechJobs();
+    } catch (err) {
+        toast('Error: ' + err.message, 'error');
+    } finally {
+        btn.innerHTML = 'Complete Clock Out';
+        btn.disabled = false;
+    }
+}
+
+// ============================================================
+// ADMIN SUMMARY DASHBOARD
+// ============================================================
+function loadAdminSummary() {
+    db.ref('tickets').once('value', snap => {
+        const tickets = [];
+        snap.forEach(child => { tickets.push({ _key: child.key, ...child.val() }); });
+        
+        const open = tickets.filter(t => t.status === 'open').length;
+        const assigned = tickets.filter(t => t.status === 'assigned').length;
+        const inprogress = tickets.filter(t => t.status === 'inprogress').length;
+        const waiting = tickets.filter(t => t.status === 'waiting').length;
+        const urgent = tickets.filter(t => (t.priority === 'urgent' || t.priority === 'emergency') && t.status !== 'closed' && t.status !== 'resolved').length;
+        const resolved = tickets.filter(t => t.status === 'resolved').length;
+        
+        document.getElementById('adminSummaryGrid').innerHTML = `
+            <div class="admin-sum-card" onclick="selectBrand('all');setTimeout(()=>showAllTickets('open'),200)">
+                <div class="asc-num red">${open}</div>
+                <div class="asc-label">Open</div>
+            </div>
+            <div class="admin-sum-card" onclick="selectBrand('all');setTimeout(()=>showAllTickets('assigned'),200)">
+                <div class="asc-num purple">${assigned}</div>
+                <div class="asc-label">Assigned</div>
+            </div>
+            <div class="admin-sum-card" onclick="selectBrand('all');setTimeout(()=>showAllTickets('inprogress'),200)">
+                <div class="asc-num blue">${inprogress}</div>
+                <div class="asc-label">In Progress</div>
+            </div>
+            <div class="admin-sum-card" onclick="selectBrand('all');setTimeout(()=>showAllTickets('waiting'),200)">
+                <div class="asc-num orange">${waiting}</div>
+                <div class="asc-label">Waiting</div>
+            </div>
+            <div class="admin-sum-card">
+                <div class="asc-num red">${urgent}</div>
+                <div class="asc-label">Urgent/Emergency</div>
+            </div>
+            <div class="admin-sum-card" onclick="selectBrand('all');setTimeout(()=>showAllTickets('resolved'),200)">
+                <div class="asc-num green">${resolved}</div>
+                <div class="asc-label">Resolved</div>
+            </div>`;
+
+        document.getElementById('adminSummary').classList.remove('hidden');
+    });
+}
+
+// ============================================================
 // NOTIFICATION CENTER
 // ============================================================
 let notifyTickets = [];
@@ -2080,7 +2466,7 @@ function openTicketDetail(key) {
         waiting: 'Waiting on Parts', resolved: 'Resolved', closed: 'Closed'
     };
 
-    const canUpdateStatus = currentUser.role === 'Admin' || currentUser.role === 'Area Coach';
+    const canUpdateStatus = currentUser.role === 'Admin' || currentUser.role === 'Area Coach' || currentUser.role === 'Technician';
 
     let html = `
         <div class="detail-section">
@@ -2300,6 +2686,11 @@ function normalizeRole(r) {
 }
 
 function goHome() {
+    if (currentUser && currentUser.role === 'Technician') {
+        showScreen('techDashboard');
+        loadTechJobs();
+        return;
+    }
     showScreen('storeSelection');
     document.getElementById('storeType').value = '';
     document.querySelectorAll('.brand-pill').forEach(b => b.classList.remove('active'));
