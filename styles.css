@@ -590,6 +590,7 @@ body {
     background: var(--primary);
     color: #fff;
 }
+.map-legend.hidden-in-list { display: none; }
 
 /* List view */
 .store-list-view {
@@ -1221,6 +1222,38 @@ body {
 .priority-dot.routine { background: var(--info); }
 .priority-dot.urgent { background: var(--warning); }
 .priority-dot.emergency { background: var(--danger); }
+
+/* Priority word badges */
+.priority-word {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+    letter-spacing: 0.3px;
+}
+.priority-word.p-routine { background: rgba(5,150,105,0.1); color: #059669; }
+.priority-word.p-urgent { background: rgba(217,119,6,0.1); color: #d97706; }
+.priority-word.p-emergency { background: rgba(220,38,38,0.1); color: #dc2626; }
+[data-theme="dark"] .priority-word.p-routine { background: rgba(52,211,153,0.15); color: #34d399; }
+[data-theme="dark"] .priority-word.p-urgent { background: rgba(251,191,36,0.15); color: #fbbf24; }
+[data-theme="dark"] .priority-word.p-emergency { background: rgba(248,113,113,0.15); color: #f87171; }
+
+/* Priority word badges - used in list view */
+.priority-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.priority-badge.p-routine { background: rgba(37,99,235,0.1); color: #2563eb; }
+.priority-badge.p-urgent { background: rgba(234,88,12,0.1); color: #ea580c; }
+.priority-badge.p-emergency { background: rgba(220,38,38,0.1); color: #dc2626; }
+[data-theme="dark"] .priority-badge.p-routine { background: rgba(91,156,246,0.15); color: #5b9cf6; }
+[data-theme="dark"] .priority-badge.p-urgent { background: rgba(251,146,60,0.15); color: #fb923c; }
+[data-theme="dark"] .priority-badge.p-emergency { background: rgba(248,113,113,0.15); color: #f87171; }
 
 /* ============================================================
    TICKET DETAIL / MODAL
