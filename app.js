@@ -611,12 +611,8 @@ function setMapView(view) {
     
     const mapEl = document.getElementById('overviewMap');
     const listEl = document.getElementById('storeListView');
-    
-    // Hide map legend in list view (word badges replace color dots)
     const legend = document.querySelector('.map-legend');
-    if (legend) legend.classList.toggle('hidden-in-list', view === 'list');
     
-    const legend = document.querySelector('.map-legend');
     if (view === 'list') {
         mapEl.style.display = 'none';
         listEl.style.display = '';
