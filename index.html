@@ -1,609 +1,2143 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dossani Paradise Repair and Maintenance Tracker</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
+/* ============================================================
+   STYLES.CSS - Repair & Maintenance Tracker
+   Dossani Paradise - All Styles
+   ============================================================
+   Contains: CSS variables, light/dark themes, responsive 
+   breakpoints (desktop >1100px, tablet <900px, mobile <600px, 
+   small <380px), component styles, Leaflet overrides.
+   ============================================================ */
 
-<!-- ============================================================
-     LOGIN SCREEN
-     ============================================================ -->
-<div class="login-container" id="loginScreen">
-    <div class="login-card">
-        <img src="logos/dpm-logo.png" alt="DPM" style="height:44px;margin-bottom:18px;object-fit:contain">
-        <h1 class="login-title">Repair &amp; Maintenance Tracker</h1>
-        <p class="login-subtitle">Dossani Paradise Management</p>
+/* ============================================================
+   DOSSANI PARADISE R&M TRACKER - COMPLETE STYLES
+   ============================================================ */
 
-        <!-- Login Form -->
-        <div id="loginForm">
-            <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 14px;">
-                Enter your email to receive a secure sign-in link.
-            </p>
-            <div class="form-group">
-                <input
-                    type="email"
-                    id="loginEmail"
-                    class="form-input"
-                    placeholder="you@dossaniparadise.com"
-                    autocomplete="email"
-                >
-            </div>
-            <button class="btn btn-primary btn-full" onclick="sendSignInLink()" id="sendLinkBtn">
-                Send Sign-In Link
-            </button>
-        </div>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
-        <!-- Email Sent Confirmation -->
-        <div id="emailSentMessage" class="hidden" style="text-align: center;">
-            <div style="font-size: 44px; margin-bottom: 12px;">📧</div>
-            <h3 style="margin-bottom: 6px; font-size: 18px;">Check your inbox</h3>
-            <p style="color: var(--text-muted); margin-bottom: 14px; font-size: 14px;">
-                We sent a sign-in link to<br>
-                <strong id="sentToEmail" style="color: var(--text);"></strong>
-            </p>
-            <div style="background: #fef9ee; border: 1px solid #fde68a; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px;">
-                <p style="color: var(--accent); font-size: 13px;">
-                    ⚠️ Check your <strong>spam/junk folder</strong> if you don't see it
-                </p>
-            </div>
-            <button class="btn btn-ghost btn-full" onclick="resendEmail()">
-                Send Another Link
-            </button>
-        </div>
+:root {
+    --bg: #f5f3ef;
+    --card: #ffffff;
+    --primary: #2563eb;
+    --primary-light: #eff4ff;
+    --primary-hover: #1d4ed8;
+    --accent: #d97706;
+    --accent-light: #fef9ee;
+    --danger: #dc2626;
+    --danger-light: #fef2f2;
+    --warning: #ea580c;
+    --warning-light: #fff7ed;
+    --info: #2563eb;
+    --info-light: #eff4ff;
+    --text: #1e293b;
+    --text-mid: #475569;
+    --text-muted: #94a3b8;
+    --border: #e2e8f0;
+    --border-light: #f1f5f9;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-lg: 0 10px 25px rgba(0,0,0,0.08);
+    --radius: 10px;
+    --radius-lg: 14px;
 
-        <div id="loginError" class="error-message hidden"></div>
-    </div>
-</div>
+    /* Status colors */
+    --status-open: #dc2626;
+    --status-assigned: #7c3aed;
+    --status-inprogress: #2563eb;
+    --status-waiting: #d97706;
+    --status-resolved: #059669;
+    --status-closed: #6b7280;
+}
+[data-theme="dark"] {
+    --bg: #0f1419;
+    --card: #1a1f2e;
+    --primary: #5b9cf6;
+    --primary-light: rgba(91,156,246,0.12);
+    --primary-hover: #4a8ae0;
+    --accent: #f0b429;
+    --accent-light: rgba(240,180,41,0.1);
+    --danger: #f87171;
+    --danger-light: rgba(248,113,113,0.1);
+    --warning: #fb923c;
+    --warning-light: rgba(251,146,60,0.1);
+    --info: #5b9cf6;
+    --info-light: rgba(91,156,246,0.1);
+    --text: #e2e8f0;
+    --text-mid: #94a3b8;
+    --text-muted: #64748b;
+    --border: #2a3040;
+    --border-light: #1e2433;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+    --shadow: 0 1px 3px rgba(0,0,0,0.3);
+    --shadow-lg: 0 10px 25px rgba(0,0,0,0.3);
+    --status-open: #f87171;
+    --status-assigned: #a78bfa;
+    --status-inprogress: #5b9cf6;
+    --status-waiting: #f0b429;
+    --status-resolved: #34d399;
+    --status-closed: #64748b;
+}
+[data-theme="dark"] .brand-pill-icon { background: #252b3b; }
+[data-theme="dark"] .brand-pill { background: #1a1f2e; border-color: var(--border); color: var(--text); }
+[data-theme="dark"] .brand-pill:hover { border-color: var(--primary); }
+[data-theme="dark"] .brand-pill.active { background: rgba(91,156,246,0.15); border-color: var(--primary); color: var(--primary); }
 
-<!-- ============================================================
-     MAIN APP
-     ============================================================ -->
-<div class="app-container" id="appContainer">
+/* Cards & Containers */
+[data-theme="dark"] .store-card { background: var(--card); }
+[data-theme="dark"] .store-card-header h2 { color: var(--text); }
+[data-theme="dark"] .store-card-header p { color: var(--text-muted); }
+[data-theme="dark"] .action-card { background: #141821; border-color: var(--border); }
+[data-theme="dark"] .action-card:hover { border-color: var(--primary); background: #1a1f2e; }
+[data-theme="dark"] .action-title { color: var(--text); }
+[data-theme="dark"] .action-desc { color: var(--text-muted); }
+[data-theme="dark"] .issue-form-card { background: var(--card); }
+[data-theme="dark"] .issue-form-header { background: var(--primary); }
+[data-theme="dark"] .pending-card { background: #141821; }
+[data-theme="dark"] .pending-email { color: var(--text); }
+[data-theme="dark"] .store-cb-grid { background: #0f1219; border-color: var(--border); }
+[data-theme="dark"] .store-cb { color: var(--text); }
+[data-theme="dark"] .store-cb:hover { background: rgba(91,156,246,0.1); }
+[data-theme="dark"] .admin-modal { background: rgba(0,0,0,0.7); }
+[data-theme="dark"] .modal-card { background: var(--card); border: 1px solid var(--border); }
+[data-theme="dark"] .modal-card h3 { color: var(--text); }
+[data-theme="dark"] .user-row-role.admin { background: rgba(91,156,246,0.15); }
+[data-theme="dark"] .user-row-role.areacoach { background: rgba(139,92,246,0.15); }
+[data-theme="dark"] .user-row-role.manager { background: rgba(5,150,105,0.15); }
+[data-theme="dark"] .user-row-role.technician { background: rgba(217,119,6,0.15); }
 
-    <!-- Header -->
-    <div class="app-header">
-        <div class="header-left">
-            <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle dark mode">🌙</button>
-            <button class="theme-toggle" id="langToggle" onclick="toggleLang()" title="Español / English">EN</button>
-            <a class="header-logo" href="#" onclick="goHome();return false" style="text-decoration:none;display:flex;align-items:center;gap:8px;cursor:pointer"><img src="logos/dpm-icon.png" alt="DPM" style="height:24px;vertical-align:middle"><span class="header-title">Repair &amp; Maintenance</span></a>
-        </div>
-        <div class="header-right">
-            <div class="user-badge">
-                <div class="user-avatar" id="userAvatar">?</div>
-                <div class="user-meta">
-                    <div class="user-name" id="userName">Loading...</div>
-                    <div class="user-role-tag" id="userRole">...</div>
-                </div>
-            </div>
-            <button class="admin-btn hidden" id="adminBtn" onclick="showAdminPanel()">⚙️ <span class="badge hidden" id="pendingBadge">0</span></button>
-            <button class="admin-btn hidden" id="notifyBtn" onclick="toggleNotifyPanel()" style="position:relative">🔔 <span class="badge hidden" id="notifyBadge" style="background:#dc2626">0</span></button>
-            <button class="admin-btn hidden" id="viewAsBtn" onclick="showViewAsModal()">👁 View As</button>
-            <button class="btn-logout" onclick="logout()" data-i18n="sign_out">Sign Out</button>
-        </div>
-    </div>
+/* Admin sections */
+[data-theme="dark"] .admin-section { border-color: var(--border); }
+[data-theme="dark"] .admin-section-header { background: #141821; border-color: var(--border); color: var(--text); }
+[data-theme="dark"] .admin-section-header h3 { color: var(--text); }
+[data-theme="dark"] .admin-section-body { background: var(--card); }
 
-    <!-- Notification Panel (dropdown) -->
-    <div class="notify-panel" id="notifyPanel">
-        <div class="notify-panel-header">
-            <span data-i18n="notifications">Notifications</span>
-            <button onclick="toggleNotifyPanel()" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-muted)">✕</button>
-        </div>
-        <div class="notify-panel-body" id="notifyPanelBody">
-            <div class="notify-empty">Loading...</div>
-        </div>
-    </div>
+/* Form elements */
+[data-theme="dark"] .form-input,
+[data-theme="dark"] .form-select,
+[data-theme="dark"] .form-textarea { background: #141821; color: var(--text); border-color: var(--border); color-scheme: dark; }
+[data-theme="dark"] .form-select option { background: #1a1f2e; color: #e2e8f0; }
+[data-theme="dark"] .form-label { color: var(--text-mid); }
+[data-theme="dark"] ::placeholder { color: #64748b !important; }
 
-    <!-- Content Area -->
-    <div class="app-content">
+/* Buttons */
+[data-theme="dark"] .btn-secondary { background: #1a1f2e; color: var(--text); border-color: var(--border); }
+[data-theme="dark"] .btn-back, [data-theme="dark"] .btn-ghost { color: var(--text-mid); }
+[data-theme="dark"] .filter-chip { background: #1a1f2e; color: var(--text-mid); border-color: var(--border); }
+[data-theme="dark"] .filter-chip.active { background: var(--primary); color: #fff; }
 
-        <!-- ===== SCREEN: Tech Dashboard (Technicians only) ===== -->
-        <div id="techDashboard" class="hidden">
-            <div class="tech-dash-header">
-                <h2>🔧 My Jobs</h2>
-                <div class="tech-dash-filters">
-                    <button class="filter-chip active" data-filter="active" onclick="filterTechJobs('active', this)">Active</button>
-                    <button class="filter-chip" data-filter="all" onclick="filterTechJobs('all', this)">All Open</button>
-                    <button class="filter-chip" data-filter="completed" onclick="filterTechJobs('completed', this)">Completed</button>
-                </div>
-            </div>
+/* Category & Priority buttons */
+[data-theme="dark"] .priority-label, [data-theme="dark"] .priority-desc { color: var(--text); }
+[data-theme="dark"] .priority-btn { background: #141821; border-color: var(--border); color: var(--text); }
+[data-theme="dark"] .priority-btn:hover { border-color: var(--text-muted); }
+[data-theme="dark"] .priority-btn.selected { color: var(--primary); }
+[data-theme="dark"] .category-btn { background: #141821; border-color: var(--border); }
+[data-theme="dark"] .category-btn .cat-label { color: var(--text-mid); }
+[data-theme="dark"] .category-btn.selected .cat-label { color: var(--primary); }
 
-            <!-- Active clock-in banner -->
-            <div id="techClockBanner" class="tech-clock-banner hidden">
-                <div class="tcb-info">
-                    <span class="tcb-status">⏱️ Clocked In</span>
-                    <span class="tcb-ticket" id="tcbTicketId"></span>
-                    <span class="tcb-store" id="tcbStoreName"></span>
-                </div>
-                <div class="tcb-timer" id="tcbTimer">00:00:00</div>
-                <button class="btn btn-sm" style="background:#dc2626;color:#fff;border:none" onclick="showClockOutPrompt()">Clock Out</button>
-            </div>
+/* Ticket cards */
+[data-theme="dark"] .ticket-card { background: var(--card); border-color: var(--border); }
+[data-theme="dark"] .ticket-card-inner { color: var(--text); }
+[data-theme="dark"] .ticket-card-desc { color: var(--text); }
+[data-theme="dark"] .ticket-card-meta { color: var(--text-mid); }
+[data-theme="dark"] .ticket-id { color: var(--text-muted); }
+[data-theme="dark"] .ticket-title { color: var(--text); }
+[data-theme="dark"] .ticket-meta { color: var(--text-mid); }
+[data-theme="dark"] .ticket-top-row { color: var(--text); }
 
-            <!-- Summary stats -->
-            <div class="tech-stats" id="techStats"></div>
+/* Ticket status badges - dark bg variants */
+[data-theme="dark"] .status-open { background: rgba(239,68,68,0.15); }
+[data-theme="dark"] .status-assigned { background: rgba(139,92,246,0.15); }
+[data-theme="dark"] .status-inprogress { background: rgba(59,130,246,0.15); }
+[data-theme="dark"] .status-waiting { background: rgba(240,180,41,0.15); }
+[data-theme="dark"] .status-resolved { background: rgba(52,211,153,0.15); }
+[data-theme="dark"] .status-closed { background: rgba(100,116,139,0.15); }
+[data-theme="dark"] .s-open, [data-theme="dark"] .ticket-status { color: var(--text); }
 
-            <!-- Job list -->
-            <div class="tech-job-list" id="techJobList">
-                <div class="empty-state">Loading jobs...</div>
-            </div>
-        </div>
+/* Modal */
+[data-theme="dark"] .modal-content { background: var(--card); border: 1px solid var(--border); }
+[data-theme="dark"] .modal-header { background: var(--card); border-color: var(--border); }
+[data-theme="dark"] .modal-header h3 { color: var(--text); }
+[data-theme="dark"] .modal-body { color: var(--text); }
+[data-theme="dark"] .modal-close { color: var(--text-muted); }
+[data-theme="dark"] .modal-close:hover { color: var(--text); }
+[data-theme="dark"] .detail-label { color: var(--text-muted); }
+[data-theme="dark"] .detail-value { color: var(--text); }
+[data-theme="dark"] .detail-value a { color: var(--primary); }
 
-        <!-- ===== SCREEN: Admin Summary (top of store selection for admins) ===== -->
-        <div id="adminSummary" class="hidden">
-            <div class="admin-summary-grid" id="adminSummaryGrid"></div>
-        </div>
+/* Status update section in modal */
+[data-theme="dark"] .status-update-section { background: #141821; }
+[data-theme="dark"] .status-update-section h4 { color: var(--text); }
+[data-theme="dark"] .status-option { background: #1a1f2e; border-color: var(--border); color: var(--text); }
+[data-theme="dark"] .status-option:hover { border-color: var(--text-muted); color: var(--text); }
+[data-theme="dark"] .status-option.active { border-color: var(--primary); background: rgba(91,156,246,0.15); color: var(--primary); }
 
-        <!-- ===== SCREEN: Store Selection ===== -->
-        <div id="storeSelection">
-            <div class="store-card">
-                <div class="store-card-header">
-                    <h2 data-i18n="select_store">Select Your Store</h2>
-                    <p data-i18n="select_store_sub">Choose a location to report or check issues</p>
-                </div>
+/* Activity log */
+[data-theme="dark"] .activity-log { border-color: var(--border); }
+[data-theme="dark"] .activity-log h4 { color: var(--text); }
+[data-theme="dark"] .activity-item { border-color: var(--border); }
+[data-theme="dark"] .activity-text { color: var(--text-mid); }
+[data-theme="dark"] .activity-text strong { color: var(--text); }
+[data-theme="dark"] .activity-time { color: var(--text-muted); }
 
-                <!-- Brand buttons - clickable, trigger store type + map -->
-                <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:12px">
-                    <button onclick="selectBrand('all')" class="brand-pill hidden" id="brandPill-all">
-                        <span class="brand-pill-icon" style="background:var(--primary);color:#fff;font-size:14px;font-weight:700">📍</span>
-                        <span>All Locations</span>
-                    </button>
-                    <button onclick="selectBrand('fastfood')" class="brand-pill" id="brandPill-fastfood">
-                        <span class="brand-pill-icon"><img src="logos/bk-logo.png" alt=""></span>
-                        <span>Fast Food</span>
-                    </button>
-                    <button onclick="selectBrand('cstore')" class="brand-pill" id="brandPill-cstore">
-                        <span class="brand-pill-icon"><img src="logos/pqs-logo.png" alt=""></span>
-                        <span>C-Store</span>
-                    </button>
-                    <button onclick="selectBrand('carwash')" class="brand-pill" id="brandPill-carwash">
-                        <span class="brand-pill-icon"><img src="logos/cw-logo.png" alt=""></span>
-                        <span>Car Wash</span>
-                    </button>
-                </div>
+/* Notification panel */
+[data-theme="dark"] .notify-panel { background: #1a1f2e; border-color: var(--border); }
+[data-theme="dark"] .notify-panel-header { border-color: var(--border); color: var(--text); }
+[data-theme="dark"] .notify-item { border-color: var(--border); }
+[data-theme="dark"] .notify-item:hover { background: #141821; }
+[data-theme="dark"] .notify-item-title { color: var(--text); }
 
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label" data-i18n="store_type">Store Type</label>
-                        <select class="form-select" id="storeType" onchange="filterStores()">
-                            <option value="">Choose type...</option>
-                            <option value="all" class="admin-only-opt hidden">All Locations</option>
-                            <option value="fastfood">Fast Food</option>
-                            <option value="cstore">C-Store</option>
-                            <option value="carwash">Car Wash</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" data-i18n="form_location">Location</label>
-                        <select class="form-select" id="storeSelect" onchange="selectStore()">
-                            <option value="">Choose store...</option>
-                        </select>
-                    </div>
-                </div>
+/* Map */
+[data-theme="dark"] .map-title { color: var(--text); }
+[data-theme="dark"] .map-legend { color: var(--text-mid); }
+[data-theme="dark"] .map-stats-bar { border-color: var(--border); }
+[data-theme="dark"] .map-stats-bar .mstat { color: var(--text-mid); }
 
-                <div id="actionButtons" class="action-grid hidden">
-                    <div class="action-card" onclick="showNewIssueScreen()">
-                        <div class="action-icon">📝</div>
-                        <div class="action-title">Report New Issue</div>
-                        <div class="action-desc">Submit a repair ticket</div>
-                    </div>
-                    <div class="action-card" onclick="showExistingIssuesScreen()">
-                        <div class="action-icon">📋</div>
-                        <div class="action-title">Existing Tickets</div>
-                        <div class="action-desc">View and track open issues</div>
-                    </div>
-                </div>
+/* Toast */
+[data-theme="dark"] .toast.success { background: rgba(52,211,153,0.15); color: #34d399; border: 1px solid rgba(52,211,153,0.3); }
+[data-theme="dark"] .toast.error { background: rgba(248,113,113,0.2); color: #f87171; border: 2px solid rgba(248,113,113,0.4); box-shadow: 0 8px 30px rgba(248,113,113,0.15); }
 
-                <!-- Desktop: store list with ticket counts -->
-                <div class="desktop-store-list" id="desktopStoreList" style="display:none"></div>
-            </div>
+/* Leaflet popups */
+[data-theme="dark"] .leaflet-popup-content-wrapper { background: #1a1f2e !important; color: var(--text) !important; }
+[data-theme="dark"] .leaflet-popup-tip { background: #1a1f2e !important; }
+[data-theme="dark"] .leaflet-popup-content { color: var(--text) !important; }
+[data-theme="dark"] .leaflet-popup-content a { color: var(--primary) !important; }
+
+/* Login */
+[data-theme="dark"] .login-container { background: var(--bg); }
+[data-theme="dark"] .login-card { background: var(--card); border-color: var(--border); }
+
+/* Empty states */
+[data-theme="dark"] .empty-state { color: var(--text-muted); }
+[data-theme="dark"] .empty-state h3 { color: var(--text-mid); }
+
+/* User rows in admin */
+[data-theme="dark"] .user-row { border-color: var(--border); }
+[data-theme="dark"] .user-row-name { color: var(--text); }
+[data-theme="dark"] .user-row-email { color: var(--text-muted); }
+[data-theme="dark"] .user-row-role { color: var(--text-mid); }
+
+/* Misc */
+[data-theme="dark"] .upload-text { color: var(--text-mid); }
+[data-theme="dark"] .upload-hint { color: var(--text-muted); }
+[data-theme="dark"] .photo-upload-area { border-color: var(--border); background: #141821; }
+[data-theme="dark"] .photo-preview { border-color: var(--border); }
+[data-theme="dark"] .header-title { color: var(--text); }
+[data-theme="dark"] h2, [data-theme="dark"] h3, [data-theme="dark"] h4 { color: var(--text); }
+
+body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    min-height: 100vh;
+    font-size: 14px;
+}
+
+/* ---- Utility ---- */
+.hidden { display: none !important; }
+
+/* ---- Login Screen ---- */
+.login-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: var(--bg);
+    position: relative;
+    overflow: hidden;
+}
+
+.login-container::before {
+    content: '';
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(37,99,235,0.04) 0%, transparent 70%);
+    top: -200px;
+    right: -200px;
+    border-radius: 50%;
+}
+
+.login-card {
+    background: var(--card);
+    border-radius: 20px;
+    box-shadow: var(--shadow-lg);
+    padding: 48px 40px;
+    max-width: 420px;
+    width: 100%;
+    text-align: center;
+    position: relative;
+    z-index: 1;
+}
+
+.login-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--primary-light);
+    padding: 8px 18px;
+    border-radius: 30px;
+    margin-bottom: 24px;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--primary);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.login-title {
+    font-size: 26px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: var(--text);
+}
+
+.login-subtitle {
+    color: var(--text-muted);
+    margin-bottom: 32px;
+    font-size: 15px;
+}
+
+.form-input {
+    width: 100%;
+    padding: 14px 16px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 15px;
+    font-family: inherit;
+    transition: border-color 0.2s;
+    background: #fafaf8;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    background: #fff;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 13px 24px;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 15px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+}
+
+.btn-full { width: 100%; }
+
+.btn-primary {
+    background: var(--primary);
+    color: #fff;
+}
+.btn-primary:hover {
+    background: var(--primary-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(26,95,58,0.3);
+}
+
+.btn-secondary {
+    background: var(--border-light);
+    color: var(--text);
+}
+.btn-secondary:hover { background: var(--border); }
+
+.btn-accent {
+    background: var(--accent);
+    color: #fff;
+}
+.btn-accent:hover { background: #c49515; }
+
+.btn-danger {
+    background: var(--danger);
+    color: #fff;
+}
+.btn-danger:hover { background: #a93226; }
+
+.btn-ghost {
+    background: transparent;
+    color: var(--text-mid);
+    border: 1px solid var(--border);
+}
+.btn-ghost:hover { background: var(--border-light); }
+
+.btn-sm {
+    padding: 8px 14px;
+    font-size: 13px;
+}
+
+.error-message {
+    background: var(--danger-light);
+    color: var(--danger);
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    margin-top: 16px;
+    font-size: 14px;
+    border: 1px solid rgba(248,113,113,0.2);
+}
+
+/* ---- App Shell ---- */
+.app-container {
+    display: none;
+    min-height: 100vh;
+    flex-direction: column;
+}
 
 
-            <!-- Map Overview (for Admin/Area Coach after type selection) -->
-            <div id="mapOverview" class="hidden">
-                <div class="map-card">
-                    <div class="map-header">
-                        <h2 id="mapTitle">Store Overview</h2>
-                        <div class="map-view-toggle" id="mapViewToggle">
-                            <button class="active" onclick="setMapView('map')">📍 Map</button>
-                            <button onclick="setMapView('list')">📋 List</button>
-                        </div>
-                        <div class="map-legend">
-                            <span><span class="dot dot-green"></span> No issues</span>
-                            <span><span class="dot dot-yellow"></span> Low/Routine</span>
-                            <span><span class="dot dot-red"></span> Urgent/Emergency</span>
-                        </div>
-                    </div>
-                    <div id="overviewMap"></div>
-                    <div id="storeListView" class="store-list-view" style="display:none"></div>
-                    <div class="map-stats-bar" id="mapStatsBar"></div>
-                </div>
-            </div>
-        </div>
+/* Theme & Language Toggle */
+.theme-toggle {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    font-family: inherit;
+    font-weight: 700;
+    color: var(--text-mid);
+}
+.theme-toggle:hover { border-color: var(--primary); background: var(--primary-light); color: var(--primary); }
+/* Header */
+.app-header {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 64px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: var(--shadow-sm);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
 
-        <!-- ===== SCREEN: New Issue Form ===== -->
-        <div id="newIssueScreen" class="hidden">
-            <div class="back-row">
-                <button class="btn-back" onclick="goBack()" data-i18n="back_store">← Back to store</button>
-            </div>
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
 
-            <div class="issue-form-card">
-                <div class="issue-form-header">
-                    <h2 data-i18n="report_new">Report New Issue</h2>
-                    <p id="newIssueStoreName">Store Name</p>
-                </div>
+.header-logo {
+    font-size: 20px;
+}
 
-                <div class="issue-form-body">
-                    <!-- Category -->
-                    <div class="form-group">
-                        <label class="form-label" data-i18n="form_category">Category</label>
-                        <div class="category-grid" id="categoryGrid">
-                            <button class="category-btn" data-cat="plumbing" onclick="selectCategory(this)">
-                                <span class="cat-icon">🚿</span>
-                                <span class="cat-label" data-i18n="cat_plumbing">Plumbing</span>
-                            </button>
-                            <button class="category-btn" data-cat="equipment" onclick="selectCategory(this)">
-                                <span class="cat-icon">⚙️</span>
-                                <span class="cat-label" data-i18n="cat_equipment">Equipment</span>
-                            </button>
-                            <button class="category-btn" data-cat="it" onclick="selectCategory(this)">
-                                <span class="cat-icon">💻</span>
-                                <span class="cat-label" data-i18n="cat_it">IT</span>
-                            </button>
-                            <button class="category-btn" data-cat="structural" onclick="selectCategory(this)">
-                                <span class="cat-icon">🧱</span>
-                                <span class="cat-label" data-i18n="cat_structural">Structural</span>
-                            </button>
-                            <button class="category-btn" data-cat="safety" onclick="selectCategory(this)">
-                                <span class="cat-icon">🛡️</span>
-                                <span class="cat-label" data-i18n="cat_safety">Safety</span>
-                            </button>
-                            <button class="category-btn" data-cat="other" onclick="selectCategory(this)">
-                                <span class="cat-icon">📎</span>
-                                <span class="cat-label" data-i18n="cat_other">Other</span>
-                            </button>
-                        </div>
-                    </div>
+.header-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--primary);
+}
 
-                    <!-- Interior / Exterior -->
-                    <div class="form-group">
-                        <label class="form-label" data-i18n="form_location">Location</label>
-                        <div class="priority-options" style="max-width:280px">
-                            <button class="priority-btn" data-loc="interior" onclick="selectLocation(this)">
-                                <span class="priority-icon">🏠</span>
-                                <span class="priority-label" data-i18n="loc_interior">Interior</span>
-                            </button>
-                            <button class="priority-btn" data-loc="exterior" onclick="selectLocation(this)">
-                                <span class="priority-icon">🏪</span>
-                                <span class="priority-label" data-i18n="loc_exterior">Exterior</span>
-                            </button>
-                        </div>
-                    </div>
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
 
-                    <!-- Contact Info -->
-                    <div class="form-group">
-                        <label class="form-label" data-i18n="form_name">Your Name</label>
-                        <input class="form-input" type="text" id="contactName" placeholder="Name of person reporting issue" autocomplete="off">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" data-i18n="form_phone">Your Contact Phone</label>
-                        <input class="form-input" type="tel" id="contactPhone" placeholder="555-123-4567" inputmode="tel" maxlength="12" oninput="formatPhone(this)">
-                    </div>
+.user-badge {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
 
-                    <!-- Priority -->
-                    <div class="form-group">
-                        <label class="form-label" data-i18n="form_priority">Priority</label>
-                        <div class="priority-options">
-                            <button class="priority-btn p-routine" data-priority="routine" onclick="selectPriority(this)">
-                                <span class="priority-icon">🟢</span>
-                                <span class="priority-label" data-i18n="p_routine">Routine</span>
-                                <span class="priority-desc" data-i18n="p_routine_desc">Up to 1 week</span>
-                            </button>
-                            <button class="priority-btn p-urgent" data-priority="urgent" onclick="selectPriority(this)">
-                                <span class="priority-icon">🟡</span>
-                                <span class="priority-label" data-i18n="p_urgent">Urgent</span>
-                                <span class="priority-desc" data-i18n="p_urgent_desc">Within 72 hours</span>
-                            </button>
-                            <button class="priority-btn p-emergency" data-priority="emergency" onclick="selectPriority(this)">
-                                <span class="priority-icon">🔴</span>
-                                <span class="priority-label" data-i18n="p_emergency">Emergency</span>
-                                <span class="priority-desc" data-i18n="p_emergency_desc">Within 24 hours</span>
-                            </button>
-                        </div>
-                    </div>
+.user-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--primary-light);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 13px;
+}
 
-                    <!-- Assignment (visible to coaches/admins) -->
-                    <div id="assignmentFields" class="hidden">
-                        <div class="assign-row">
-                            <div class="form-group">
-                                <label class="form-label">Assign To</label>
-                                <select class="form-select" id="assignTo">
-                                    <option value="">Unassigned</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Requested Date</label>
-                                <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-                                    <select class="form-select" id="reqDateType" onchange="toggleDateFields()" style="max-width:140px">
-                                        <option value="">No date</option>
-                                        <option value="specific">Specific date</option>
-                                        <option value="before">Before date</option>
-                                        <option value="range">Date range</option>
-                                    </select>
-                                    <input type="date" class="form-input" id="reqDate1" style="display:none;max-width:160px">
-                                    <span id="reqDateRangeSep" style="display:none;font-size:12px;color:var(--text-muted)">to</span>
-                                    <input type="date" class="form-input" id="reqDate2" style="display:none;max-width:160px">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+.user-meta { line-height: 1.3; }
 
-                    <!-- Description -->
-                    <div class="form-group">
-                        <label class="form-label" data-i18n="form_description">Description</label>
-                        <textarea class="form-textarea" id="issueDescription" placeholder="Describe the issue in detail. What's broken? Where exactly? When did it start?"></textarea>
-                    </div>
+.user-name {
+    font-size: 13px;
+    font-weight: 600;
+}
 
-                    <!-- Photos -->
-                    <div class="form-group">
-                        <label class="form-label" data-i18n="form_photos">Photos <span style="font-weight:400; color: var(--text-muted);" data-i18n="form_photos_hint">(optional, up to 3)</span></label>
-                        <div class="photo-upload-area" id="photoUploadArea" onclick="document.getElementById('photoInput').click()">
-                            <div class="upload-icon">📷</div>
-                            <div class="upload-text" data-i18n="tap_photos">Tap to add photos</div>
-                            <div class="upload-hint" data-i18n="photo_hint">JPG or PNG, max 5MB each</div>
-                        </div>
-                        <input type="file" id="photoInput" accept="image/*" multiple style="display:none" onchange="handlePhotos(this)">
-                        <div class="photo-preview-grid" id="photoPreviewGrid"></div>
-                    </div>
+.user-role-tag {
+    font-size: 11px;
+    color: var(--text-muted);
+}
 
-                    <!-- Submit -->
-                    <div class="form-actions">
-                        <button class="btn btn-secondary" onclick="goBack()">Cancel</button>
-                        <button class="btn btn-primary" onclick="submitTicket()" id="submitBtn">Submit Ticket</button>
-                    </div>
-                </div>
-            </div>
-        </div>
+.btn-logout {
+    background: none;
+    border: 1px solid var(--border);
+    padding: 7px 14px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text-mid);
+    transition: all 0.2s;
+}
+.btn-logout:hover { background: var(--danger-light); color: var(--danger); border-color: var(--danger); }
 
-        <!-- ===== SCREEN: Existing Issues ===== -->
-        <div id="existingIssuesScreen" class="hidden">
-            <div class="back-row">
-                <button class="btn-back" onclick="goBack()">← Back to store</button>
-            </div>
+/* Content */
+.app-content {
+    flex: 1;
+    padding: clamp(8px, 2.5vw, 24px);
+    max-width: 960px;
+    margin: 0 auto;
+    width: 100%;
+}
 
-            <div class="tickets-header">
-                <h2>Tickets <span id="ticketStoreName" style="font-weight:400; color: var(--text-muted); font-size: 15px;"></span></h2>
-                <button class="btn btn-primary btn-sm" onclick="showNewIssueScreen()">+ New Ticket</button>
-            </div>
+/* 3-panel desktop layout */
+@media (min-width: 1100px) {
+    .app-content { max-width: 100%; padding: 16px 20px; }
+    #storeSelection { display: grid; grid-template-columns: 320px 1fr; grid-template-rows: auto 1fr; gap: 16px; min-height: calc(100vh - 100px); }
+    #storeSelection .store-card { grid-column: 1; grid-row: 1 / -1; max-height: calc(100vh - 100px); overflow-y: auto; }
+    #storeSelection .store-card .form-row { grid-template-columns: 1fr; gap: 8px; }
+    #storeSelection .store-card .form-select { font-size: 13px; padding: 10px 12px; }
+    #storeSelection #mapOverview { grid-column: 2; grid-row: 1 / -1; margin: 0; }
+    #storeSelection #mapOverview .map-card { height: 100%; display: flex; flex-direction: column; }
+    #storeSelection #mapOverview #overviewMap { flex: 1; min-height: 400px; }
+    #storeSelection #mapOverview { display: block !important; }
 
-            <div class="ticket-filters" id="ticketFilters">
-                <button class="filter-chip active" data-filter="all" onclick="filterTickets('all', this)">All</button>
-                <button class="filter-chip" data-filter="open" onclick="filterTickets('open', this)">Open</button>
-                <button class="filter-chip" data-filter="assigned" onclick="filterTickets('assigned', this)">Assigned</button>
-                <button class="filter-chip" data-filter="inprogress" onclick="filterTickets('inprogress', this)">In Progress</button>
-                <button class="filter-chip" data-filter="waiting" onclick="filterTickets('waiting', this)">Waiting</button>
-                <button class="filter-chip" data-filter="resolved" onclick="filterTickets('resolved', this)">Resolved</button>
-                <button class="filter-chip" data-filter="closed" onclick="filterTickets('closed', this)">Closed</button>
-            </div>
+    .desktop-store-list { display: block !important; margin-top: 12px; }
+    .desktop-store-list .dsl-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 6px;
+        padding: 0 2px;
+    }
+    .desktop-store-list .dsl-header span { font-size: 12px; font-weight: 600; color: var(--text-mid); text-transform: uppercase; letter-spacing: 0.3px; }
+    .dsl-toggle {
+        display: inline-flex;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        overflow: hidden;
+        font-size: 11px;
+    }
+    .dsl-toggle button {
+        padding: 3px 8px;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 11px;
+        color: var(--text-muted);
+        transition: all 0.15s;
+    }
+    .dsl-toggle button.active {
+        background: var(--primary);
+        color: #fff;
+    }
+    .desktop-store-list .store-list-item {
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--border-light);
+        cursor: pointer;
+        font-size: 13px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: background 0.1s;
+        border-radius: 6px;
+        margin-bottom: 2px;
+    }
+    .desktop-store-list .store-list-item:hover { background: var(--primary-light); }
+    .desktop-store-list .store-list-item.active { background: var(--primary-light); border-color: var(--primary); }
+    .desktop-store-list .store-list-item .sli-name { font-weight: 500; color: var(--text); }
+    .desktop-store-list .store-list-item .sli-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; }
+    .desktop-store-list .store-list-item .sli-badge.has-issues { background: rgba(239,68,68,0.1); color: #dc2626; }
+    .desktop-store-list .store-list-item .sli-badge.no-issues { background: rgba(5,150,105,0.1); color: #059669; }
 
-            <div class="tickets-list" id="ticketsList">
-                <!-- Populated by JS -->
-            </div>
-        </div>
+    [data-theme="dark"] .desktop-store-list .store-list-item:hover { background: rgba(91,156,246,0.1); }
+    [data-theme="dark"] .desktop-store-list .store-list-item.active { background: rgba(91,156,246,0.15); }
+    [data-theme="dark"] .desktop-store-list .store-list-item .sli-name { color: var(--text); }
+}
+@media (max-width: 1099px) {
+    .desktop-store-list { display: none !important; }
+}
 
-        <!-- ===== SCREEN: All Tickets (from stats bar click) ===== -->
-        <div id="allTicketsScreen" class="hidden">
-            <div class="back-row">
-                <button class="btn-back" onclick="goHome()">← Back to overview</button>
-            </div>
-            <div class="tickets-header">
-                <h2 id="allTicketsTitle">All Tickets</h2>
-            </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-                <select class="form-select" id="atFilterStatus" onchange="filterAllTickets()" style="width:auto;min-width:130px;font-size:13px;padding:6px 10px">
-                    <option value="open">Open Tickets</option>
-                    <option value="all">All Statuses</option>
-                    <option value="assigned">Assigned</option>
-                    <option value="inprogress">In Progress</option>
-                    <option value="waiting">Waiting</option>
-                    <option value="resolved">Resolved</option>
-                    <option value="closed">Closed</option>
-                </select>
-                <select class="form-select" id="atFilterType" onchange="filterAllTickets()" style="width:auto;min-width:130px;font-size:13px;padding:6px 10px">
-                    <option value="">All Store Types</option>
-                    <option value="fastfood">Fast Food</option>
-                    <option value="cstore">C-Store</option>
-                    <option value="carwash">Car Wash</option>
-                </select>
-                <select class="form-select" id="atFilterStore" onchange="filterAllTickets()" style="width:auto;min-width:160px;font-size:13px;padding:6px 10px">
-                    <option value="">All Stores</option>
-                </select>
-            </div>
-            <div class="tickets-list" id="allTicketsList"></div>
-        </div>
+/* Map / List toggle */
+.map-view-toggle {
+    display: inline-flex;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    font-size: 12px;
+}
+.map-view-toggle button {
+    padding: 4px 12px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 12px;
+    color: var(--text-mid);
+    transition: all 0.15s;
+}
+.map-view-toggle button.active {
+    background: var(--primary);
+    color: #fff;
+}
+.map-legend.hidden-in-list { display: none; }
 
-        <!-- ===== SCREEN: Admin Panel ===== -->
-        <div id="adminScreen" class="hidden">
-            <div class="back-row">
-                <button class="btn btn-ghost" onclick="goBackFromAdmin()">← Back</button>
-                <h2>Admin Panel</h2>
-            </div>
+/* List view */
+.store-list-view {
+    max-height: calc(100vh - 220px);
+    overflow-y: auto;
+    padding: 8px 0;
+}
+.slv-store {
+    margin-bottom: 12px;
+}
+.slv-store-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    padding: 6px 12px;
+    background: var(--border-light);
+    border-radius: var(--radius);
+    margin-bottom: 4px;
+}
+.slv-ticket {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px 8px 24px;
+    border-bottom: 1px solid var(--border-light);
+    cursor: pointer;
+    transition: background 0.1s;
+    font-size: 13px;
+}
+.slv-ticket:hover { background: var(--primary-light); }
+.slv-ticket:last-child { border-bottom: none; }
+.slv-ticket .slv-desc { flex: 1; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slv-ticket .slv-assignee { font-size: 11px; color: var(--text-muted); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+[data-theme="dark"] .slv-store-name { background: #1a1f2e; }
+[data-theme="dark"] .slv-ticket:hover { background: rgba(91,156,246,0.1); }
 
-            <!-- Pending Users -->
-            <div class="admin-section">
-                <div class="admin-section-header">
-                    <h3>🕐 Pending Approval <span id="pendingCount" style="color:var(--text-muted);font-weight:400;font-size:13px"></span></h3>
-                </div>
-                <div class="admin-section-body" id="pendingList">
-                    <div class="empty-state">No pending users</div>
-                </div>
-            </div>
+/* Vendor management */
+.vendor-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-light);
+    font-size: 13px;
+}
+.vendor-row:last-child { border-bottom: none; }
+.vendor-row .vendor-name { font-weight: 600; flex: 1; color: var(--text); }
+.vendor-row .vendor-meta { font-size: 11px; color: var(--text-muted); }
 
-            <!-- Active Users -->
-            <div class="admin-section">
-                <div class="admin-section-header">
-                    <h3>👥 Active Users <span id="activeCount" style="color:var(--text-muted);font-weight:400;font-size:13px"></span></h3>
-                </div>
-                <div class="admin-section-body" id="activeUsersList">
-                    <div class="empty-state">Loading...</div>
-                </div>
-            </div>
+/* Assignment fields on ticket form */
+.assign-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    max-width: 800px;
+}
+@media (max-width: 600px) {
+    .assign-row { grid-template-columns: 1fr; }
+}
+.assign-row .form-group { margin-bottom: 0; }
 
-            <!-- Add User -->
-            <div class="admin-section">
-                <div class="admin-section-header">
-                    <h3>➕ Add New User</h3>
-                </div>
-                <div class="admin-section-body" id="addUserSection">
-                    <div style="display:grid;gap:12px">
-                        <div class="form-group" style="margin:0">
-                            <label class="form-label">Name</label>
-                            <input class="form-input" type="text" id="newUserName" placeholder="Full name">
-                        </div>
-                        <div class="form-group" style="margin:0">
-                            <label class="form-label">Email</label>
-                            <input class="form-input" type="email" id="newUserEmail" placeholder="user@dossaniparadise.com">
-                        </div>
-                        <div class="form-group" style="margin:0">
-                            <label class="form-label">Role</label>
-                            <select class="form-select" id="newUserRole">
-                                <option value="">Choose role...</option>
-                                <option value="Admin">Admin</option>
-                                <option value="Area Coach">Area Coach</option>
-                                <option value="Manager">Manager</option>
-                                <option value="Technician">Technician</option>
-                            </select>
-                        </div>
-                        <div class="form-group" style="margin:0">
-                            <label class="form-label">Ticket Categories (for notification routing)</label>
-                            <div id="newUserCats" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px"></div>
-                        </div>
-                        <div class="form-group" style="margin:0">
-                            <label class="form-label">Store Access <button class="btn btn-ghost" style="font-size:11px;padding:2px 8px;margin-left:8px" onclick="toggleAllNewUserStores()">Select All / None</button></label>
-                            <div id="newUserStores" class="store-cb-grid"></div>
-                        </div>
-                        <button class="btn btn-primary" onclick="addNewUser()">Add User to System</button>
-                    </div>
-                </div>
-            </div>
+/* Photo confirmation dialog */
+.confirm-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 500;
+}
+.confirm-box {
+    background: var(--card);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    max-width: 380px;
+    width: 90%;
+    text-align: center;
+    box-shadow: var(--shadow-lg);
+}
+.confirm-box h4 { margin-bottom: 8px; color: var(--text); font-size: 15px; }
+.confirm-box p { font-size: 13px; color: var(--text-mid); margin-bottom: 16px; }
+.confirm-box .confirm-btns { display: flex; gap: 8px; justify-content: center; }
 
-            <!-- Database Cleanup -->
-            <div class="admin-section">
-                <div class="admin-section-header">
-                    <h3>🧹 Database Cleanup</h3>
-                </div>
-                <div class="admin-section-body" id="cleanupSection">
-                    <p style="font-size:13px;color:var(--text-mid);margin-bottom:12px">Remove old data nodes from the previous app version that are no longer needed.</p>
-                    <div id="cleanupNodes" style="margin-bottom:12px"></div>
-                    <button class="btn btn-secondary" onclick="scanOldNodes()" id="scanBtn">Scan for old data</button>
-                </div>
-            </div>
+/* ---- Store Selection Card ---- */
+.store-card {
+    background: var(--card);
+    border-radius: var(--radius-lg);
+    padding: clamp(14px, 3vw, 32px);
+    box-shadow: var(--shadow);
+    margin-bottom: 16px;
+}
 
-            <!-- Vendor Management -->
-            <div class="admin-section" id="vendorSection">
-                <div class="admin-section-header">
-                    <h3>🔧 Approved Vendors</h3>
-                </div>
-                <div class="admin-section-body" id="vendorList">
-                    <p style="font-size:13px;color:var(--text-mid);margin-bottom:12px">Manage third-party vendors available for ticket assignment.</p>
-                    <div id="vendorRows"></div>
-                    <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px">
-                        <h4 style="font-size:13px;margin-bottom:8px;color:var(--text)">Add Vendor</h4>
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                            <input class="form-input" id="newVendorName" placeholder="Vendor name">
-                            <input class="form-input" id="newVendorAreas" placeholder="Service areas (e.g. East TX)">
-                        </div>
-                        <div style="margin-top:6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-                            <span style="font-size:12px;color:var(--text-muted)">Categories:</span>
-                            <div id="newVendorCats" style="display:flex;gap:4px;flex-wrap:wrap"></div>
-                        </div>
-                        <button class="btn btn-primary btn-sm" onclick="addVendor()" style="margin-top:8px">Add Vendor</button>
-                    </div>
-                </div>
-            </div>
+.store-card-header {
+    margin-bottom: 24px;
+}
 
-            <!-- Notification Routing -->
-            <div class="admin-section">
-                <div class="admin-section-header">
-                    <h3>🔔 Notification Routing</h3>
-                </div>
-                <div class="admin-section-body" id="notifySection">
-                    <p style="font-size:13px;color:var(--text-mid);margin-bottom:14px">Set up to 3 users per category. These users will see matching tickets in their notification bell when they log in.</p>
-                    <div id="notifyGrid"></div>
-                    <button class="btn btn-primary" onclick="saveNotifyRouting()" style="margin-top:12px">Save Routing</button>
-                </div>
-            </div>
-        </div>
+.store-card-header h2 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
 
-    </div>
-</div>
+.store-card-header p {
+    color: var(--text-muted);
+    font-size: 14px;
+}
 
-<!-- Clock Out Modal (for techs) -->
-<div class="modal-overlay" id="clockOutModal" onclick="if(event.target===this)document.getElementById('clockOutModal').classList.remove('open')">
-    <div class="modal-content" style="max-width:480px">
-        <div class="modal-header">
-            <h3>🔧 Clock Out</h3>
-            <button class="modal-close" onclick="document.getElementById('clockOutModal').classList.remove('open')">✕</button>
-        </div>
-        <div class="modal-body" style="padding:16px">
-            <div id="clockOutInfo" style="margin-bottom:12px"></div>
-            <div class="form-group" style="margin-bottom:12px">
-                <label class="form-label">New Status</label>
-                <div class="status-select-grid" id="clockOutStatusGrid"></div>
-            </div>
-            <div class="form-group" style="margin-bottom:12px">
-                <label class="form-label">Notes</label>
-                <textarea class="form-textarea" id="clockOutNotes" placeholder="What did you do? What's the current state?" style="min-height:80px"></textarea>
-            </div>
-            <div class="form-group" style="margin-bottom:12px">
-                <label style="font-size:12px;color:var(--text-muted);cursor:pointer;display:inline-flex;align-items:center;gap:4px">
-                    📷 <span>Attach photos (up to 3)</span>
-                    <input type="file" id="clockOutPhotoInput" accept="image/*" multiple style="display:none" onchange="handleClockOutPhotos(this)">
-                </label>
-                <div id="clockOutPhotoPreview" style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap"></div>
-            </div>
-            <button class="btn btn-primary" onclick="confirmClockOut()" id="clockOutBtn" style="width:100%">Complete Clock Out</button>
-        </div>
-    </div>
-</div>
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 0;
+}
 
-<!-- Ticket Detail Modal -->
-<div class="modal-overlay" id="ticketModal" onclick="if(event.target===this)closeModal()">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3 id="modalTicketId">Ticket #---</h3>
-            <button class="modal-close" onclick="closeModal()">✕</button>
-        </div>
-        <div class="modal-body" id="modalBody">
-            <!-- Populated by JS -->
-        </div>
-    </div>
-</div>
+.form-group { margin-bottom: 16px; }
 
-<!-- Lightbox -->
-<div class="lightbox" id="lightbox" onclick="closeLightbox()">
-    <img id="lightboxImg" src="" alt="Photo">
-</div>
+.form-label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 6px;
+    font-size: 13px;
+    color: var(--text-mid);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
 
-<!-- Toast -->
-<div class="toast" id="toast"></div>
+.form-select {
+    width: 100%;
+    padding: 12px 14px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 15px;
+    font-family: inherit;
+    background: #fafaf8;
+    cursor: pointer;
+    transition: all 0.2s;
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23475569' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+}
 
-<!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+.form-select:focus {
+    outline: none;
+    border-color: var(--primary);
+    background-color: #fff;
+}
 
-<!-- Data files -->
-<script src="stores-data.js"></script>
-<script src="users-data.js"></script>
+/* ---- Action Cards ---- */
+.action-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-top: 20px;
+}
 
-<!-- Application logic -->
-<script src="app.js"></script>
+.action-card {
+    background: var(--card);
+    border: 2px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 28px 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
 
-</body>
-</html>
+.action-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--primary);
+    transform: scaleX(0);
+    transition: transform 0.2s;
+}
+
+.action-card:hover {
+    border-color: var(--primary);
+    transform: translateY(-3px);
+    box-shadow: var(--shadow);
+}
+
+.action-card:hover::after { transform: scaleX(1); }
+
+.action-icon {
+    font-size: 36px;
+    margin-bottom: 10px;
+}
+
+.action-title {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.action-desc {
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+/* ---- Back Button ---- */
+.back-row {
+    margin-bottom: 20px;
+}
+
+.btn-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: none;
+    color: var(--text-mid);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 6px 2px;
+    font-family: inherit;
+}
+.btn-back:hover { color: var(--primary); }
+
+/* ============================================================
+   NEW ISSUE FORM
+   ============================================================ */
+.issue-form-card {
+    background: var(--card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.issue-form-header {
+    background: var(--primary);
+    color: #fff;
+    padding: 24px 32px;
+}
+
+.issue-form-header h2 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 2px;
+}
+
+.issue-form-header p {
+    font-size: 14px;
+    opacity: 0.8;
+}
+
+.issue-form-body {
+    padding: 28px 32px 32px;
+}
+
+.form-textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 15px;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 100px;
+    background: #fafaf8;
+    transition: border-color 0.2s;
+    line-height: 1.5;
+}
+
+.form-textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    background: #fff;
+}
+
+/* Category Picker */
+.category-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+.category-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 14px 10px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--border-light);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+    min-height: 80px;
+}
+
+.category-btn:hover {
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+
+.category-btn.selected {
+    border-color: var(--primary);
+    background: var(--primary-light);
+    box-shadow: 0 0 0 1px var(--primary);
+}
+
+.category-btn .cat-icon { font-size: 22px; display: flex; align-items: center; justify-content: center; height: 28px; }
+
+.category-btn .cat-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-mid);
+    text-align: center;
+}
+
+.category-btn.selected .cat-label { color: var(--primary); }
+
+/* Photo Upload */
+.photo-upload-area {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: #fafaf8;
+    position: relative;
+}
+
+.photo-upload-area:hover {
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+
+.photo-upload-area.has-photos {
+    border-style: solid;
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+
+.upload-icon { font-size: 32px; margin-bottom: 8px; }
+
+.upload-text {
+    font-size: 14px;
+    color: var(--text-mid);
+    font-weight: 500;
+}
+
+.upload-hint {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+.photo-preview-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.photo-preview {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 2px solid var(--border);
+}
+
+.photo-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.photo-remove {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    background: rgba(0,0,0,0.6);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+/* Priority Selector */
+.priority-options {
+    display: flex;
+    gap: 10px;
+}
+
+.priority-btn {
+    flex: 1;
+    padding: 12px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--border-light);
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+    font-family: inherit;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.priority-btn:hover { border-color: var(--text-muted); }
+
+.priority-btn.selected { box-shadow: 0 0 0 1px currentColor; }
+.priority-btn[data-loc].selected { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+
+.priority-btn.p-routine { }
+.priority-btn.p-routine.selected { border-color: var(--info); color: var(--info); background: var(--info-light); }
+
+.priority-btn.p-urgent { }
+.priority-btn.p-urgent.selected { border-color: var(--warning); color: var(--warning); background: var(--warning-light); }
+
+.priority-btn.p-emergency { }
+.priority-btn.p-emergency.selected { border-color: var(--danger); color: var(--danger); background: var(--danger-light); }
+
+.priority-label {
+    font-size: 13px;
+    font-weight: 700;
+    display: block;
+    margin-top: 4px;
+}
+.priority-desc {
+    font-size: 10px;
+    color: var(--text-muted);
+    display: block;
+    margin-top: 1px;
+    font-weight: 400;
+}
+.priority-btn.selected .priority-desc { color: inherit; opacity: 0.7; }
+
+.priority-icon { font-size: 20px; display: flex; align-items: center; justify-content: center; height: 24px; }
+
+.form-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-light);
+}
+
+.form-actions .btn { flex: 1; }
+
+/* ============================================================
+   EXISTING ISSUES / TICKET LIST
+   ============================================================ */
+.tickets-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.tickets-header h2 {
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.ticket-filters {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+}
+
+.filter-chip {
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    background: var(--card);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+    color: var(--text-mid);
+}
+
+.filter-chip:hover { border-color: var(--primary); color: var(--primary); }
+.filter-chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+.tickets-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.ticket-card {
+    background: var(--card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    transition: all 0.15s;
+    cursor: pointer;
+}
+
+.ticket-card:hover {
+    box-shadow: var(--shadow);
+    transform: translateY(-1px);
+}
+
+/* All Tickets view card layout */
+.ticket-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+.ticket-card-desc {
+    font-size: 14px;
+    color: var(--text);
+    margin-bottom: 6px;
+    line-height: 1.4;
+}
+.ticket-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-mid);
+    align-items: center;
+}
+.ticket-card-meta span { white-space: nowrap; }
+
+/* All tickets card needs padding since it doesn't use ticket-card-inner */
+.ticket-card > .ticket-card-top:first-child {
+    padding: 16px 18px 0;
+}
+.ticket-card > .ticket-card-desc {
+    padding: 0 18px;
+}
+.ticket-card > .ticket-card-meta {
+    padding: 0 18px 14px;
+}
+
+.ticket-card-inner {
+    padding: 18px 22px;
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+}
+
+.ticket-status-bar {
+    width: 4px;
+    min-height: 60px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    align-self: stretch;
+}
+
+.ticket-body { flex: 1; min-width: 0; }
+
+.ticket-top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+
+.ticket-id {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.ticket-status-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+}
+
+.status-open { background: #fef2f2; color: var(--status-open); }
+.status-assigned { background: #f5f3ff; color: var(--status-assigned); }
+.status-inprogress { background: #eff4ff; color: var(--status-inprogress); }
+.status-waiting { background: #fef9ee; color: var(--status-waiting); }
+.status-resolved { background: #ecfdf5; color: var(--status-resolved); }
+.status-closed { background: #f1f5f9; color: var(--status-closed); }
+
+.ticket-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    line-height: 1.4;
+}
+
+.ticket-meta {
+    display: flex;
+    gap: 14px;
+    font-size: 12px;
+    color: var(--text-muted);
+    flex-wrap: wrap;
+}
+
+.ticket-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.priority-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.priority-dot.routine { background: var(--info); }
+.priority-dot.urgent { background: var(--warning); }
+.priority-dot.emergency { background: var(--danger); }
+
+/* Priority word badges */
+.priority-word {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+    letter-spacing: 0.3px;
+}
+.priority-word.p-routine { background: rgba(5,150,105,0.1); color: #059669; }
+.priority-word.p-urgent { background: rgba(217,119,6,0.1); color: #d97706; }
+.priority-word.p-emergency { background: rgba(220,38,38,0.1); color: #dc2626; }
+[data-theme="dark"] .priority-word.p-routine { background: rgba(52,211,153,0.15); color: #34d399; }
+[data-theme="dark"] .priority-word.p-urgent { background: rgba(251,191,36,0.15); color: #fbbf24; }
+[data-theme="dark"] .priority-word.p-emergency { background: rgba(248,113,113,0.15); color: #f87171; }
+
+/* Priority word badges - used in list view */
+.priority-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.priority-badge.p-routine { background: rgba(37,99,235,0.1); color: #2563eb; }
+.priority-badge.p-urgent { background: rgba(234,88,12,0.1); color: #ea580c; }
+.priority-badge.p-emergency { background: rgba(220,38,38,0.1); color: #dc2626; }
+[data-theme="dark"] .priority-badge.p-routine { background: rgba(91,156,246,0.15); color: #5b9cf6; }
+[data-theme="dark"] .priority-badge.p-urgent { background: rgba(251,146,60,0.15); color: #fb923c; }
+[data-theme="dark"] .priority-badge.p-emergency { background: rgba(248,113,113,0.15); color: #f87171; }
+
+/* ============================================================
+   TICKET DETAIL / MODAL
+   ============================================================ */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s;
+}
+
+.modal-overlay.open {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-content {
+    background: var(--card);
+    border-radius: var(--radius-lg);
+    max-width: 640px;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: var(--shadow-lg);
+    transform: translateY(10px);
+    transition: transform 0.2s;
+}
+
+.modal-overlay.open .modal-content { transform: translateY(0); }
+
+.modal-header {
+    padding: 22px 28px;
+    border-bottom: 1px solid var(--border-light);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    background: var(--card);
+    z-index: 1;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.modal-header h3 { font-size: 17px; font-weight: 700; }
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 22px;
+    cursor: pointer;
+    color: var(--text-muted);
+    padding: 4px;
+    line-height: 1;
+}
+.modal-close:hover { color: var(--text); }
+
+.modal-body { padding: 24px 28px; }
+
+.detail-section {
+    margin-bottom: 22px;
+}
+
+.detail-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+}
+
+.detail-value {
+    user-select: text;
+    -webkit-user-select: text;
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+.detail-photos {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.detail-photo {
+    width: 100px;
+    height: 100px;
+    border-radius: 8px;
+    object-fit: cover;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    transition: transform 0.15s;
+}
+
+.detail-photo:hover { transform: scale(1.05); }
+
+/* Status update section in modal */
+.status-update-section {
+    background: var(--border-light);
+    border-radius: var(--radius);
+    padding: 18px;
+    margin-top: 16px;
+}
+
+.status-update-section h4 {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+
+.status-select-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.status-option {
+    padding: 8px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--card);
+    cursor: pointer;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: inherit;
+    transition: all 0.15s;
+}
+
+.status-option:hover { border-color: var(--text-muted); }
+.status-option.active { border-color: var(--primary); background: var(--primary-light); }
+
+/* Activity log */
+.activity-log {
+    margin-top: 20px;
+    border-top: 1px solid var(--border-light);
+    padding-top: 18px;
+}
+
+.activity-log h4 {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+
+.activity-item {
+    display: flex;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-light);
+    font-size: 13px;
+}
+
+.activity-item:last-child { border-bottom: none; }
+
+.activity-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+    margin-top: 6px;
+    flex-shrink: 0;
+}
+
+.activity-text { color: var(--text-mid); line-height: 1.5; }
+.activity-text strong { color: var(--text); }
+.activity-time { color: var(--text-muted); font-size: 11px; display: block; margin-top: 2px; }
+
+/* ---- Empty State ---- */
+.empty-state {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--text-muted);
+}
+
+.empty-state .empty-icon { font-size: 48px; margin-bottom: 12px; }
+.empty-state h3 { font-size: 17px; color: var(--text-mid); margin-bottom: 6px; }
+.empty-state p { font-size: 14px; }
+
+/* ---- Toast ---- */
+.toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--text);
+    color: #fff;
+    padding: 16px 28px;
+    border-radius: var(--radius-lg);
+    font-size: 17px;
+    font-weight: 600;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.18);
+    z-index: 300;
+    opacity: 0;
+    transition: all 0.3s;
+    pointer-events: none;
+    max-width: 90vw;
+    text-align: center;
+    line-height: 1.4;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+.toast.success { background: #ecfdf5; color: #059669; border: 2px solid #a7f3d0; }
+.toast.error {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 2px solid #fecaca;
+    font-size: 18px;
+    padding: 18px 32px;
+    box-shadow: 0 8px 30px rgba(220,38,38,0.2);
+    animation: toast-shake 0.4s ease;
+}
+
+@keyframes toast-shake {
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    20% { transform: translateX(calc(-50% - 8px)) translateY(0); }
+    40% { transform: translateX(calc(-50% + 8px)) translateY(0); }
+    60% { transform: translateX(calc(-50% - 4px)) translateY(0); }
+    80% { transform: translateX(calc(-50% + 4px)) translateY(0); }
+}
+
+/* ---- Loading spinner ---- */
+.spinner {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    border: 2.5px solid rgba(255,255,255,0.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.spinner-dark {
+    border-color: rgba(0,0,0,0.1);
+    border-top-color: var(--primary);
+}
+
+/* ---- Image lightbox ---- */
+.lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 400;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.lightbox.open { opacity: 1; visibility: visible; }
+
+.lightbox img {
+    max-width: 90vw;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: 8px;
+}
+
+/* ---- Responsive ---- */
+
+/* Tablet */
+@media (max-width: 900px) {
+    .app-content { padding: 12px; }
+    .store-card { padding: 16px; }
+    #overviewMap { height: 300px; }
+    .map-header { padding: 10px 14px; }
+    .map-stats-bar { padding: 8px 14px; }
+    .header-right { gap: 8px; }
+}
+
+/* Mobile */
+@media (max-width: 600px) {
+    .app-header { padding: 0 10px; height: 50px; }
+    .header-title { font-size: 13px; }
+    .theme-toggle { width: 28px; height: 28px; font-size: 14px; }
+    .user-badge .user-meta { display: none; }
+    .user-avatar { width: 28px; height: 28px; font-size: 11px; }
+    .admin-btn { font-size: 11px; padding: 4px 8px; }
+    .notify-panel { right: 4px; width: calc(100vw - 8px); top: 50px; max-height: 60vh; }
+    .notify-item { padding: 10px 12px; }
+    .btn-logout { font-size: 11px; padding: 4px 10px; }
+    .app-content { padding: 8px; }
+    .store-card { padding: 14px; }
+    .store-card h2 { font-size: 16px; }
+    .store-card-header p { font-size: 12px; }
+    .brand-pill { padding: 8px 14px 8px 8px; font-size: 13px; }
+    .brand-pill-icon { width: 24px; height: 24px; border-radius: 6px; }
+    .brand-pill-icon img { width: 18px; height: 18px; }
+    .form-row { grid-template-columns: 1fr; }
+    .form-label { font-size: 11px; }
+    .form-select, .form-input { font-size: 13px; padding: 8px 10px; }
+    .action-grid { grid-template-columns: 1fr; gap: 8px; }
+    .action-card { padding: 16px; }
+    .action-icon { font-size: 24px; }
+    .action-title { font-size: 14px; }
+    .action-desc { font-size: 11px; }
+    #overviewMap { height: 250px; }
+    .map-header { padding: 8px 12px; }
+    .map-header h2 { font-size: 14px; }
+    .map-legend { font-size: 10px; gap: 8px; }
+    .map-stats-bar { padding: 8px 12px; gap: 10px; }
+    .map-stats-bar .mstat strong { font-size: 14px; }
+    .map-stats-bar .mstat { font-size: 11px; }
+    .category-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .category-btn { padding: 10px 6px; }
+    .cat-icon { font-size: 20px; }
+    .cat-label { font-size: 11px; }
+    .priority-options { flex-direction: column; gap: 6px; }
+    .priority-btn { padding: 10px; flex-direction: row; gap: 10px; }
+    .priority-icon { font-size: 18px; }
+    .priority-label { font-size: 13px; margin-top: 0; }
+    .priority-desc { display: inline; margin-top: 0; margin-left: 4px; }
+    .issue-form-body { padding: 14px; }
+    .issue-form-header { padding: 14px; }
+    .issue-form-header h2 { font-size: 16px; }
+    .photo-upload-area { padding: 16px; }
+    .form-actions { flex-direction: column; }
+    .form-actions .btn { width: 100%; }
+    .status-select-grid { grid-template-columns: repeat(2, 1fr); }
+    .modal-content { max-width: 100%; margin: 0 8px; max-height: 90vh; }
+    .modal-body { padding: 14px; }
+    .modal-header { padding: 14px; }
+    .modal-header h3 { font-size: 14px; }
+    .ticket-card-inner { padding: 12px; }
+    .ticket-card-desc { font-size: 13px; }
+    .ticket-card-meta { font-size: 11px; }
+    .ticket-id { font-size: 11px; }
+    .tickets-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .tickets-header h2 { font-size: 16px; }
+    .ticket-filters { gap: 4px; }
+    .filter-chip { font-size: 11px; padding: 4px 10px; }
+    .back-row { margin-bottom: 8px; }
+    .btn-back { font-size: 12px; }
+    .admin-section-header { padding: 12px 14px; }
+    .admin-section-body { padding: 12px 14px; }
+    .admin-section-header h3 { font-size: 13px; }
+    .pending-form { grid-template-columns: 1fr; }
+    .user-row { flex-wrap: wrap; gap: 8px; }
+    .user-row-actions { width: 100%; justify-content: flex-end; }
+    .admin-modal { padding: 16px 8px 8px; }
+    .modal-card { padding: 16px; max-width: 100%; }
+    .modal-card h3 { font-size: 14px; }
+    .leaflet-popup-content-wrapper { max-width: 240px !important; }
+    .mp-btns { flex-direction: column; gap: 4px; }
+    .mp-btn { font-size: 11px; padding: 5px 8px; }
+}
+
+/* Extra small phones */
+@media (max-width: 380px) {
+    .brand-pill { padding: 6px 10px 6px 6px; font-size: 12px; gap: 5px; }
+    .brand-pill-icon { width: 20px; height: 20px; }
+    .brand-pill-icon img { width: 16px; height: 16px; }
+    .store-card { padding: 10px; }
+    .app-content { padding: 6px; }
+    #overviewMap { height: 200px; }
+}
+    
+/* ============================================================
+   MAP OVERVIEW
+   ============================================================ */
+#mapOverview { margin-bottom: 20px; }
+.map-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+.map-header {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.map-header h2 { font-size: 16px; font-weight: 700; }
+.map-legend {
+    display: flex;
+    gap: 12px;
+    font-size: 11px;
+    color: var(--text-mid);
+}
+.map-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.map-legend .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+}
+.dot-green { background: #34d399; }
+.dot-yellow { background: #fbbf24; }
+.dot-red { background: #f87171; }
+#overviewMap {
+    width: 100%;
+    height: 420px;
+    background: var(--bg);
+}
+.map-stats-bar {
+    padding: 12px 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 16px;
+    font-size: 12px;
+    color: var(--text-mid);
+    flex-wrap: wrap;
+}
+.map-stats-bar .mstat {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.map-stats-bar .mstat strong {
+    color: var(--text);
+    font-size: 15px;
+}
+.map-stats-bar .mstat[style*="cursor"] { padding: 4px 8px; border-radius: 6px; }
+.map-stats-bar .mstat[style*="cursor"]:hover { background: var(--primary-light); }
+
+/* Leaflet dark overrides */
+.leaflet-popup-content-wrapper {
+    background: var(--card) !important;
+    color: var(--text) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 10px !important;
+    font-family: 'Inter', sans-serif !important;
+    box-shadow: var(--shadow-lg) !important;
+}
+.leaflet-popup-content { margin: 0 !important; }
+.leaflet-popup-tip { background: #fff !important; }
+.map-popup { padding: 14px; }
+.map-popup .mp-name { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
+.map-popup .mp-addr { font-size: 12px; color: var(--text-mid); margin-bottom: 8px; cursor: pointer; }
+.map-popup .mp-addr:hover { color: var(--primary); }
+.map-popup .mp-stats { display: flex; gap: 10px; margin-bottom: 10px; font-size: 12px; }
+.map-popup .mp-stat { text-align: center; }
+.map-popup .mp-stat strong { display: block; font-size: 18px; }
+.map-popup .mp-btns { display: flex; gap: 6px; }
+.map-popup .mp-btn {
+    flex: 1;
+    padding: 7px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--primary-light);
+    color: var(--primary);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    font-family: inherit;
+}
+.map-popup .mp-btn:hover { background: var(--primary); color: #fff; }
+
+/* map mobile handled in main responsive section */
+
+/* ============================================================
+   BRAND PILL BUTTONS
+   ============================================================ */
+.brand-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #fff;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 20px 10px 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+}
+.brand-pill:hover {
+    border-color: var(--primary);
+    box-shadow: var(--shadow);
+}
+.brand-pill.active {
+    border-color: var(--primary);
+    background: var(--primary-light);
+    color: var(--primary);
+}
+.brand-pill-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: #f8f8f8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+.brand-pill-icon img {
+    width: 22px;
+    height: 22px;
+    object-fit: contain;
+}
+
+/* ============================================================
+   ADMIN PANEL
+   ============================================================ */
+.admin-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-mid);
+    cursor: pointer;
+    padding: 6px 10px;
+    font-size: 13px;
+    font-family: inherit;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+.admin-btn:hover { color: var(--primary); border-color: var(--primary); }
+.admin-btn .badge {
+    background: var(--danger);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 10px;
+    min-width: 18px;
+    text-align: center;
+}
+
+#adminScreen .admin-section {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    margin-bottom: 16px;
+    overflow: hidden;
+}
+#adminScreen .admin-section-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+#adminScreen .admin-section-header h3 {
+    font-size: 15px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+#adminScreen .admin-section-body { padding: 16px 20px; }
+
+.pending-card {
+    background: var(--border-light);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 10px;
+}
+.pending-card:last-child { margin-bottom: 0; }
+.pending-email { font-size: 14px; font-weight: 600; margin-bottom: 4px; color: var(--text); }
+.pending-time { font-size: 11px; color: var(--text-muted); margin-bottom: 12px; }
+.pending-form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+.pending-form .full { grid-column: 1 / -1; }
+.pending-actions { display: flex; gap: 6px; }
+.pending-actions .btn { font-size: 12px; padding: 7px 14px; }
+
+/* Store checkbox grid - used in pending, edit, and add user */
+.store-cb-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 3px;
+    max-height: 240px;
+    overflow-y: auto;
+    padding: 8px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+}
+.store-cb {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    cursor: pointer;
+    padding: 3px 4px;
+    border-radius: 4px;
+    color: var(--text);
+    white-space: nowrap;
+}
+.store-cb:hover { background: var(--primary-light); }
+.store-cb input[type="checkbox"] { accent-color: var(--primary); }
+
+.user-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-light);
+}
+.user-row:last-child { border-bottom: none; }
+.user-row-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--primary-light);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+.user-row-info { flex: 1; min-width: 0; }
+.user-row-name { font-size: 13px; font-weight: 600; }
+.user-row-email { font-size: 11px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.user-row-role {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    flex-shrink: 0;
+}
+.user-row-role.admin { background: #eff4ff; color: var(--primary); }
+.user-row-role.areacoach { background: #f5f3ff; color: #8b5cf6; }
+.user-row-role.manager { background: #ecfdf5; color: #059669; }
+.user-row-role.technician { background: #fef3c7; color: #d97706; }
+.user-row-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.user-row-actions button {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-mid);
+    cursor: pointer;
+    padding: 4px 8px;
+    font-size: 12px;
+    font-family: inherit;
+}
+.user-row-actions button:hover { color: var(--primary); border-color: var(--primary); }
+.user-row-actions button.del:hover { color: var(--danger); border-color: var(--danger); }
+
+/* Notification Panel */
+.notify-panel {
+    position: fixed;
+    top: 56px;
+    right: 12px;
+    width: 380px;
+    max-width: calc(100vw - 24px);
+    max-height: 70vh;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    z-index: 300;
+    overflow: hidden;
+    display: none;
+}
+.notify-panel.open { display: flex; flex-direction: column; }
+.notify-panel-header {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 700;
+    font-size: 14px;
+}
+.notify-panel-body {
+    overflow-y: auto;
+    flex: 1;
+    max-height: calc(70vh - 50px);
+}
+.notify-item {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-light);
+    cursor: pointer;
+    transition: background 0.1s;
+    font-size: 13px;
+}
+.notify-item:hover { background: var(--border-light); }
+.notify-item-title { font-weight: 600; margin-bottom: 2px; color: var(--text); }
+.notify-item-meta { font-size: 11px; color: var(--text-muted); display: flex; gap: 8px; flex-wrap: wrap; }
+.notify-item .pri-urgent { color: #d97706; }
+.notify-item .pri-emergency { color: #dc2626; font-weight: 700; }
+.notify-empty { padding: 30px; text-align: center; color: var(--text-muted); font-size: 13px; }
+
+/* Admin/dynamic modal overlay */
+.admin-modal {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 250;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 80px 20px 20px;
+    overflow-y: auto;
+}
+.modal-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    padding: 24px;
+    max-width: 480px;
+    width: 100%;
+}
+.modal-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+.modal-card .form-group { margin-bottom: 12px; }
+
+/* ---- Tech Dashboard ---- */
+.tech-dash-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.tech-dash-header h2 { font-size: 22px; color: var(--text); }
+.tech-dash-filters { display: flex; gap: 6px; }
+
+.tech-clock-banner {
+    background: linear-gradient(135deg, #059669, #047857);
+    color: #fff;
+    border-radius: var(--radius-lg);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 12px rgba(5,150,105,0.25);
+    flex-wrap: wrap;
+}
+.tcb-info { display: flex; flex-direction: column; gap: 2px; }
+.tcb-status { font-weight: 700; font-size: 14px; }
+.tcb-ticket { font-size: 12px; opacity: 0.9; }
+.tcb-store { font-size: 12px; opacity: 0.8; }
+.tcb-timer { font-size: 28px; font-weight: 700; font-family: 'JetBrains Mono', monospace; letter-spacing: 1px; }
+
+.tech-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+}
+.tech-stat-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 14px;
+    text-align: center;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.tech-stat-card:hover { border-color: var(--primary); transform: translateY(-1px); }
+.tech-stat-card .tsc-num { font-size: 24px; font-weight: 700; color: var(--text); }
+.tech-stat-card .tsc-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.3px; margin-top: 2px; }
+
+.tech-job-list { display: flex; flex-direction: column; gap: 10px; }
+
+.tech-job-card {
+    background: var(--card);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    align-items: start;
+}
+.tech-job-card:hover { border-color: var(--primary); box-shadow: var(--shadow); }
+.tech-job-card.active-job { border-color: #059669; border-width: 2px; background: rgba(5,150,105,0.03); }
+
+.tjc-main { display: flex; flex-direction: column; gap: 6px; }
+.tjc-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tjc-store { font-weight: 600; font-size: 14px; color: var(--text); }
+.tjc-id { font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+.tjc-desc { font-size: 13px; color: var(--text-mid); line-height: 1.4; }
+.tjc-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 12px; }
+.tjc-actions { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; min-width: 100px; }
+
+.btn-clock-in {
+    background: #059669;
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+.btn-clock-in:hover { background: #047857; }
+.btn-clock-in:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-view-ticket {
+    background: transparent;
+    color: var(--primary);
+    border: 1px solid var(--primary);
+    padding: 6px 12px;
+    border-radius: var(--radius);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+/* Admin Summary Dashboard */
+.admin-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+}
+.admin-sum-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 16px;
+    text-align: center;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.admin-sum-card:hover { border-color: var(--primary); transform: translateY(-1px); }
+.admin-sum-card .asc-num { font-size: 28px; font-weight: 700; }
+.admin-sum-card .asc-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.3px; margin-top: 2px; }
+.asc-num.red { color: #dc2626; }
+.asc-num.orange { color: #d97706; }
+.asc-num.blue { color: #2563eb; }
+.asc-num.green { color: #059669; }
+.asc-num.purple { color: #7c3aed; }
+.asc-num.gray { color: #6b7280; }
+
+/* Dark mode for tech/admin dashboards */
+[data-theme="dark"] .tech-job-card { background: var(--card); border-color: var(--border); }
+[data-theme="dark"] .tech-job-card.active-job { background: rgba(5,150,105,0.08); border-color: #34d399; }
+[data-theme="dark"] .tech-stat-card { background: var(--card); border-color: var(--border); }
+[data-theme="dark"] .admin-sum-card { background: var(--card); border-color: var(--border); }
+[data-theme="dark"] .tech-clock-banner { background: linear-gradient(135deg, #047857, #065f46); }
+
+@media (max-width: 600px) {
+    .tech-job-card { grid-template-columns: 1fr; }
+    .tjc-actions { flex-direction: row; min-width: auto; }
+    .tech-clock-banner { flex-direction: column; text-align: center; }
+    .tcb-timer { font-size: 24px; }
+    .tech-stats { grid-template-columns: repeat(2, 1fr); }
+    .admin-summary-grid { grid-template-columns: repeat(2, 1fr); }
+}
+.modal-card .modal-actions { display: flex; gap: 8px; margin-top: 16px; }
+
+.empty-state {
+    text-align: center;
+    padding: 24px;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+/* admin mobile handled in main responsive section */
