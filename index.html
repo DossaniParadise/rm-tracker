@@ -1578,8 +1578,10 @@ body {
     .action-title { font-size: 14px; }
     .action-desc { font-size: 11px; }
     #overviewMap { height: 250px; }
-    .map-header { padding: 8px 12px; }
-    .map-header h2 { font-size: 14px; }
+    .map-header { padding: 8px 12px; gap: 6px; }
+    .map-header h2 { font-size: 13px; }
+    .map-legend { display: none; }
+    .map-view-toggle button { padding: 3px 8px; font-size: 11px; }
     .map-legend { font-size: 10px; gap: 8px; }
     .map-stats-bar { padding: 8px 12px; gap: 10px; }
     .map-stats-bar .mstat strong { font-size: 14px; }
@@ -1655,10 +1657,16 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    flex-wrap: wrap;
     gap: 10px;
+    flex-wrap: nowrap;
+    position: sticky;
+    top: 0;
+    background: var(--card);
+    z-index: 5;
 }
-.map-header h2 { font-size: 16px; font-weight: 700; }
+.map-header h2 { flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 16px; font-weight: 700; }
+.map-view-toggle { flex-shrink: 0; }
+.map-legend { flex-shrink: 0; }
 .map-legend {
     display: flex;
     gap: 12px;
@@ -2131,6 +2139,7 @@ body {
 [data-theme="dark"] .tech-stat-card { background: var(--card); border-color: var(--border); }
 [data-theme="dark"] .admin-sum-card { background: var(--card); border-color: var(--border); }
 [data-theme="dark"] .tech-clock-banner { background: linear-gradient(135deg, #047857, #065f46); }
+[data-theme="dark"] .map-header { background: var(--card); }
 [data-theme="dark"] #versionFooter { background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.05); color: #475569; }
 
 @media (max-width: 600px) {
@@ -2140,6 +2149,11 @@ body {
     .tcb-timer { font-size: 24px; }
     .tech-stats { grid-template-columns: repeat(2, 1fr); }
     .admin-summary-grid { grid-template-columns: repeat(2, 1fr); }
+    .tech-dash-header { flex-direction: column; align-items: flex-start; }
+    .tech-dash-header h2 { font-size: 18px; }
+    #clockOutModal .modal-content { margin: 0 8px; max-height: 90vh; }
+    #clockOutModal .modal-body { padding: 12px; }
+    .status-select-grid { grid-template-columns: 1fr !important; }
 }
 .modal-card .modal-actions { display: flex; gap: 8px; margin-top: 16px; }
 
@@ -2253,7 +2267,6 @@ body {
                 <h2>🔧 My Jobs</h2>
                 <div class="tech-dash-filters">
                     <button class="filter-chip active" data-filter="active" onclick="filterTechJobs('active', this)">Active</button>
-                    <button class="filter-chip" data-filter="all" onclick="filterTechJobs('all', this)">All Open</button>
                     <button class="filter-chip" data-filter="completed" onclick="filterTechJobs('completed', this)">Completed</button>
                 </div>
             </div>
@@ -2744,7 +2757,7 @@ body {
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-<!-- Data files + Application logic (single-file build v3.0.0) -->
+<!-- Data files + Application logic (single-file build v3.1.0) -->
 <script>
 // ============================================================
 // STORES DATA - Dossani Paradise Management
@@ -3797,7 +3810,7 @@ async function loadActiveUsers() {
 
         container.innerHTML = entries.map(([uid, u]) => {
             const initials = (u.name || '?').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-            const roleClass = u.role === 'Admin' ? 'admin' : u.role === 'Area Coach' ? 'areacoach' : 'manager';
+            const roleClass = u.role === 'Admin' ? 'admin' : u.role === 'Area Coach' ? 'areacoach' : u.role === 'Technician' ? 'technician' : 'manager';
             const storeStr = u.stores === 'all' ? 'All stores' :
                 Array.isArray(u.stores) ? u.stores.length + ' stores' :
                 u.stores || 'None';
@@ -4278,15 +4291,10 @@ function loadTechJobs() {
         const techStores = currentUser.stores === 'all' ? stores.map(s => s.code) :
             (Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores]);
         
-        // Filter: tickets at tech's stores that are assigned to this tech OR unassigned/open
+        // Filter: only tickets explicitly assigned to this tech
         techJobs = allTickets.filter(t => {
             if (!techStores.includes(t.storeCode)) return false;
-            // Show tickets assigned to this tech, or open/assigned tickets at their stores
-            if (t.assignedTo === currentUser.email) return true;
-            if (t.status === 'open' || t.status === 'assigned') return true;
-            if (t.status === 'inprogress' || t.status === 'waiting') return true;
-            if (t.status === 'resolved' || t.status === 'closed') return true;
-            return false;
+            return t.assignedTo === currentUser.email;
         });
         
         renderTechDashboard();
@@ -4320,10 +4328,8 @@ function renderTechDashboard() {
 
     // Filter jobs
     let displayJobs;
-    if (techFilter === 'active') {
-        displayJobs = techJobs.filter(t => t.assignedTo === currentUser.email && t.status !== 'closed' && t.status !== 'resolved');
-    } else if (techFilter === 'completed') {
-        displayJobs = techJobs.filter(t => t.assignedTo === currentUser.email && (t.status === 'resolved' || t.status === 'closed'));
+    if (techFilter === 'completed') {
+        displayJobs = techJobs.filter(t => t.status === 'resolved' || t.status === 'closed');
     } else {
         displayJobs = techJobs.filter(t => t.status !== 'closed' && t.status !== 'resolved');
     }
@@ -4350,7 +4356,7 @@ function renderTechDashboard() {
     listEl.innerHTML = displayJobs.map(t => {
         const storeName = (stores.find(s => s.code === t.storeCode) || {}).name || t.storeCode;
         const shortStore = storeName.replace(/^Burger King /, 'BK ').replace(/^Paradise QS /, 'PQS ');
-        const isMyJob = t.assignedTo === currentUser.email;
+        const isMyJob = true; // All jobs in tech dashboard are assigned to this tech
         const isActiveJob = activeClockIn && activeClockIn.ticketKey === t._key;
         const prBadge = {routine:'<span class="priority-word p-routine">Routine</span>',urgent:'<span class="priority-word p-urgent">Urgent</span>',emergency:'<span class="priority-word p-emergency">Emergency</span>'}[t.priority] || '';
         const desc = (t.description || '').substring(0, 100) + ((t.description || '').length > 100 ? '...' : '');
@@ -4970,6 +4976,11 @@ function doViewAs() {
         document.getElementById('userAvatar').textContent = initials || '?';
         document.getElementById('userName').textContent = currentUser.name;
         document.getElementById('userRole').innerHTML = currentUser.role + ' <span style="font-size:10px;color:var(--accent);font-weight:700">(viewing as)</span>';
+        // Route to tech dashboard if viewing as technician
+        if (currentUser.role === 'Technician') {
+            showScreen('techDashboard');
+            initTechDashboard();
+        }
 
         // Keep admin + viewAs buttons visible
         document.getElementById('adminBtn').classList.remove('hidden');
@@ -5837,8 +5848,8 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v3.0.0</span>
-    <span>Build 3.0.0</span>
+    <span>R&M Tracker v3.1.0</span>
+    <span>Build 3.1.0</span>
 </div>
 
 </body>
