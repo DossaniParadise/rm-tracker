@@ -91,6 +91,16 @@
 [data-theme="dark"] .issue-form-card { background: var(--card); }
 [data-theme="dark"] .issue-form-header { background: var(--primary); }
 [data-theme="dark"] .pending-card { background: #141821; }
+[data-theme="dark"] .pending-email { color: var(--text); }
+[data-theme="dark"] .store-cb-grid { background: #0f1219; border-color: var(--border); }
+[data-theme="dark"] .store-cb { color: var(--text); }
+[data-theme="dark"] .store-cb:hover { background: rgba(91,156,246,0.1); }
+[data-theme="dark"] .admin-modal { background: rgba(0,0,0,0.7); }
+[data-theme="dark"] .modal-card { background: var(--card); border: 1px solid var(--border); }
+[data-theme="dark"] .modal-card h3 { color: var(--text); }
+[data-theme="dark"] .user-row-role.admin { background: rgba(91,156,246,0.15); }
+[data-theme="dark"] .user-row-role.areacoach { background: rgba(167,139,250,0.15); }
+[data-theme="dark"] .user-row-role.manager { background: rgba(52,211,153,0.15); }
 
 /* Admin sections */
 [data-theme="dark"] .admin-section { border-color: var(--border); }
@@ -488,6 +498,145 @@ body {
     margin: 0 auto;
     width: 100%;
 }
+
+/* 3-panel desktop layout */
+@media (min-width: 1100px) {
+    .app-content { max-width: 100%; padding: 16px 20px; }
+    #storeSelection { display: grid; grid-template-columns: 320px 1fr; grid-template-rows: auto 1fr; gap: 16px; min-height: calc(100vh - 100px); }
+    #storeSelection .store-card { grid-column: 1; grid-row: 1 / -1; max-height: calc(100vh - 100px); overflow-y: auto; }
+    #storeSelection #mapOverview { grid-column: 2; grid-row: 1 / -1; margin: 0; }
+    #storeSelection #mapOverview .map-card { height: 100%; display: flex; flex-direction: column; }
+    #storeSelection #mapOverview #overviewMap { flex: 1; min-height: 400px; }
+    #storeSelection #mapOverview { display: block !important; }
+
+    .desktop-store-list { display: block !important; margin-top: 12px; }
+    .desktop-store-list .store-list-item {
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--border-light);
+        cursor: pointer;
+        font-size: 13px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: background 0.1s;
+        border-radius: 6px;
+        margin-bottom: 2px;
+    }
+    .desktop-store-list .store-list-item:hover { background: var(--primary-light); }
+    .desktop-store-list .store-list-item.active { background: var(--primary-light); border-color: var(--primary); }
+    .desktop-store-list .store-list-item .sli-name { font-weight: 500; color: var(--text); }
+    .desktop-store-list .store-list-item .sli-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; }
+    .desktop-store-list .store-list-item .sli-badge.has-issues { background: rgba(239,68,68,0.1); color: #dc2626; }
+    .desktop-store-list .store-list-item .sli-badge.no-issues { background: rgba(5,150,105,0.1); color: #059669; }
+
+    [data-theme="dark"] .desktop-store-list .store-list-item:hover { background: rgba(91,156,246,0.1); }
+    [data-theme="dark"] .desktop-store-list .store-list-item.active { background: rgba(91,156,246,0.15); }
+    [data-theme="dark"] .desktop-store-list .store-list-item .sli-name { color: var(--text); }
+}
+@media (max-width: 1099px) {
+    .desktop-store-list { display: none !important; }
+}
+
+/* Map / List toggle */
+.map-view-toggle {
+    display: inline-flex;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    font-size: 12px;
+}
+.map-view-toggle button {
+    padding: 4px 12px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 12px;
+    color: var(--text-mid);
+    transition: all 0.15s;
+}
+.map-view-toggle button.active {
+    background: var(--primary);
+    color: #fff;
+}
+
+/* List view */
+.store-list-view {
+    max-height: calc(100vh - 220px);
+    overflow-y: auto;
+    padding: 8px 0;
+}
+.slv-store {
+    margin-bottom: 12px;
+}
+.slv-store-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    padding: 6px 12px;
+    background: var(--border-light);
+    border-radius: var(--radius);
+    margin-bottom: 4px;
+}
+.slv-ticket {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px 8px 24px;
+    border-bottom: 1px solid var(--border-light);
+    cursor: pointer;
+    transition: background 0.1s;
+    font-size: 13px;
+}
+.slv-ticket:hover { background: var(--primary-light); }
+.slv-ticket:last-child { border-bottom: none; }
+.slv-ticket .slv-desc { flex: 1; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slv-ticket .slv-assignee { font-size: 11px; color: var(--text-muted); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+[data-theme="dark"] .slv-store-name { background: #1a1f2e; }
+[data-theme="dark"] .slv-ticket:hover { background: rgba(91,156,246,0.1); }
+
+/* Vendor management */
+.vendor-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-light);
+    font-size: 13px;
+}
+.vendor-row:last-child { border-bottom: none; }
+.vendor-row .vendor-name { font-weight: 600; flex: 1; color: var(--text); }
+.vendor-row .vendor-meta { font-size: 11px; color: var(--text-muted); }
+
+/* Assignment fields on ticket form */
+.assign-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+@media (max-width: 600px) {
+    .assign-row { grid-template-columns: 1fr; }
+}
+
+/* Photo confirmation dialog */
+.confirm-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 500;
+}
+.confirm-box {
+    background: var(--card);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    max-width: 380px;
+    width: 90%;
+    text-align: center;
+    box-shadow: var(--shadow-lg);
+}
+.confirm-box h4 { margin-bottom: 8px; color: var(--text); font-size: 15px; }
+.confirm-box p { font-size: 13px; color: var(--text-mid); margin-bottom: 16px; }
+.confirm-box .confirm-btns { display: flex; gap: 8px; justify-content: center; }
 
 /* ---- Store Selection Card ---- */
 .store-card {
@@ -1601,22 +1750,38 @@ body {
     margin-bottom: 10px;
 }
 .pending-card:last-child { margin-bottom: 0; }
-.pending-email { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.pending-email { font-size: 14px; font-weight: 600; margin-bottom: 4px; color: var(--text); }
 .pending-time { font-size: 11px; color: var(--text-muted); margin-bottom: 12px; }
 .pending-form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
 .pending-form .full { grid-column: 1 / -1; }
-.pending-form input, .pending-form select {
-    padding: 8px 10px;
-    background: #fafafa;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    color: var(--text);
-    font-size: 13px;
-    font-family: inherit;
-}
-.pending-form select { cursor: pointer; }
 .pending-actions { display: flex; gap: 6px; }
 .pending-actions .btn { font-size: 12px; padding: 7px 14px; }
+
+/* Store checkbox grid - used in pending, edit, and add user */
+.store-cb-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 3px;
+    max-height: 240px;
+    overflow-y: auto;
+    padding: 8px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+}
+.store-cb {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    cursor: pointer;
+    padding: 3px 4px;
+    border-radius: 4px;
+    color: var(--text);
+    white-space: nowrap;
+}
+.store-cb:hover { background: var(--primary-light); }
+.store-cb input[type="checkbox"] { accent-color: var(--primary); }
 
 .user-row {
     display: flex;
@@ -1744,4 +1909,3 @@ body {
 }
 
 /* admin mobile handled in main responsive section */
-
