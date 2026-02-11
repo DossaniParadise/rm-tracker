@@ -66,6 +66,8 @@ let currentTickets = [];
 let currentFilter = 'all';
 let activeTicketListener = null;
 let vendorList = [];
+let desktopStoreData = [];
+let dslShowAll = false;
 
 // ============================================================
 // AUTH
@@ -485,19 +487,14 @@ function loadMapOverview(type) {
             '<div class="mstat" style="cursor:pointer" onclick="showAllTickets(\'open\')"><strong>' + storesWithIssues + '</strong>need attention</div>' +
             '<div class="mstat" style="cursor:pointer" onclick="showAllTickets(\'all\')"><strong>' + totalAll + '</strong>total tickets</div>';
 
-        // Desktop store list sidebar
+        // Desktop store list sidebar with toggle
         const dsl = document.getElementById('desktopStoreList');
         if (dsl && window.innerWidth >= 1100) {
-            dsl.innerHTML = filtered.map(s => {
-                const ct = allTicketCounts[s.code] || { open: 0, total: 0 };
-                const shortName = s.name.replace(/^Burger King /, 'BK ').replace(/^Paradise QS /, 'PQS ');
-                const badgeCls = ct.open > 0 ? 'has-issues' : 'no-issues';
-                const isSelected = selectedStore && selectedStore.code === s.code;
-                return `<div class="store-list-item ${isSelected ? 'active' : ''}" onclick="desktopSelectStore('${s.id}')">
-                    <span class="sli-name">${shortName}</span>
-                    <span class="sli-badge ${badgeCls}">${ct.open} open</span>
-                </div>`;
-            }).join('');
+            desktopStoreData = filtered.map(s => ({
+                ...s,
+                counts: allTicketCounts[s.code] || { open: 0, total: 0 }
+            }));
+            renderDesktopStoreList();
             dsl.style.display = '';
         }
 
@@ -549,6 +546,37 @@ function mapSelectStore(storeId, action) {
     } else {
         showNewIssueScreen();
     }
+}
+
+function renderDesktopStoreList() {
+    const dsl = document.getElementById('desktopStoreList');
+    if (!dsl) return;
+    
+    const withIssues = desktopStoreData.filter(s => s.counts.open > 0);
+    const displayList = dslShowAll ? desktopStoreData : withIssues;
+    
+    let html = `<div class="dsl-header">
+        <span>${displayList.length} store${displayList.length !== 1 ? 's' : ''}</span>
+        <div class="dsl-toggle">
+            <button class="${dslShowAll ? '' : 'active'}" onclick="dslShowAll=false;renderDesktopStoreList()">With Issues</button>
+            <button class="${dslShowAll ? 'active' : ''}" onclick="dslShowAll=true;renderDesktopStoreList()">All</button>
+        </div>
+    </div>`;
+    
+    if (displayList.length === 0) {
+        html += '<div style="padding:12px;text-align:center;font-size:13px;color:var(--text-muted)">🎉 No open issues!</div>';
+    } else {
+        displayList.forEach(s => {
+            const shortName = s.name.replace(/^Burger King /, 'BK ').replace(/^Paradise QS /, 'PQS ');
+            const badgeCls = s.counts.open > 0 ? 'has-issues' : 'no-issues';
+            const isSelected = selectedStore && selectedStore.code === s.code;
+            html += `<div class="store-list-item ${isSelected ? 'active' : ''}" onclick="desktopSelectStore('${s.id}')">
+                <span class="sli-name">${shortName}</span>
+                <span class="sli-badge ${badgeCls}">${s.counts.open} open</span>
+            </div>`;
+        });
+    }
+    dsl.innerHTML = html;
 }
 
 function desktopSelectStore(storeId) {
@@ -605,27 +633,33 @@ function renderStoreListView() {
         
         const statusLabel = { open:'Open', assigned:'Assigned', inprogress:'In Progress', waiting:'Waiting', resolved:'Resolved', closed:'Closed' };
         
+        // Only show stores that have open tickets
+        const storesWithTickets = lastFilteredStores.filter(s => {
+            return allT.some(t => t.storeCode === s.code && t.status !== 'closed' && t.status !== 'resolved');
+        });
+
+        if (storesWithTickets.length === 0) {
+            listEl.innerHTML = '<div style="padding:40px;text-align:center;font-size:15px;color:var(--text-muted)">🎉 No open tickets across these stores!</div>';
+            return;
+        }
+        
         let html = '';
-        lastFilteredStores.forEach(s => {
+        storesWithTickets.forEach(s => {
             const storeTickets = allT.filter(t => t.storeCode === s.code && t.status !== 'closed' && t.status !== 'resolved');
             const shortName = s.name.replace(/^Burger King /, 'BK ').replace(/^Paradise QS /, 'PQS ');
+            storeTickets.sort((a,b) => { const p = {emergency:0,urgent:1,routine:2}; return (p[a.priority]||2) - (p[b.priority]||2); });
+            
             html += `<div class="slv-store">
                 <div class="slv-store-name">${shortName} <span style="font-size:12px;font-weight:400;color:var(--text-muted)">(${storeTickets.length} open)</span></div>`;
-            
-            if (storeTickets.length === 0) {
-                html += '<div style="padding:6px 24px;font-size:12px;color:var(--text-muted)">No open tickets</div>';
-            } else {
-                storeTickets.sort((a,b) => { const p = {emergency:0,urgent:1,routine:2}; return (p[a.priority]||2) - (p[b.priority]||2); });
-                storeTickets.forEach(t => {
-                    const assignee = t.assignedTo ? t.assignedTo : '';
-                    html += `<div class="slv-ticket" onclick="listViewOpenTicket('${t._key}')">
-                        <span class="priority-dot ${t.priority}"></span>
-                        <span class="slv-desc">${escHtml(t.description || '').substring(0,80)}</span>
-                        <span class="ticket-status-badge status-${t.status}" style="font-size:11px;padding:2px 8px">${statusLabel[t.status] || t.status}</span>
-                        ${assignee ? '<span class="slv-assignee">' + escHtml(assignee) + '</span>' : ''}
-                    </div>`;
-                });
-            }
+            storeTickets.forEach(t => {
+                const assignee = t.assignedTo ? t.assignedTo : '';
+                html += `<div class="slv-ticket" onclick="listViewOpenTicket('${t._key}')">
+                    <span class="priority-dot ${t.priority}"></span>
+                    <span class="slv-desc">${escHtml(t.description || '').substring(0,80)}</span>
+                    <span class="ticket-status-badge status-${t.status}" style="font-size:11px;padding:2px 8px">${statusLabel[t.status] || t.status}</span>
+                    ${assignee ? '<span class="slv-assignee">' + escHtml(assignee) + '</span>' : ''}
+                </div>`;
+            });
             html += '</div>';
         });
         listEl.innerHTML = html;
@@ -2194,7 +2228,8 @@ function toast(msg, type = '') {
     const el = document.getElementById('toast');
     el.textContent = msg;
     el.className = 'toast show ' + type;
-    setTimeout(() => el.className = 'toast', 3000);
+    const duration = type === 'error' ? 5000 : 3000;
+    setTimeout(() => el.className = 'toast', duration);
 }
 
 function escHtml(str) {
