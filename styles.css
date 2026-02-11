@@ -191,7 +191,7 @@
 
 /* Toast */
 [data-theme="dark"] .toast.success { background: rgba(52,211,153,0.15); color: #34d399; border: 1px solid rgba(52,211,153,0.3); }
-[data-theme="dark"] .toast.error { background: rgba(248,113,113,0.15); color: #f87171; border: 1px solid rgba(248,113,113,0.3); }
+[data-theme="dark"] .toast.error { background: rgba(248,113,113,0.2); color: #f87171; border: 2px solid rgba(248,113,113,0.4); box-shadow: 0 8px 30px rgba(248,113,113,0.15); }
 
 /* Leaflet popups */
 [data-theme="dark"] .leaflet-popup-content-wrapper { background: #1a1f2e !important; color: var(--text) !important; }
@@ -504,12 +504,43 @@ body {
     .app-content { max-width: 100%; padding: 16px 20px; }
     #storeSelection { display: grid; grid-template-columns: 320px 1fr; grid-template-rows: auto 1fr; gap: 16px; min-height: calc(100vh - 100px); }
     #storeSelection .store-card { grid-column: 1; grid-row: 1 / -1; max-height: calc(100vh - 100px); overflow-y: auto; }
+    #storeSelection .store-card .form-row { grid-template-columns: 1fr; gap: 8px; }
+    #storeSelection .store-card .form-select { font-size: 13px; padding: 10px 12px; }
     #storeSelection #mapOverview { grid-column: 2; grid-row: 1 / -1; margin: 0; }
     #storeSelection #mapOverview .map-card { height: 100%; display: flex; flex-direction: column; }
     #storeSelection #mapOverview #overviewMap { flex: 1; min-height: 400px; }
     #storeSelection #mapOverview { display: block !important; }
 
     .desktop-store-list { display: block !important; margin-top: 12px; }
+    .desktop-store-list .dsl-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 6px;
+        padding: 0 2px;
+    }
+    .desktop-store-list .dsl-header span { font-size: 12px; font-weight: 600; color: var(--text-mid); text-transform: uppercase; letter-spacing: 0.3px; }
+    .dsl-toggle {
+        display: inline-flex;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        overflow: hidden;
+        font-size: 11px;
+    }
+    .dsl-toggle button {
+        padding: 3px 8px;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 11px;
+        color: var(--text-muted);
+        transition: all 0.15s;
+    }
+    .dsl-toggle button.active {
+        background: var(--primary);
+        color: #fff;
+    }
     .desktop-store-list .store-list-item {
         padding: 8px 10px;
         border-bottom: 1px solid var(--border-light);
@@ -612,11 +643,13 @@ body {
 .assign-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    gap: 16px;
+    max-width: 800px;
 }
 @media (max-width: 600px) {
     .assign-row { grid-template-columns: 1fr; }
 }
+.assign-row .form-group { margin-bottom: 0; }
 
 /* Photo confirmation dialog */
 .confirm-overlay {
@@ -1378,20 +1411,23 @@ body {
 /* ---- Toast ---- */
 .toast {
     position: fixed;
-    bottom: 24px;
+    bottom: 30px;
     left: 50%;
     transform: translateX(-50%) translateY(20px);
     background: var(--text);
     color: #fff;
-    padding: 12px 24px;
-    border-radius: var(--radius);
-    font-size: 14px;
-    font-weight: 500;
-    box-shadow: var(--shadow-lg);
+    padding: 16px 28px;
+    border-radius: var(--radius-lg);
+    font-size: 17px;
+    font-weight: 600;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.18);
     z-index: 300;
     opacity: 0;
     transition: all 0.3s;
     pointer-events: none;
+    max-width: 90vw;
+    text-align: center;
+    line-height: 1.4;
 }
 
 .toast.show {
@@ -1399,8 +1435,24 @@ body {
     transform: translateX(-50%) translateY(0);
 }
 
-.toast.success { background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
-.toast.error { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+.toast.success { background: #ecfdf5; color: #059669; border: 2px solid #a7f3d0; }
+.toast.error {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 2px solid #fecaca;
+    font-size: 18px;
+    padding: 18px 32px;
+    box-shadow: 0 8px 30px rgba(220,38,38,0.2);
+    animation: toast-shake 0.4s ease;
+}
+
+@keyframes toast-shake {
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    20% { transform: translateX(calc(-50% - 8px)) translateY(0); }
+    40% { transform: translateX(calc(-50% + 8px)) translateY(0); }
+    60% { transform: translateX(calc(-50% - 4px)) translateY(0); }
+    80% { transform: translateX(calc(-50% + 4px)) translateY(0); }
+}
 
 /* ---- Loading spinner ---- */
 .spinner {
