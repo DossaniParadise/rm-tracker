@@ -65,6 +65,7 @@ let uploadedPhotos = []; // { file, previewUrl }
 let currentTickets = [];
 let currentFilter = 'all';
 let activeTicketListener = null;
+let vendorList = [];
 
 // ============================================================
 // AUTH
@@ -259,6 +260,30 @@ function showAppScreen() {
             selectStore();
         }
     }
+
+    // Show assignment fields for coaches/admins
+    if (currentUser.role === 'Admin' || currentUser.role === 'Area Coach') {
+        document.getElementById('assignmentFields').classList.remove('hidden');
+        populateAssignDropdown();
+    }
+
+    // Desktop: auto-select brand if user only has one store type
+    if (window.innerWidth >= 1100 && isMultiStoreUser()) {
+        const userStoreList = currentUser.stores === 'all' ? stores :
+            stores.filter(s => {
+                const us = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
+                return us.includes(s.code);
+            });
+        const types = [...new Set(userStoreList.map(s => s.type))];
+        if (types.length === 1) {
+            setTimeout(() => selectBrand(types[0]), 100);
+        } else if (currentUser.role === 'Admin') {
+            setTimeout(() => selectBrand('all'), 100);
+        }
+    }
+
+    // Load vendor list
+    loadVendors();
 }
 
 function showError(msg) {
@@ -459,6 +484,25 @@ function loadMapOverview(type) {
             '<div class="mstat" style="cursor:pointer" onclick="showAllTickets(\'open\')"><strong style="color:' + (totalOpen > 0 ? '#dc2626' : '#059669') + '">' + totalOpen + '</strong>open tickets</div>' +
             '<div class="mstat" style="cursor:pointer" onclick="showAllTickets(\'open\')"><strong>' + storesWithIssues + '</strong>need attention</div>' +
             '<div class="mstat" style="cursor:pointer" onclick="showAllTickets(\'all\')"><strong>' + totalAll + '</strong>total tickets</div>';
+
+        // Desktop store list sidebar
+        const dsl = document.getElementById('desktopStoreList');
+        if (dsl && window.innerWidth >= 1100) {
+            dsl.innerHTML = filtered.map(s => {
+                const ct = allTicketCounts[s.code] || { open: 0, total: 0 };
+                const shortName = s.name.replace(/^Burger King /, 'BK ').replace(/^Paradise QS /, 'PQS ');
+                const badgeCls = ct.open > 0 ? 'has-issues' : 'no-issues';
+                const isSelected = selectedStore && selectedStore.code === s.code;
+                return `<div class="store-list-item ${isSelected ? 'active' : ''}" onclick="desktopSelectStore('${s.id}')">
+                    <span class="sli-name">${shortName}</span>
+                    <span class="sli-badge ${badgeCls}">${ct.open} open</span>
+                </div>`;
+            }).join('');
+            dsl.style.display = '';
+        }
+
+        // Also build list view data for toggle
+        lastFilteredStores = filtered;
     });
 }
 
@@ -507,12 +551,111 @@ function mapSelectStore(storeId, action) {
     }
 }
 
+function desktopSelectStore(storeId) {
+    const store = stores.find(s => s.id === storeId);
+    if (!store) return;
+    selectedStore = store;
+    document.getElementById('storeSelect').value = storeId;
+    document.getElementById('actionButtons').classList.remove('hidden');
+    document.querySelectorAll('.store-list-item').forEach(el => el.classList.remove('active'));
+    if (event && event.currentTarget) event.currentTarget.classList.add('active');
+    if (overviewMap && store.lat && store.lng) {
+        overviewMap.flyTo([store.lat, store.lng], 13, { duration: 0.5 });
+        mapMarkers.forEach(m => {
+            const ll = m.getLatLng();
+            if (Math.abs(ll.lat - store.lat) < 0.001 && Math.abs(ll.lng - store.lng) < 0.001) {
+                m.openPopup();
+            }
+        });
+    }
+}
+
+// Map / List view toggle
+let currentMapView = localStorage.getItem('mapViewPref') || 'map';
+let lastFilteredStores = [];
+
+function setMapView(view) {
+    currentMapView = view;
+    localStorage.setItem('mapViewPref', view);
+    document.querySelectorAll('#mapViewToggle button').forEach(b => b.classList.remove('active'));
+    document.querySelector(`#mapViewToggle button[onclick="setMapView('${view}')"]`).classList.add('active');
+    
+    const mapEl = document.getElementById('overviewMap');
+    const listEl = document.getElementById('storeListView');
+    
+    if (view === 'list') {
+        mapEl.style.display = 'none';
+        listEl.style.display = '';
+        renderStoreListView();
+    } else {
+        mapEl.style.display = '';
+        listEl.style.display = 'none';
+        if (overviewMap) setTimeout(() => overviewMap.invalidateSize(), 100);
+    }
+}
+
+function renderStoreListView() {
+    const listEl = document.getElementById('storeListView');
+    if (!lastFilteredStores.length) { listEl.innerHTML = '<div class="empty-state">Select a store type first</div>'; return; }
+    
+    // Fetch all tickets once, group by store
+    db.ref('tickets').once('value', snap => {
+        const allT = [];
+        snap.forEach(child => { allT.push({ _key: child.key, ...child.val() }); });
+        
+        const statusLabel = { open:'Open', assigned:'Assigned', inprogress:'In Progress', waiting:'Waiting', resolved:'Resolved', closed:'Closed' };
+        
+        let html = '';
+        lastFilteredStores.forEach(s => {
+            const storeTickets = allT.filter(t => t.storeCode === s.code && t.status !== 'closed' && t.status !== 'resolved');
+            const shortName = s.name.replace(/^Burger King /, 'BK ').replace(/^Paradise QS /, 'PQS ');
+            html += `<div class="slv-store">
+                <div class="slv-store-name">${shortName} <span style="font-size:12px;font-weight:400;color:var(--text-muted)">(${storeTickets.length} open)</span></div>`;
+            
+            if (storeTickets.length === 0) {
+                html += '<div style="padding:6px 24px;font-size:12px;color:var(--text-muted)">No open tickets</div>';
+            } else {
+                storeTickets.sort((a,b) => { const p = {emergency:0,urgent:1,routine:2}; return (p[a.priority]||2) - (p[b.priority]||2); });
+                storeTickets.forEach(t => {
+                    const assignee = t.assignedTo ? t.assignedTo : '';
+                    html += `<div class="slv-ticket" onclick="listViewOpenTicket('${t._key}')">
+                        <span class="priority-dot ${t.priority}"></span>
+                        <span class="slv-desc">${escHtml(t.description || '').substring(0,80)}</span>
+                        <span class="ticket-status-badge status-${t.status}" style="font-size:11px;padding:2px 8px">${statusLabel[t.status] || t.status}</span>
+                        ${assignee ? '<span class="slv-assignee">' + escHtml(assignee) + '</span>' : ''}
+                    </div>`;
+                });
+            }
+            html += '</div>';
+        });
+        listEl.innerHTML = html;
+    });
+}
+
+function listViewOpenTicket(key) {
+    // Load the ticket into currentTickets array so openTicketDetail can find it
+    db.ref('tickets/' + key).once('value', snap => {
+        const t = snap.val();
+        if (!t) return;
+        t._key = key;
+        currentTickets = [t];
+        openTicketDetail(key);
+    });
+}
+
 // Also hide map when going back
 const _origGoBack = goBack;
 goBack = function() {
     _origGoBack();
-    // Don't hide map - it stays visible on storeSelection if type is set
+    if (window.innerWidth >= 1100 && overviewMap) {
+        setTimeout(() => overviewMap.invalidateSize(), 200);
+    }
 };
+
+// Handle window resize for map
+window.addEventListener('resize', () => {
+    if (overviewMap) setTimeout(() => overviewMap.invalidateSize(), 200);
+});
 
 // ============================================================
 // ADMIN PANEL
@@ -564,13 +707,16 @@ function renderPendingUsers() {
 
     container.innerHTML = entries.map(([uid, p]) => {
         const email = (p.email || '').toLowerCase();
-        // Auto-lookup from USER_DIRECTORY
         const known = (typeof USER_DIRECTORY !== 'undefined') ? USER_DIRECTORY[email] : null;
         const guessedName = known ? known.name : email.split('@')[0].replace(/\./g, ' ').replace(/\b\w/g, c => c.toUpperCase());
         const guessedRole = known ? known.role : 'Manager';
         const guessedStores = known ? (known.stores === 'all' ? [] : Array.isArray(known.stores) ? known.stores : [known.stores]) : [];
         const isKnown = !!known;
         const timeStr = p.requestedAt ? new Date(p.requestedAt).toLocaleString() : 'Unknown';
+
+        const storeCheckboxes = stores.map(s => 
+            `<label class="store-cb"><input type="checkbox" class="pstore-${uid}" value="${s.code}" ${guessedStores.includes(s.code) ? 'checked' : ''}> ${s.name.length > 22 ? s.name.substring(0,22)+'...' : s.name}</label>`
+        ).join('');
 
         return `<div class="pending-card" id="pending-${uid}">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
@@ -579,17 +725,19 @@ function renderPendingUsers() {
             </div>
             <div class="pending-time">Requested: ${timeStr}</div>
             <div class="pending-form">
-                <input type="text" placeholder="Full name" id="pname-${uid}" value="${esc(guessedName)}">
-                <select id="prole-${uid}">
+                <input type="text" class="form-input" placeholder="Full name" id="pname-${uid}" value="${esc(guessedName)}">
+                <select class="form-select" id="prole-${uid}">
                     <option value="Manager" ${guessedRole === 'Manager' ? 'selected' : ''}>Manager</option>
                     <option value="Area Coach" ${guessedRole === 'Area Coach' ? 'selected' : ''}>Area Coach</option>
                     <option value="Admin" ${guessedRole === 'Admin' ? 'selected' : ''}>Admin</option>
+                    <option value="Technician" ${guessedRole === 'Technician' ? 'selected' : ''}>Technician</option>
                 </select>
-                <select id="pstores-${uid}" class="full" multiple size="3" style="min-height:70px">
-                    ${stores.map(s => `<option value="${s.code}" ${guessedStores.includes(s.code) ? 'selected' : ''}>${s.name}</option>`).join('')}
-                </select>
-                <div class="full" style="font-size:11px;color:var(--text-muted)">
-                    ${guessedRole === 'Admin' ? 'Admin gets all stores automatically.' : 'Hold Ctrl/Cmd to select multiple stores.'}
+                <div class="full">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                        <label class="form-label" style="margin:0">Store Access</label>
+                        <button class="btn btn-ghost" style="font-size:11px;padding:2px 8px" onclick="togglePendingStores('${uid}')">All / None</button>
+                    </div>
+                    <div class="store-cb-grid">${storeCheckboxes}</div>
                 </div>
             </div>
             <div class="pending-actions">
@@ -600,11 +748,16 @@ function renderPendingUsers() {
     }).join('');
 }
 
+function togglePendingStores(uid) {
+    const cbs = document.querySelectorAll(`.pstore-${uid}`);
+    const allChecked = [...cbs].every(cb => cb.checked);
+    cbs.forEach(cb => cb.checked = !allChecked);
+}
+
 async function approveUser(uid) {
     const name = document.getElementById(`pname-${uid}`).value.trim();
     const role = document.getElementById(`prole-${uid}`).value;
-    const storeSelect = document.getElementById(`pstores-${uid}`);
-    const selectedStores = Array.from(storeSelect.selectedOptions).map(o => o.value);
+    const selectedStores = [...document.querySelectorAll(`.pstore-${uid}:checked`)].map(cb => cb.value);
 
     if (!name) { showToast('Enter a name', 'error'); return; }
 
@@ -690,11 +843,11 @@ function editUser(uid) {
         const u = snap.val();
         if (!u) return;
 
-        const storesOptions = stores.map(s => {
-            const selected = u.stores === 'all' ? false :
+        const storeCheckboxes = stores.map(s => {
+            const checked = u.stores === 'all' ? true :
                 Array.isArray(u.stores) ? u.stores.includes(s.code) :
                 u.stores === s.code;
-            return `<option value="${s.code}" ${selected ? 'selected' : ''}>${s.name}</option>`;
+            return `<label class="store-cb"><input type="checkbox" class="edit-store-cb" value="${s.code}" ${checked ? 'checked' : ''}> ${s.name.length > 22 ? s.name.substring(0,22)+'...' : s.name}</label>`;
         }).join('');
 
         const overlay = document.createElement('div');
@@ -717,11 +870,15 @@ function editUser(uid) {
                     <option value="Manager" ${u.role === 'Manager' ? 'selected' : ''}>Manager</option>
                     <option value="Area Coach" ${u.role === 'Area Coach' ? 'selected' : ''}>Area Coach</option>
                     <option value="Admin" ${u.role === 'Admin' ? 'selected' : ''}>Admin</option>
+                    <option value="Technician" ${u.role === 'Technician' ? 'selected' : ''}>Technician</option>
                 </select>
             </div>
             <div class="form-group">
-                <label class="form-label">Stores (Ctrl/Cmd+click for multiple; leave empty for Admin=all)</label>
-                <select class="form-select" id="editStores" multiple size="5" style="min-height:100px">${storesOptions}</select>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                    <label class="form-label" style="margin:0">Store Access</label>
+                    <button class="btn btn-ghost" style="font-size:11px;padding:2px 8px" onclick="toggleEditStores()">All / None</button>
+                </div>
+                <div class="store-cb-grid">${storeCheckboxes}</div>
             </div>
             <div class="modal-actions">
                 <button class="btn btn-primary" onclick="saveEditUser('${uid}')">Save</button>
@@ -732,10 +889,16 @@ function editUser(uid) {
     });
 }
 
+function toggleEditStores() {
+    const cbs = document.querySelectorAll('.edit-store-cb');
+    const allChecked = [...cbs].every(cb => cb.checked);
+    cbs.forEach(cb => cb.checked = !allChecked);
+}
+
 async function saveEditUser(uid) {
     const name = document.getElementById('editName').value.trim();
     const role = document.getElementById('editRole').value;
-    const selected = Array.from(document.getElementById('editStores').selectedOptions).map(o => o.value);
+    const selected = [...document.querySelectorAll('.edit-store-cb:checked')].map(cb => cb.value);
 
     if (!name) { showToast('Name required', 'error'); return; }
 
@@ -787,9 +950,7 @@ function renderAddUserForm() {
 
     const storesEl = document.getElementById('newUserStores');
     storesEl.innerHTML = stores.map(s => `
-        <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;white-space:nowrap">
-            <input type="checkbox" class="new-user-store" value="${s.code}"> ${s.name.length > 25 ? s.name.substring(0,25) + '...' : s.name}
-        </label>
+        <label class="store-cb"><input type="checkbox" class="new-user-store" value="${s.code}"> ${s.name.length > 22 ? s.name.substring(0,22)+'...' : s.name}</label>
     `).join('');
 }
 
@@ -962,6 +1123,117 @@ async function saveNotifyRouting() {
     } catch (err) {
         showToast('Error: ' + err.message, 'error');
     }
+}
+
+// ============================================================
+// VENDOR MANAGEMENT
+// ============================================================
+async function loadVendors() {
+    const snap = await db.ref('config/vendors').once('value');
+    vendorList = [];
+    snap.forEach(child => { vendorList.push({ id: child.key, ...child.val() }); });
+    renderVendorRows();
+    populateAssignDropdown();
+    renderVendorCatCheckboxes();
+}
+
+function renderVendorRows() {
+    const container = document.getElementById('vendorRows');
+    if (!container) return;
+    if (vendorList.length === 0) {
+        container.innerHTML = '<div class="empty-state" style="font-size:13px">No vendors added yet</div>';
+        return;
+    }
+    container.innerHTML = vendorList.map(v => `
+        <div class="vendor-row">
+            <span class="vendor-name">${escHtml(v.name)}</span>
+            <span class="vendor-meta">${escHtml(v.areas || '')} · ${(v.categories || []).map(capitalize).join(', ')}</span>
+            <button class="btn btn-ghost" style="font-size:11px;color:var(--danger)" onclick="removeVendor('${v.id}')">Remove</button>
+        </div>`).join('');
+}
+
+function renderVendorCatCheckboxes() {
+    const container = document.getElementById('newVendorCats');
+    if (!container) return;
+    const cats = ['plumbing','equipment','it','structural','safety','other'];
+    container.innerHTML = cats.map(c => `<label class="store-cb" style="border:1px solid var(--border);border-radius:6px;padding:2px 6px"><input type="checkbox" class="vendor-cat-cb" value="${c}"> ${capitalize(c)}</label>`).join('');
+}
+
+async function addVendor() {
+    const name = document.getElementById('newVendorName').value.trim();
+    const areas = document.getElementById('newVendorAreas').value.trim();
+    const cats = [...document.querySelectorAll('.vendor-cat-cb:checked')].map(c => c.value);
+    if (!name) { showToast('Enter vendor name', 'error'); return; }
+    
+    // Check edit permission
+    const canEdit = await checkVendorEditPermission();
+    if (!canEdit) { showToast('You don\'t have permission to edit vendors', 'error'); return; }
+    
+    try {
+        await db.ref('config/vendors').push({ name, areas, categories: cats });
+        document.getElementById('newVendorName').value = '';
+        document.getElementById('newVendorAreas').value = '';
+        document.querySelectorAll('.vendor-cat-cb').forEach(c => c.checked = false);
+        showToast('Vendor added', 'success');
+        loadVendors();
+    } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+    }
+}
+
+async function removeVendor(id) {
+    if (!confirm('Remove this vendor?')) return;
+    const canEdit = await checkVendorEditPermission();
+    if (!canEdit) { showToast('No permission', 'error'); return; }
+    try {
+        await db.ref('config/vendors/' + id).remove();
+        showToast('Vendor removed', 'success');
+        loadVendors();
+    } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+    }
+}
+
+async function checkVendorEditPermission() {
+    if (currentUser.role === 'Admin') return true;
+    const snap = await db.ref('config/vendorEditors').once('value');
+    const editors = snap.val() || [];
+    return editors.includes(currentUser.email);
+}
+
+function populateAssignDropdown() {
+    const sel = document.getElementById('assignTo');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">Unassigned</option>';
+    
+    // Internal techs
+    const techEmails = ['rmtech1@dossaniparadise.com','rmtech2@dossaniparadise.com','rmtech3@dossaniparadise.com'];
+    const techNames = { 'rmtech1@dossaniparadise.com':'Ronny Gossett', 'rmtech2@dossaniparadise.com':'Ravay Wickware', 'rmtech3@dossaniparadise.com':'Zamir Rios' };
+    sel.innerHTML += '<optgroup label="Repair Technicians">';
+    techEmails.forEach(e => {
+        sel.innerHTML += `<option value="tech:${e}">🔧 ${techNames[e] || e}</option>`;
+    });
+    sel.innerHTML += '</optgroup>';
+    
+    // Vendors
+    if (vendorList.length) {
+        sel.innerHTML += '<optgroup label="Third-Party Vendors">';
+        vendorList.forEach(v => {
+            sel.innerHTML += `<option value="vendor:${v.name}">🏢 ${v.name}</option>`;
+        });
+        sel.innerHTML += '</optgroup>';
+    }
+}
+
+function toggleDateFields() {
+    const type = document.getElementById('reqDateType').value;
+    const d1 = document.getElementById('reqDate1');
+    const d2 = document.getElementById('reqDate2');
+    const sep = document.getElementById('reqDateRangeSep');
+    
+    d1.style.display = type ? '' : 'none';
+    d2.style.display = type === 'range' ? '' : 'none';
+    sep.style.display = type === 'range' ? '' : 'none';
 }
 
 // ============================================================
@@ -1420,6 +1692,10 @@ function resetNewIssueForm() {
     document.getElementById('contactPhone').value = '';
     document.getElementById('photoPreviewGrid').innerHTML = '';
     document.getElementById('photoUploadArea').classList.remove('has-photos');
+    const assignTo = document.getElementById('assignTo');
+    if (assignTo) assignTo.value = '';
+    const reqDateType = document.getElementById('reqDateType');
+    if (reqDateType) { reqDateType.value = ''; toggleDateFields(); }
     const btn = document.getElementById('submitBtn');
     btn.innerHTML = 'Submit Ticket';
     btn.disabled = false;
@@ -1484,6 +1760,24 @@ function removePhoto(i) {
     renderPhotoPreview();
 }
 
+function showPhotoConfirm() {
+    return new Promise(resolve => {
+        const overlay = document.createElement('div');
+        overlay.className = 'confirm-overlay';
+        overlay.innerHTML = `<div class="confirm-box">
+            <h4>📷 No photos attached</h4>
+            <p>Even 1 photo helps our repair team understand the issue faster. Submit without photos?</p>
+            <div class="confirm-btns">
+                <button class="btn btn-secondary" onclick="this.closest('.confirm-overlay').remove()">Go back</button>
+                <button class="btn btn-primary" id="confirmNoPhoto">Submit anyway</button>
+            </div>
+        </div>`;
+        document.body.appendChild(overlay);
+        overlay.querySelector('.btn-secondary').onclick = () => { overlay.remove(); resolve(false); };
+        overlay.querySelector('#confirmNoPhoto').onclick = () => { overlay.remove(); resolve(true); };
+    });
+}
+
 async function submitTicket() {
     // Validate
     if (!selectedCategory) { toast('Select a category', 'error'); return; }
@@ -1493,7 +1787,11 @@ async function submitTicket() {
     const contactPhone = document.getElementById('contactPhone').value.trim();
     if (!contactPhone || contactPhone.replace(/\D/g,'').length < 10) { toast('Enter a valid phone number', 'error'); return; }
     if (!selectedPriority) { toast('Select a priority', 'error'); return; }
-    if (uploadedPhotos.length === 0) { toast('Add at least 1 photo', 'error'); return; }
+    // Photos optional but encouraged
+    if (uploadedPhotos.length === 0) {
+        const confirmed = await showPhotoConfirm();
+        if (!confirmed) return;
+    }
     const desc = document.getElementById('issueDescription').value.trim();
     if (!desc) { toast('Add a description', 'error'); return; }
     if (desc.length < 10) { toast('Description too short', 'error'); return; }
@@ -1522,6 +1820,28 @@ async function submitTicket() {
         const num = String(counterSnap.snapshot.val()).padStart(4, '0');
         const ticketId = `${selectedStore.code}-${catPrefix}-${num}`;
 
+        // Get assignment data
+        const assignVal = document.getElementById('assignTo')?.value || '';
+        let assignedTo = '';
+        let assigneeType = 'unassigned';
+        if (assignVal.startsWith('tech:')) {
+            assignedTo = assignVal.replace('tech:', '');
+            assigneeType = 'tech';
+        } else if (assignVal.startsWith('vendor:')) {
+            assignedTo = assignVal.replace('vendor:', '');
+            assigneeType = 'vendor';
+        }
+
+        // Get requested date
+        let requestedDate = null;
+        const dateType = document.getElementById('reqDateType')?.value;
+        if (dateType) {
+            requestedDate = { type: dateType, date: document.getElementById('reqDate1')?.value || '' };
+            if (dateType === 'range') {
+                requestedDate.endDate = document.getElementById('reqDate2')?.value || '';
+            }
+        }
+
         // Create ticket in Firebase
         const ticket = {
             id: ticketId,
@@ -1535,7 +1855,10 @@ async function submitTicket() {
             priority: selectedPriority,
             description: desc,
             photos: photoUrls,
-            status: 'open',
+            status: assignedTo ? 'assigned' : 'open',
+            assignedTo: assignedTo || '',
+            assigneeType: assigneeType,
+            requestedDate: requestedDate,
             createdBy: currentUser.email,
             createdByName: currentUser.name,
             createdAt: firebase.database.ServerValue.TIMESTAMP,
@@ -1726,7 +2049,15 @@ function openTicketDetail(key) {
             <div style="margin-top: 8px;">
                 <textarea class="form-textarea" id="statusNote" placeholder="Add a note (optional)..." style="min-height: 60px; font-size: 13px;"></textarea>
             </div>
-            <button class="btn btn-primary btn-sm" style="margin-top: 10px;" onclick="saveStatusUpdate('${key}')" id="saveStatusBtn">
+            <div style="margin-top:8px">
+                <label style="font-size:12px;color:var(--text-muted);cursor:pointer;display:inline-flex;align-items:center;gap:4px">
+                    📷 <span>Attach photos</span>
+                    <input type="file" id="statusPhotoInput" accept="image/*" multiple style="display:none" onchange="handleStatusPhotos(this)">
+                </label>
+                <div id="statusPhotoPreview" style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap"></div>
+            </div>
+            ${canUpdateStatus && t.assignedTo ? '<div style="margin-top:8px"><label class="form-label" style="font-size:12px">Reassign</label><select class="form-select" id="reassignTo" style="font-size:12px"><option value="">Keep current</option></select></div>' : ''}
+            <button class="btn btn-primary btn-sm" style="margin-top: 10px;" onclick="saveStatusUpdate(\'${key}\')" id="saveStatusBtn">
                 Save Update
             </button>
         </div>`;
@@ -1742,6 +2073,7 @@ function openTicketDetail(key) {
                     <div class="activity-dot" style="background: var(--status-${a.action === 'created' ? 'open' : (a.newStatus || 'open')})"></div>
                     <div>
                         <div class="activity-text"><strong>${escHtml(a.by)}</strong> ${getActivityText(a)}</div>
+                        ${a.photos && a.photos.length ? '<div style="display:flex;gap:4px;margin-top:4px">' + a.photos.map(url => '<img src="' + url + '" style="width:48px;height:48px;border-radius:6px;object-fit:cover;cursor:pointer;border:1px solid var(--border)" onclick="openLightbox(\'' + url + '\')">').join('') + '</div>' : ''}
                         <div class="activity-time">${formatDate(a.timestamp)}</div>
                     </div>
                 </div>
@@ -1754,6 +2086,20 @@ function openTicketDetail(key) {
 }
 
 let pendingStatusUpdate = null;
+let statusPhotos = [];
+
+function handleStatusPhotos(input) {
+    const files = Array.from(input.files).slice(0, 3 - statusPhotos.length);
+    files.forEach(file => {
+        if (file.size > 5*1024*1024) { toast('File too large (max 5MB)','error'); return; }
+        statusPhotos.push(file);
+    });
+    const preview = document.getElementById('statusPhotoPreview');
+    if (preview) {
+        preview.innerHTML = statusPhotos.map((f,i) => `<div style="position:relative;width:48px;height:48px;border-radius:6px;overflow:hidden;border:1px solid var(--border)"><img src="${URL.createObjectURL(f)}" style="width:100%;height:100%;object-fit:cover"><button onclick="statusPhotos.splice(${i},1);handleStatusPhotos({files:[]})" style="position:absolute;top:-2px;right:-2px;background:var(--danger);color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:10px;cursor:pointer;line-height:1">✕</button></div>`).join('');
+    }
+    input.value = '';
+}
 
 function updateTicketStatus(key, status, el) {
     document.querySelectorAll('.status-option').forEach(b => b.classList.remove('active'));
@@ -1785,6 +2131,13 @@ async function saveStatusUpdate(key) {
             updates[`tickets/${key}/status`] = newStatus;
         }
 
+        // Convert status photos to base64
+        const statusPhotoUrls = [];
+        for (const f of statusPhotos) {
+            const dataUrl = await fileToBase64(f);
+            statusPhotoUrls.push(dataUrl);
+        }
+
         // Append activity
         const activityItem = {
             action: newStatus !== t.status ? 'status_change' : 'note',
@@ -1792,7 +2145,8 @@ async function saveStatusUpdate(key) {
             byEmail: currentUser.email,
             timestamp: Date.now(),
             ...(newStatus !== t.status && { oldStatus: t.status, newStatus }),
-            ...(note && { note })
+            ...(note && { note }),
+            ...(statusPhotoUrls.length && { photos: statusPhotoUrls })
         };
 
         // Get current activity array length and push
@@ -1803,6 +2157,7 @@ async function saveStatusUpdate(key) {
 
         await db.ref().update(updates);
 
+        statusPhotos = [];
         toast('Ticket updated!', 'success');
         closeModal();
     } catch (err) {
