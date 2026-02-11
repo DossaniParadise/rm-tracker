@@ -235,7 +235,7 @@ function showAppScreen() {
     }
 
     // Show "All Locations" pill for admins
-    if (currentUser.role === 'Admin' || currentUser.stores === 'all') {
+    if (currentUser.role === 'Admin' || currentUser.role === 'Technician' || currentUser.stores === 'all') {
         document.getElementById('brandPill-all').classList.remove('hidden');
         document.querySelectorAll('.admin-only-opt').forEach(el => el.classList.remove('hidden'));
     }
@@ -270,6 +270,7 @@ function showAppScreen() {
     }
 
     // Desktop: auto-select brand if user only has one store type
+    // Desktop: auto-select brand for multi-store users (admins, coaches, techs)
     if (window.innerWidth >= 1100 && isMultiStoreUser()) {
         const userStoreList = currentUser.stores === 'all' ? stores :
             stores.filter(s => {
@@ -279,7 +280,7 @@ function showAppScreen() {
         const types = [...new Set(userStoreList.map(s => s.type))];
         if (types.length === 1) {
             setTimeout(() => selectBrand(types[0]), 100);
-        } else if (currentUser.role === 'Admin') {
+        } else if (currentUser.role === 'Admin' || currentUser.role === 'Technician') {
             setTimeout(() => selectBrand('all'), 100);
         }
     }
@@ -353,7 +354,7 @@ let mapMarkers = [];
 let allTicketCounts = {}; // { storeCode: { open: N, total: N } }
 
 function isMultiStoreUser() {
-    return currentUser && (currentUser.role === 'Admin' || currentUser.role === 'Area Coach');
+    return currentUser && (currentUser.role === 'Admin' || currentUser.role === 'Area Coach' || currentUser.role === 'Technician');
 }
 
 // Brand pill click → set dropdown + trigger map
@@ -611,13 +612,20 @@ function setMapView(view) {
     const mapEl = document.getElementById('overviewMap');
     const listEl = document.getElementById('storeListView');
     
+    // Hide map legend in list view (word badges replace color dots)
+    const legend = document.querySelector('.map-legend');
+    if (legend) legend.classList.toggle('hidden-in-list', view === 'list');
+    
+    const legend = document.querySelector('.map-legend');
     if (view === 'list') {
         mapEl.style.display = 'none';
         listEl.style.display = '';
+        if (legend) legend.style.display = 'none';
         renderStoreListView();
     } else {
         mapEl.style.display = '';
         listEl.style.display = 'none';
+        if (legend) legend.style.display = '';
         if (overviewMap) setTimeout(() => overviewMap.invalidateSize(), 100);
     }
 }
@@ -653,8 +661,9 @@ function renderStoreListView() {
                 <div class="slv-store-name">${shortName} <span style="font-size:12px;font-weight:400;color:var(--text-muted)">(${storeTickets.length} open)</span></div>`;
             storeTickets.forEach(t => {
                 const assignee = t.assignedTo ? t.assignedTo : '';
+                const prBadge = {routine:'<span class="priority-word p-routine">Routine</span>',urgent:'<span class="priority-word p-urgent">Urgent</span>',emergency:'<span class="priority-word p-emergency">Emergency</span>'}[t.priority] || '';
                 html += `<div class="slv-ticket" onclick="listViewOpenTicket('${t._key}')">
-                    <span class="priority-dot ${t.priority}"></span>
+                    ${prBadge}
                     <span class="slv-desc">${escHtml(t.description || '').substring(0,80)}</span>
                     <span class="ticket-status-badge status-${t.status}" style="font-size:11px;padding:2px 8px">${statusLabel[t.status] || t.status}</span>
                     ${assignee ? '<span class="slv-assignee">' + escHtml(assignee) + '</span>' : ''}
@@ -1235,19 +1244,38 @@ async function checkVendorEditPermission() {
     return editors.includes(currentUser.email);
 }
 
+// Stores that can ONLY be assigned to Ravay (east TX / AR)
+const RAVAY_ONLY_STORES = ['BK02390','PQS16','PQS15','BK24008','PQS11','BK26015','PQS13','BK23086','BK10358','PQS06','PQS08','SUB22','PQS07','PQS09','PQS12','PQS10','PQS05','NASH01'];
+
+const TECH_INFO = [
+    { email: 'rmtech1@dossaniparadise.com', name: 'Ronny Gossett', zone: 'west' },
+    { email: 'rmtech2@dossaniparadise.com', name: 'Ravay Wickware', zone: 'east' },
+    { email: 'rmtech3@dossaniparadise.com', name: 'Zamir Rios', zone: 'west' }
+];
+
+function getAvailableTechs(storeCode) {
+    if (RAVAY_ONLY_STORES.includes(storeCode)) {
+        return TECH_INFO.filter(t => t.zone === 'east'); // Only Ravay for east TX
+    }
+    return TECH_INFO.filter(t => t.zone === 'west'); // Only Ronny + Zamir for west
+}
+
 function populateAssignDropdown() {
     const sel = document.getElementById('assignTo');
     if (!sel) return;
     sel.innerHTML = '<option value="">Unassigned</option>';
     
-    // Internal techs
-    const techEmails = ['rmtech1@dossaniparadise.com','rmtech2@dossaniparadise.com','rmtech3@dossaniparadise.com'];
-    const techNames = { 'rmtech1@dossaniparadise.com':'Ronny Gossett', 'rmtech2@dossaniparadise.com':'Ravay Wickware', 'rmtech3@dossaniparadise.com':'Zamir Rios' };
-    sel.innerHTML += '<optgroup label="Repair Technicians">';
-    techEmails.forEach(e => {
-        sel.innerHTML += `<option value="tech:${e}">🔧 ${techNames[e] || e}</option>`;
-    });
-    sel.innerHTML += '</optgroup>';
+    // Internal techs - filtered by store geography
+    const storeCode = selectedStore ? selectedStore.code : '';
+    const availTechs = getAvailableTechs(storeCode);
+    
+    if (availTechs.length) {
+        sel.innerHTML += '<optgroup label="Repair Technicians">';
+        availTechs.forEach(t => {
+            sel.innerHTML += `<option value="tech:${t.email}">🔧 ${t.name}</option>`;
+        });
+        sel.innerHTML += '</optgroup>';
+    }
     
     // Vendors
     if (vendorList.length) {
@@ -1694,7 +1722,7 @@ function exitViewAs() {
     document.getElementById('userRole').textContent = currentUser.role;
 
     // Restore All Locations for admin
-    if (currentUser.role === 'Admin' || currentUser.stores === 'all') {
+    if (currentUser.role === 'Admin' || currentUser.role === 'Technician' || currentUser.stores === 'all') {
         document.getElementById('brandPill-all').classList.remove('hidden');
         document.querySelector('.admin-only-opt')?.classList.remove('hidden');
     }
@@ -1710,7 +1738,7 @@ function showNewIssueScreen() {
     if (!selectedStore) return;
     resetNewIssueForm();
     document.getElementById('newIssueStoreName').textContent = selectedStore.name;
-
+    populateAssignDropdown(); // refresh based on selected store geography
     showScreen('newIssueScreen');
 }
 
@@ -1794,6 +1822,24 @@ function removePhoto(i) {
     renderPhotoPreview();
 }
 
+function showAssignPrompt() {
+    return new Promise(resolve => {
+        const overlay = document.createElement('div');
+        overlay.className = 'confirm-overlay';
+        overlay.innerHTML = `<div class="confirm-box">
+            <h4>📋 No assignment or date set</h4>
+            <p>Assigning a tech or vendor and setting a requested date helps track this ticket. Submit without?</p>
+            <div class="confirm-btns">
+                <button class="btn btn-secondary" id="assignGoBack">Go back</button>
+                <button class="btn btn-primary" id="assignSubmitAnyway">Submit anyway</button>
+            </div>
+        </div>`;
+        document.body.appendChild(overlay);
+        overlay.querySelector('#assignGoBack').onclick = () => { overlay.remove(); resolve(false); };
+        overlay.querySelector('#assignSubmitAnyway').onclick = () => { window._skipAssignPrompt = true; overlay.remove(); resolve(true); };
+    });
+}
+
 function showPhotoConfirm() {
     return new Promise(resolve => {
         const overlay = document.createElement('div');
@@ -1829,6 +1875,16 @@ async function submitTicket() {
     const desc = document.getElementById('issueDescription').value.trim();
     if (!desc) { toast('Add a description', 'error'); return; }
     if (desc.length < 10) { toast('Description too short', 'error'); return; }
+
+    // Soft prompt for assignment (coaches/admins only)
+    const assignEl = document.getElementById('assignTo');
+    if (assignEl && assignEl.offsetParent !== null && !assignEl.value) {
+        if (!window._skipAssignPrompt) {
+            const doAssign = await showAssignPrompt();
+            if (!doAssign) { window._skipAssignPrompt = false; return; }
+        }
+    }
+    window._skipAssignPrompt = false;
 
     const btn = document.getElementById('submitBtn');
     btn.innerHTML = '<span class="spinner"></span> Submitting...';
