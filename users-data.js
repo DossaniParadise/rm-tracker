@@ -27,6 +27,11 @@ const USER_DIRECTORY = {
     "karim@dossaniparadise.com": { name: "Karim Dossani", role: "Admin", stores: "all" },
     "sam@dossaniparadise.com": { name: "Sam Merchant", role: "Admin", stores: "all" },
 
+    // REPAIR TECHNICIANS
+    "rmtech1@dossaniparadise.com": { name: "Ronny Gossett", role: "Technician", stores: "all" },
+    "rmtech2@dossaniparadise.com": { name: "Ravay Wickware", role: "Technician", stores: "all" },
+    "rmtech3@dossaniparadise.com": { name: "Zamir Rios", role: "Technician", stores: "all" },
+
     // AREA COACHES
     "rick@dossaniparadise.com": { name: "Rick Tharani", role: "Area Coach", stores: ["PQS05","PQS06","PQS07","PQS08","PQS09","PQS10","PQS11","PQS12","PQS13","PQS15","PQS16","NASH01"] },
     "paul@dossaniparadise.com": { name: "Paul Fernandez", role: "Area Coach", stores: ["BK22027","BK27082","BK27083","BK28626","BK28514","BK27084","BK26183","BK03675","BK27028","BK26924","BK28313","BK04851","BK09723","BK13192","BK06460","BK28174","BK24875","BK27958","BK25198","BK20671","BK28312","BK28683","BK27415","BK23086","BK11460","BK02390","BK24008","BK10358","BK26015","SUB22"] },
