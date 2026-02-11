@@ -101,6 +101,42 @@
     <!-- Content Area -->
     <div class="app-content">
 
+        <!-- ===== SCREEN: Tech Dashboard (Technicians only) ===== -->
+        <div id="techDashboard" class="hidden">
+            <div class="tech-dash-header">
+                <h2>🔧 My Jobs</h2>
+                <div class="tech-dash-filters">
+                    <button class="filter-chip active" data-filter="active" onclick="filterTechJobs('active', this)">Active</button>
+                    <button class="filter-chip" data-filter="all" onclick="filterTechJobs('all', this)">All Open</button>
+                    <button class="filter-chip" data-filter="completed" onclick="filterTechJobs('completed', this)">Completed</button>
+                </div>
+            </div>
+
+            <!-- Active clock-in banner -->
+            <div id="techClockBanner" class="tech-clock-banner hidden">
+                <div class="tcb-info">
+                    <span class="tcb-status">⏱️ Clocked In</span>
+                    <span class="tcb-ticket" id="tcbTicketId"></span>
+                    <span class="tcb-store" id="tcbStoreName"></span>
+                </div>
+                <div class="tcb-timer" id="tcbTimer">00:00:00</div>
+                <button class="btn btn-sm" style="background:#dc2626;color:#fff;border:none" onclick="showClockOutPrompt()">Clock Out</button>
+            </div>
+
+            <!-- Summary stats -->
+            <div class="tech-stats" id="techStats"></div>
+
+            <!-- Job list -->
+            <div class="tech-job-list" id="techJobList">
+                <div class="empty-state">Loading jobs...</div>
+            </div>
+        </div>
+
+        <!-- ===== SCREEN: Admin Summary (top of store selection for admins) ===== -->
+        <div id="adminSummary" class="hidden">
+            <div class="admin-summary-grid" id="adminSummaryGrid"></div>
+        </div>
+
         <!-- ===== SCREEN: Store Selection ===== -->
         <div id="storeSelection">
             <div class="store-card">
@@ -502,6 +538,35 @@
             </div>
         </div>
 
+    </div>
+</div>
+
+<!-- Clock Out Modal (for techs) -->
+<div class="modal-overlay" id="clockOutModal" onclick="if(event.target===this)document.getElementById('clockOutModal').classList.remove('open')">
+    <div class="modal-content" style="max-width:480px">
+        <div class="modal-header">
+            <h3>🔧 Clock Out</h3>
+            <button class="modal-close" onclick="document.getElementById('clockOutModal').classList.remove('open')">✕</button>
+        </div>
+        <div class="modal-body" style="padding:16px">
+            <div id="clockOutInfo" style="margin-bottom:12px"></div>
+            <div class="form-group" style="margin-bottom:12px">
+                <label class="form-label">New Status</label>
+                <div class="status-select-grid" id="clockOutStatusGrid"></div>
+            </div>
+            <div class="form-group" style="margin-bottom:12px">
+                <label class="form-label">Notes</label>
+                <textarea class="form-textarea" id="clockOutNotes" placeholder="What did you do? What's the current state?" style="min-height:80px"></textarea>
+            </div>
+            <div class="form-group" style="margin-bottom:12px">
+                <label style="font-size:12px;color:var(--text-muted);cursor:pointer;display:inline-flex;align-items:center;gap:4px">
+                    📷 <span>Attach photos (up to 3)</span>
+                    <input type="file" id="clockOutPhotoInput" accept="image/*" multiple style="display:none" onchange="handleClockOutPhotos(this)">
+                </label>
+                <div id="clockOutPhotoPreview" style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap"></div>
+            </div>
+            <button class="btn btn-primary" onclick="confirmClockOut()" id="clockOutBtn" style="width:100%">Complete Clock Out</button>
+        </div>
     </div>
 </div>
 
