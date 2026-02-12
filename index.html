@@ -452,25 +452,6 @@ body {
 
 .header-title-short { display: none; }
 
-.coach-hub { display: none; margin-bottom: 14px; }
-.coach-hub-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 10px;
-}
-.coach-store-card {
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: var(--card);
-    padding: 12px;
-    cursor: pointer;
-}
-.coach-store-card .name { font-size: 13px; font-weight: 700; color: var(--text); }
-.coach-store-card .meta { margin-top: 6px; font-size: 12px; color: var(--text-muted); display: flex; justify-content: space-between; }
-.coach-store-card .meta .open.open-0 { color: #059669; }
-.coach-store-card .meta .open.open-1 { color: #d97706; }
-.coach-store-card .meta .open.open-2 { color: #dc2626; font-weight: 700; }
-
 body.exp-simple-ui #mapDesktopInsights,
 body.exp-simple-ui #adminDesktopInsights,
 body.exp-simple-ui .desktop-insight-card,
@@ -3587,75 +3568,6 @@ function isITSupportUser() {
     return !!currentUser && (currentUser.email || '').toLowerCase() === 'itsupport@dossaniparadise.com';
 }
 
-function shouldShowStoreTypeSelector() {
-    if (!currentUser) return true;
-    return isITSupportUser() || currentUser.role === 'Admin';
-}
-
-function getUserStoresList() {
-    if (!currentUser || currentUser.stores === 'all') return stores.slice();
-    const allowed = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
-    return stores.filter(s => allowed.includes(s.code));
-}
-
-function applyStoreSelectorVisibility() {
-    const showType = shouldShowStoreTypeSelector();
-    const storeTypeGroup = document.getElementById('storeTypeGroup');
-    const brandPillsWrap = document.getElementById('brandPillsWrap');
-    if (storeTypeGroup) storeTypeGroup.classList.toggle('hidden', !showType);
-    if (brandPillsWrap) brandPillsWrap.classList.toggle('hidden', !showType);
-}
-
-function renderAreaCoachHub() {
-    const hub = document.getElementById('coachHub');
-    if (!hub) return;
-
-    if (!currentUser || currentUser.role !== 'Area Coach') {
-        hub.style.display = 'none';
-        hub.innerHTML = '';
-        return;
-    }
-
-    const coachStores = getUserStoresList();
-    if (!coachStores.length) {
-        hub.style.display = 'none';
-        hub.innerHTML = '';
-        return;
-    }
-
-    db.ref('tickets').once('value', snap => {
-        const counts = {};
-        coachStores.forEach(st => counts[st.code] = 0);
-        snap.forEach(child => {
-            const t = child.val() || {};
-            if (counts[t.storeCode] !== undefined && isActiveTicketStatus(t.status)) counts[t.storeCode] += 1;
-        });
-
-        hub.style.display = 'block';
-        hub.innerHTML = `<div class="coach-hub-grid">${coachStores.map(st => {
-            const open = counts[st.code] || 0;
-            const tone = open === 0 ? 0 : (open >= 3 ? 2 : 1);
-            const short = st.name.replace(/^Burger King /, 'BK ').replace(/^Paradise QS /, 'PQS ');
-            return `<button class="coach-store-card" onclick="openCoachStoreActions('${st.id}')"><div class="name">${escHtml(short)}</div><div class="meta"><span>${escHtml(st.code)}</span><span class="open open-${tone}">${open} open</span></div></button>`;
-        }).join('')}</div>`;
-    });
-}
-
-function openCoachStoreActions(storeId) {
-    const store = stores.find(s => s.id === storeId);
-    if (!store) return;
-    selectedStore = store;
-
-    const overlay = document.createElement('div');
-    overlay.className = 'admin-modal';
-    overlay.style.zIndex = '210';
-    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
-
-    const short = store.name.replace(/^Burger King /, 'BK ').replace(/^Paradise QS /, 'PQS ');
-    overlay.innerHTML = `<div class="modal-card"><h3>${escHtml(short)}</h3><p style="font-size:13px;color:var(--text-mid);margin-bottom:12px">What would you like to do?</p><div class="modal-actions"><button class="btn btn-primary" onclick="document.body.removeChild(this.closest('.admin-modal'));showNewIssueScreen()">Report New Issue</button><button class="btn btn-secondary" onclick="document.body.removeChild(this.closest('.admin-modal'));showExistingIssuesScreen()">Existing Tickets</button><button class="btn btn-secondary" onclick="document.body.removeChild(this.closest('.admin-modal'))">Cancel</button></div></div>`;
-    document.body.appendChild(overlay);
-}
-
 function isAdminDesktopExperience() {
     return !!currentUser && isITSupportUser() && getExperienceProfile(currentUser.role) === 'admin-desktop';
 }
@@ -3717,7 +3629,6 @@ function showAppScreen() {
     const experienceProfile = getExperienceProfile(currentUser.role);
     applyExperienceClass(currentUser.role);
     document.body.classList.toggle('exp-simple-ui', !isITSupportUser());
-    applyStoreSelectorVisibility();
 
     // Populate header
     const initials = currentUser.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
@@ -7050,8 +6961,8 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v4.0.2</span>
-    <span>Build 4.0.2</span>
+    <span>R&M Tracker v4.0.1</span>
+    <span>Build 4.0.1</span>
 </div>
 
 </body>
