@@ -1683,29 +1683,6 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
     .map-stats-bar { padding: 8px 14px; }
 }
 
-/* Manager role - streamlined view (just 2 buttons) */
-.exp-manager-mobile .store-card-header,
-.exp-manager-tablet .store-card-header,
-.exp-manager-desktop .store-card-header { display: none; }
-.exp-manager-mobile .brand-pill,
-.exp-manager-tablet .brand-pill,
-.exp-manager-desktop .brand-pill { display: none; }
-.exp-manager-mobile #storeType,
-.exp-manager-tablet #storeType,
-.exp-manager-desktop #storeType { display: none; }
-.exp-manager-mobile .form-label,
-.exp-manager-tablet .form-label,
-.exp-manager-desktop .form-label { display: none; }
-.exp-manager-mobile #storeSelect,
-.exp-manager-tablet #storeSelect,
-.exp-manager-desktop #storeSelect { display: none; }
-.exp-manager-mobile #mapOverview,
-.exp-manager-tablet #mapOverview,
-.exp-manager-desktop #mapOverview { display: none; }
-.exp-manager-mobile .desktop-store-list,
-.exp-manager-tablet .desktop-store-list,
-.exp-manager-desktop .desktop-store-list { display: none; }
-
 /* Mobile */
 @media (max-width: 600px) {
     .theme-toggle { width: 28px; height: 28px; font-size: 14px; }
@@ -2336,7 +2313,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
 .asc-num.gray { color: #6b7280; }
 
 .desktop-insights-grid { display: none !important; }
-.desktop-insights-grid-DISABLED {
+._desktop-insights-grid-disabled {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 10px;
@@ -2594,13 +2571,31 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
             <div class="desktop-insights-grid" id="adminDesktopInsights"></div>
         </div>
 
+        <!-- ===== SCREEN: Manager Landing (2 buttons only) ===== -->
+        <div id="managerLanding" class="hidden">
+            <div class="store-card" style="max-width:500px;margin:0 auto;text-align:center;padding:32px 24px">
+                <div id="mgrStoreName" style="font-size:22px;font-weight:700;color:var(--text);margin-bottom:24px"></div>
+                <div class="action-grid" style="grid-template-columns:1fr 1fr;max-width:360px;margin:0 auto">
+                    <div class="action-card" onclick="showNewIssueScreen()">
+                        <div class="action-icon">📝</div>
+                        <div class="action-title" data-i18n="report_issue">Report New Issue</div>
+                        <div class="action-desc" data-i18n="report_issue_desc">Submit a repair ticket</div>
+                    </div>
+                    <div class="action-card" onclick="showExistingIssuesScreen()">
+                        <div class="action-icon">📋</div>
+                        <div class="action-title" data-i18n="view_tickets">Existing Tickets</div>
+                        <div class="action-desc" data-i18n="view_tickets_desc">View and track open issues</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- ===== SCREEN: Store Selection ===== -->
         <div id="storeSelection">
             <div class="store-card">
                 <div class="store-card-header">
                     <h2 data-i18n="select_store">Select Your Store</h2>
                     <p data-i18n="select_store_sub">Choose a location to report or check issues</p>
-                    <div id="managerStoreName" class="hidden" style="font-size:20px;font-weight:700;color:var(--text);margin:8px 0"></div>
                 </div>
 
                 <!-- Brand buttons - clickable, trigger store type + map -->
@@ -2653,7 +2648,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                         <div class="action-title" data-i18n="view_tickets">Existing Tickets</div>
                         <div class="action-desc" data-i18n="view_tickets_desc">View and track open issues</div>
                     </div>
-                    <div class="action-card coach-only-action hidden" id="viewAllCoachTickets" onclick="showCoachAllTickets()">
+                    <div class="action-card hidden" id="viewAllCoachBtn" onclick="showAllTickets('open')">
                         <div class="action-icon">🔍</div>
                         <div class="action-title" data-i18n="view_all_tickets">View All Open Tickets</div>
                         <div class="action-desc" data-i18n="view_all_desc">All stores sorted by location</div>
@@ -3157,7 +3152,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-<!-- Data files + Application logic (single-file build v5.0.0) -->
+<!-- Data files + Application logic (single-file build v5.1.0) -->
 <script>
 // ============================================================
 // STORES DATA - Dossani Paradise Management
@@ -3597,29 +3592,33 @@ function getExperienceProfile(role, viewport = getViewportHints()) {
 }
 
 function routeToProfileLanding(profile) {
-    // Tech: dedicated dashboard
-    if (profile.startsWith('tech-')) {
+    // Technician: dedicated job dashboard
+    if (currentUser.role === 'Technician') {
         showScreen('techDashboard');
         initTechDashboard();
         return;
     }
 
-    showScreen('storeSelection');
-
-    // Admin: summary cards + map with all locations
-    if (currentUser.role === 'Admin') {
-        loadAdminSummary();
-        if (window.innerWidth >= 1100) {
-            setTimeout(() => selectBrand('all'), 100);
+    // Manager: clean 2-button landing
+    if (currentUser.role === 'Manager') {
+        // Auto-select their single store (needed for issue submission)
+        if (currentUser.stores && !Array.isArray(currentUser.stores)) {
+            const store = stores.find(s => s.code === currentUser.stores);
+            if (store) {
+                selectedStore = store;
+                document.getElementById('mgrStoreName').textContent = store.name;
+            }
         }
+        showScreen('managerLanding');
         return;
     }
 
-    // Area Coach: show store selector - auto-select their brand
+    // Area Coach: store selector with their stores
     if (currentUser.role === 'Area Coach') {
+        showScreen('storeSelection');
         if (window.innerWidth >= 1100 && isMultiStoreUser()) {
-            const userStoreList = getAccessibleStores();
-            const types = [...new Set(userStoreList.map(s => s.type))];
+            const userStores = getAccessibleStores();
+            const types = [...new Set(userStores.map(s => s.type))];
             if (types.length === 1) {
                 setTimeout(() => selectBrand(types[0]), 100);
             }
@@ -3627,7 +3626,12 @@ function routeToProfileLanding(profile) {
         return;
     }
 
-    // Manager: store is auto-selected in showAppScreen/doViewAs, just show action buttons
+    // Admin: summary cards + map
+    showScreen('storeSelection');
+    loadAdminSummary();
+    if (window.innerWidth >= 1100) {
+        setTimeout(() => selectBrand('all'), 100);
+    }
 }
 
 function showAppScreen() {
@@ -3665,20 +3669,7 @@ function showAppScreen() {
         initNotificationCenter();
     });
 
-    // Auto-select store for single-store managers
-    if (currentUser.role === 'Manager' && currentUser.stores && !Array.isArray(currentUser.stores)) {
-        const store = stores.find(s => s.code === currentUser.stores);
-        if (store) {
-            selectedStore = store;
-            document.getElementById('storeType').value = store.type;
-            filterStores();
-            document.getElementById('storeSelect').value = store.id;
-            selectStore();
-            // Show store name for manager
-            const nameEl = document.getElementById('managerStoreName');
-            if (nameEl) { nameEl.textContent = store.name; nameEl.classList.remove('hidden'); }
-        }
-    }
+    // Manager store auto-select is handled by routeToProfileLanding
 
     // Show assignment fields for coaches/admins
     if (currentUser.role === 'Admin' || currentUser.role === 'Area Coach') {
@@ -3716,7 +3707,7 @@ function showError(msg) {
 }
 
 function showScreen(screenId) {
-    ['techDashboard', 'adminSummary', 'storeSelection', 'newIssueScreen', 'existingIssuesScreen', 'allTicketsScreen', 'adminScreen'].forEach(id => {
+    ['managerLanding', 'techDashboard', 'adminSummary', 'storeSelection', 'newIssueScreen', 'existingIssuesScreen', 'allTicketsScreen', 'adminScreen'].forEach(id => {
         document.getElementById(id).classList.toggle('hidden', id !== screenId);
     });
     // Admin summary shows alongside storeSelection for admins
@@ -3726,9 +3717,11 @@ function showScreen(screenId) {
 }
 
 function goBack() {
-    if (currentUser && getExperienceProfile(currentUser.role).startsWith('tech-')) {
+    if (currentUser && currentUser.role === 'Technician') {
         showScreen('techDashboard');
         loadTechJobs();
+    } else if (currentUser && currentUser.role === 'Manager') {
+        showScreen('managerLanding');
     } else {
         showScreen('storeSelection');
     }
@@ -3775,14 +3768,10 @@ function selectStore() {
     if (!id) { document.getElementById('actionButtons').classList.add('hidden'); selectedStore = null; return; }
     selectedStore = stores.find(s => s.id === id);
     document.getElementById('actionButtons').classList.remove('hidden');
-    // Show "View All" for coaches and admins
-    const viewAllBtn = document.getElementById('viewAllCoachTickets');
-    if (viewAllBtn) {
-        if (currentUser.role === 'Area Coach' || currentUser.role === 'Admin') {
-            viewAllBtn.classList.remove('hidden');
-        } else {
-            viewAllBtn.classList.add('hidden');
-        }
+    // Show View All for coaches/admins
+    const vab = document.getElementById('viewAllCoachBtn');
+    if (vab) {
+        vab.classList.toggle('hidden', !(currentUser.role === 'Area Coach' || currentUser.role === 'Admin'));
     }
     populateAssignDropdown();
 }
@@ -5387,8 +5376,7 @@ function loadAdminSummary() {
                 <div class="asc-label" data-i18n="status_closed">Closed</div>
             </div>`;
 
-        if (false && isAdminDesktopExperience()) {
-            // Disabled: insights panels too cluttered. Keep 6 status cards only.
+        if (false) { // Insights panels disabled for cleaner admin view
             desktopTicketInsights = buildDesktopInsights(tickets);
             renderDesktopInsightsCards('adminDesktopInsights', desktopTicketInsights);
         }
@@ -5570,17 +5558,6 @@ document.addEventListener('click', (e) => {
 // ============================================================
 let allTicketsData = [];
 let allTicketsDrilldown = null;
-
-function showCoachAllTickets() {
-    // Area Coach: show all open tickets across their stores, sorted by store
-    showAllTickets('open');
-    // After the screen renders, set filter to show all their stores
-    setTimeout(() => {
-        const storeFilter = document.getElementById('allTicketsStoreFilter');
-        if (storeFilter) storeFilter.value = '';
-        filterAllTickets();
-    }, 200);
-}
 
 function showAllTickets(defaultStatus) {
     showScreen('allTicketsScreen');
@@ -5820,8 +5797,6 @@ function doViewAs() {
 
         // === FULL STATE RESET ===
         selectedStore = null;
-        const msnEl = document.getElementById('managerStoreName');
-        if (msnEl) { msnEl.textContent = ''; msnEl.classList.add('hidden'); }
         document.getElementById('storeType').value = '';
         document.querySelectorAll('.brand-pill').forEach(b => b.classList.remove('active'));
         document.getElementById('storeSelect').innerHTML = '<option value="">Choose store...</option>';
@@ -5852,9 +5827,6 @@ function doViewAs() {
         document.getElementById('adminBtn').classList.remove('hidden');
         document.getElementById('viewAsBtn').classList.remove('hidden');
 
-        // Apply experience class for impersonated role
-        applyExperienceClass(currentUser.role);
-
         // Show/hide All Locations pill
         const allPill = document.getElementById('brandPill-all');
         const allOpt = document.querySelector('.admin-only-opt');
@@ -5866,23 +5838,11 @@ function doViewAs() {
             if (allOpt) allOpt.classList.add('hidden');
         }
 
-        // Auto-select store for single-store managers
-        if (currentUser.role === 'Manager' && currentUser.stores && !Array.isArray(currentUser.stores)) {
-            const store = stores.find(s => s.code === currentUser.stores);
-            if (store) {
-                selectedStore = store;
-                document.getElementById('storeType').value = store.type;
-                filterStores();
-                document.getElementById('storeSelect').value = store.id;
-                selectStore();
-                const nameEl = document.getElementById('managerStoreName');
-                if (nameEl) { nameEl.textContent = store.name; nameEl.classList.remove('hidden'); }
-            }
-        }
+        // Apply CSS experience class for impersonated role
+        applyExperienceClass(currentUser.role);
 
-        // Route to the correct landing for this role
-        const profile = getExperienceProfile(currentUser.role);
-        routeToProfileLanding(profile);
+        // Route to correct landing for this role
+        routeToProfileLanding(getExperienceProfile(currentUser.role));
 
         initNotificationCenter();
         showToast('Viewing as ' + currentUser.name, 'success');
@@ -5915,7 +5875,7 @@ function exitViewAs() {
     document.getElementById('userName').textContent = currentUser.name;
     document.getElementById('userRole').textContent = currentUser.role;
 
-    // Restore admin experience
+    // Restore admin experience  
     applyExperienceClass(currentUser.role);
     document.getElementById('brandPill-all')?.classList.remove('hidden');
     document.querySelector('.admin-only-opt')?.classList.remove('hidden');
@@ -6730,6 +6690,12 @@ function normalizeRole(r) {
 }
 
 function goHome() {
+    if (currentUser && currentUser.role === 'Manager') {
+        showScreen('managerLanding');
+        resetNewIssueForm();
+        if (activeTicketListener) { activeTicketListener(); activeTicketListener = null; }
+        return;
+    }
     if (currentUser && getExperienceProfile(currentUser.role).startsWith('tech-')) {
         showScreen('techDashboard');
         loadTechJobs();
@@ -6998,8 +6964,8 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v5.0.0</span>
-    <span>Build 5.0.0</span>
+    <span>R&M Tracker v5.1.0</span>
+    <span>Build 5.1.0</span>
 </div>
 
 </body>
