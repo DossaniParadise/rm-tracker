@@ -426,12 +426,11 @@ body {
     height: 64px;
     display: flex;
     justify-content: space-between;
-    position: relative;
-    z-index: 50;
     align-items: center;
     box-shadow: var(--shadow-sm);
     position: sticky;
     top: 0;
+    z-index: 50;
     z-index: 100;
 }
 
@@ -1547,11 +1546,7 @@ body {
 @media (max-width: 900px) {
     .app-content { padding: 12px; }
     .store-card { padding: 16px; }
-    #mapOverview {
-    position: relative;
-    z-index: 1;
-}
-#overviewMap { height: 300px; }
+    #overviewMap { height: 300px; }
     .map-header { padding: 10px 14px; }
     .map-stats-bar { padding: 8px 14px; }
     .header-right { gap: 8px; }
@@ -1583,16 +1578,11 @@ body {
     .action-icon { font-size: 24px; }
     .action-title { font-size: 14px; }
     .action-desc { font-size: 11px; }
-    #mapOverview {
-    position: relative;
-    z-index: 1;
-}
-#overviewMap { height: 250px; }
+    #overviewMap { height: 250px; }
     .map-header { padding: 8px 12px; gap: 6px; }
     .map-header h2 { font-size: 13px; }
     .map-legend { display: none; }
     .map-view-toggle button { padding: 3px 8px; font-size: 11px; }
-    .map-legend { font-size: 10px; gap: 8px; }
     .map-stats-bar { padding: 8px 12px; gap: 10px; }
     .map-stats-bar .mstat strong { font-size: 14px; }
     .map-stats-bar .mstat { font-size: 11px; }
@@ -1647,11 +1637,7 @@ body {
     .brand-pill-icon img { width: 16px; height: 16px; }
     .store-card { padding: 10px; }
     .app-content { padding: 6px; }
-    #mapOverview {
-    position: relative;
-    z-index: 1;
-}
-#overviewMap { height: 200px; }
+    #overviewMap { height: 200px; }
 }
     
 /* ============================================================
@@ -1701,10 +1687,7 @@ body {
 .dot-green { background: #34d399; }
 .dot-yellow { background: #fbbf24; }
 .dot-red { background: #f87171; }
-#mapOverview {
-    position: relative;
-    z-index: 1;
-}
+#mapOverview { position: relative; z-index: 1; }
 #overviewMap {
     width: 100%;
     height: 420px;
@@ -2127,8 +2110,6 @@ body {
 
 /* Admin Summary Dashboard */
 .admin-summary-grid {
-    position: relative;
-    z-index: 1;
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: 10px;
@@ -2168,9 +2149,7 @@ body {
     .tech-clock-banner { flex-direction: column; text-align: center; }
     .tcb-timer { font-size: 24px; }
     .tech-stats { grid-template-columns: repeat(2, 1fr); }
-    .admin-summary-grid {
-    position: relative;
-    z-index: 1; grid-template-columns: repeat(2, 1fr); }
+    .admin-summary-grid { grid-template-columns: repeat(2, 1fr); }
     .tech-dash-header { flex-direction: column; align-items: flex-start; }
     .tech-dash-header h2 { font-size: 18px; }
     #clockOutModal .modal-content { margin: 0 8px; max-height: 90vh; }
@@ -2286,17 +2265,17 @@ body {
         <!-- ===== SCREEN: Tech Dashboard (Technicians only) ===== -->
         <div id="techDashboard" class="hidden">
             <div class="tech-dash-header">
-                <h2>🔧 My Jobs</h2>
+                <h2 data-i18n="tech_my_jobs">🔧 My Jobs</h2>
                 <div class="tech-dash-filters">
-                    <button class="filter-chip active" data-filter="active" onclick="filterTechJobs('active', this)">Active</button>
-                    <button class="filter-chip" data-filter="completed" onclick="filterTechJobs('completed', this)">Completed</button>
+                    <button class="filter-chip active" data-filter="active" onclick="filterTechJobs('active', this)" data-i18n="tech_active">Active</button>
+                    <button class="filter-chip" data-filter="completed" onclick="filterTechJobs('completed', this)" data-i18n="tech_completed">Completed</button>
                 </div>
             </div>
 
             <!-- Active clock-in banner -->
             <div id="techClockBanner" class="tech-clock-banner hidden">
                 <div class="tcb-info">
-                    <span class="tcb-status">⏱️ Clocked In</span>
+                    <span class="tcb-status" data-i18n="tech_clocked_in">⏱️ Clocked In</span>
                     <span class="tcb-ticket" id="tcbTicketId"></span>
                     <span class="tcb-store" id="tcbStoreName"></span>
                 </div>
@@ -2394,8 +2373,8 @@ body {
                         </div>
                         <div class="map-legend">
                             <span><span class="dot dot-green"></span> No issues</span>
-                            <span><span class="dot dot-yellow"></span> Low/Routine</span>
-                            <span><span class="dot dot-red"></span> Urgent/Emergency</span>
+                            <span><span class="dot dot-yellow"></span> Has Issues</span>
+                            <span><span class="dot dot-red"></span> Critical</span>
                         </div>
                     </div>
                     <div id="overviewMap"></div>
@@ -2779,7 +2758,7 @@ body {
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-<!-- Data files + Application logic (single-file build v3.2.0) -->
+<!-- Data files + Application logic (single-file build v4.0.0) -->
 <script>
 // ============================================================
 // STORES DATA - Dossani Paradise Management
@@ -3301,7 +3280,12 @@ function filterStores() {
     let filtered = stores.filter(s => s.type === type);
 
     // Permission filtering
-    if (currentUser.role !== 'Admin' && currentUser.stores !== 'all') {
+    if (currentUser.role === 'Technician' && currentUser.stores === 'all') {
+        // Tech zone filtering
+        const ti = TECH_INFO.find(t => t.email === currentUser.email);
+        if (ti && ti.zone === 'west') filtered = filtered.filter(s => !RAVAY_ONLY_STORES.includes(s.code));
+        else if (ti && ti.zone === 'east') filtered = filtered.filter(s => RAVAY_ONLY_STORES.includes(s.code));
+    } else if (currentUser.role !== 'Admin' && currentUser.stores !== 'all') {
         const userStores = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
         filtered = filtered.filter(s => userStores.includes(s.code));
     }
@@ -3371,12 +3355,9 @@ filterStores = function() {
         const storeSelect = document.getElementById('storeSelect');
         let allStores = [...stores];
         if (currentUser.role === 'Technician' && currentUser.stores === 'all') {
-            const techInfo = TECH_INFO.find(t => t.email === currentUser.email);
-            if (techInfo && techInfo.zone === 'west') {
-                allStores = allStores.filter(s => !RAVAY_ONLY_STORES.includes(s.code));
-            } else if (techInfo && techInfo.zone === 'east') {
-                allStores = allStores.filter(s => RAVAY_ONLY_STORES.includes(s.code));
-            }
+            const ti = TECH_INFO.find(t => t.email === currentUser.email);
+            if (ti && ti.zone === 'west') allStores = allStores.filter(s => !RAVAY_ONLY_STORES.includes(s.code));
+            else if (ti && ti.zone === 'east') allStores = allStores.filter(s => RAVAY_ONLY_STORES.includes(s.code));
         } else if (currentUser.role !== 'Admin' && currentUser.stores !== 'all') {
             const us = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
             allStores = allStores.filter(s => us.includes(s.code));
@@ -3391,13 +3372,9 @@ function loadMapOverview(type) {
     
     // Permission filter
     if (currentUser.role === 'Technician' && currentUser.stores === 'all') {
-        // Filter by tech's geographic zone
-        const techInfo = TECH_INFO.find(t => t.email === currentUser.email);
-        if (techInfo && techInfo.zone === 'west') {
-            filtered = filtered.filter(s => !RAVAY_ONLY_STORES.includes(s.code));
-        } else if (techInfo && techInfo.zone === 'east') {
-            filtered = filtered.filter(s => RAVAY_ONLY_STORES.includes(s.code));
-        }
+        const ti = TECH_INFO.find(t => t.email === currentUser.email);
+        if (ti && ti.zone === 'west') filtered = filtered.filter(s => !RAVAY_ONLY_STORES.includes(s.code));
+        else if (ti && ti.zone === 'east') filtered = filtered.filter(s => RAVAY_ONLY_STORES.includes(s.code));
     } else if (currentUser.role !== 'Admin' && currentUser.stores !== 'all') {
         const us = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
         filtered = filtered.filter(s => us.includes(s.code));
@@ -4339,35 +4316,35 @@ function loadTechJobs() {
 }
 
 function renderTechDashboard() {
-    // Stats
-    const myAssigned = techJobs.filter(t => t.assignedTo === currentUser.email && t.status !== 'closed' && t.status !== 'resolved');
-    const allOpen = techJobs.filter(t => t.status !== 'closed' && t.status !== 'resolved');
-    const urgent = allOpen.filter(t => t.priority === 'emergency' || t.priority === 'urgent');
-    const completed = techJobs.filter(t => t.assignedTo === currentUser.email && (t.status === 'resolved' || t.status === 'closed'));
+    // Stats - all jobs in techJobs are assigned to this tech
+    const active = techJobs.filter(t => t.status !== 'closed' && t.status !== 'resolved');
+    const urgent = active.filter(t => t.priority === 'emergency' || t.priority === 'urgent');
+    const waiting = active.filter(t => t.status === 'waiting');
+    const completed = techJobs.filter(t => t.status === 'resolved' || t.status === 'closed');
 
     document.getElementById('techStats').innerHTML = `
         <div class="tech-stat-card" onclick="filterTechJobs('active',null)">
-            <div class="tsc-num" style="color:#d97706">${myAssigned.length}</div>
-            <div class="tsc-label">My Jobs</div>
-        </div>
-        <div class="tech-stat-card" onclick="filterTechJobs('all',null)">
-            <div class="tsc-num" style="color:#2563eb">${allOpen.length}</div>
-            <div class="tsc-label">Open Tickets</div>
+            <div class="tsc-num" style="color:#d97706">${active.length}</div>
+            <div class="tsc-label" data-i18n="tech_active">Active Jobs</div>
         </div>
         <div class="tech-stat-card">
             <div class="tsc-num" style="color:#dc2626">${urgent.length}</div>
-            <div class="tsc-label">Urgent</div>
+            <div class="tsc-label" data-i18n="tech_urgent">Urgent</div>
+        </div>
+        <div class="tech-stat-card">
+            <div class="tsc-num" style="color:#ea580c">${waiting.length}</div>
+            <div class="tsc-label" data-i18n="tech_waiting">Waiting</div>
         </div>
         <div class="tech-stat-card" onclick="filterTechJobs('completed',null)">
             <div class="tsc-num" style="color:#059669">${completed.length}</div>
-            <div class="tsc-label">Completed</div>
+            <div class="tsc-label" data-i18n="tech_completed">Completed</div>
         </div>`;
 
     // Filter jobs
     let displayJobs;
     if (techFilter === 'completed') {
         displayJobs = techJobs.filter(t => t.status === 'resolved' || t.status === 'closed');
-    } else {
+    } else { // 'active'
         displayJobs = techJobs.filter(t => t.status !== 'closed' && t.status !== 'resolved');
     }
 
@@ -4441,6 +4418,9 @@ function filterTechJobs(filter, btn) {
 function techOpenTicket(key) {
     const t = techJobs.find(x => x._key === key);
     if (!t) return;
+    // Set selectedStore context so ticket detail modal works correctly
+    const store = stores.find(s => s.code === t.storeCode);
+    if (store) selectedStore = store;
     currentTickets = [t];
     openTicketDetail(key);
 }
@@ -4612,34 +4592,33 @@ function loadAdminSummary() {
         const assigned = tickets.filter(t => t.status === 'assigned').length;
         const inprogress = tickets.filter(t => t.status === 'inprogress').length;
         const waiting = tickets.filter(t => t.status === 'waiting').length;
-
         const resolved = tickets.filter(t => t.status === 'resolved').length;
         const closed = tickets.filter(t => t.status === 'closed').length;
         
         document.getElementById('adminSummaryGrid').innerHTML = `
             <div class="admin-sum-card" onclick="selectBrand('all');setTimeout(()=>showAllTickets('open'),200)">
                 <div class="asc-num red">${open}</div>
-                <div class="asc-label">Open</div>
+                <div class="asc-label" data-i18n="status_open">Open</div>
             </div>
             <div class="admin-sum-card" onclick="selectBrand('all');setTimeout(()=>showAllTickets('assigned'),200)">
                 <div class="asc-num purple">${assigned}</div>
-                <div class="asc-label">Assigned</div>
+                <div class="asc-label" data-i18n="status_assigned">Assigned</div>
             </div>
             <div class="admin-sum-card" onclick="selectBrand('all');setTimeout(()=>showAllTickets('inprogress'),200)">
                 <div class="asc-num blue">${inprogress}</div>
-                <div class="asc-label">In Progress</div>
+                <div class="asc-label" data-i18n="status_inprogress">In Progress</div>
             </div>
             <div class="admin-sum-card" onclick="selectBrand('all');setTimeout(()=>showAllTickets('waiting'),200)">
                 <div class="asc-num orange">${waiting}</div>
-                <div class="asc-label">Waiting</div>
+                <div class="asc-label" data-i18n="status_waiting">Waiting</div>
             </div>
             <div class="admin-sum-card" onclick="selectBrand('all');setTimeout(()=>showAllTickets('resolved'),200)">
                 <div class="asc-num green">${resolved}</div>
-                <div class="asc-label">Resolved</div>
+                <div class="asc-label" data-i18n="status_resolved">Resolved</div>
             </div>
             <div class="admin-sum-card" onclick="selectBrand('all');setTimeout(()=>showAllTickets('closed'),200)">
                 <div class="asc-num gray">${closed}</div>
-                <div class="asc-label">Closed</div>
+                <div class="asc-label" data-i18n="status_closed">Closed</div>
             </div>`;
 
         document.getElementById('adminSummary').classList.remove('hidden');
@@ -4664,10 +4643,11 @@ function initNotificationCenter() {
         notifyListenerCallback = null;
     }
 
-    // Determine which stores this user can see
-    const isAdmin = currentUser.role === 'Admin' || currentUser.stores === 'all';
+    // Determine visibility scope
+    const isTech = currentUser.role === 'Technician';
+    const isAdmin = currentUser.role === 'Admin';
     let myStores = null;
-    if (!isAdmin) {
+    if (!isAdmin && !isTech) {
         myStores = Array.isArray(currentUser.stores) ? currentUser.stores : 
                    (currentUser.stores ? [currentUser.stores] : []);
     }
@@ -4699,10 +4679,13 @@ function initNotificationCenter() {
             // Skip closed/resolved tickets
             if (!t.status || t.status === 'closed' || t.status === 'resolved') return;
 
-            // Store access check: admin sees all, others check store list
+            // Store access check
             let canSee = false;
             if (isAdmin) {
                 canSee = true;
+            } else if (isTech) {
+                // Techs only see tickets assigned to them
+                canSee = t.assignedTo === currentUser.email;
             } else if (myStores && myStores.length > 0 && t.storeCode) {
                 canSee = myStores.includes(t.storeCode);
             }
@@ -4991,7 +4974,7 @@ function doViewAs() {
 
         // Impersonate
         currentUser = {
-            uid: realUser.uid, // keep real auth UID for Firebase writes
+            uid: realUser.uid,
             email: data.email || '',
             name: data.name || 'Unknown',
             role: normalizeRole(data.role),
@@ -5001,31 +4984,39 @@ function doViewAs() {
 
         document.getElementById('viewAsModal').remove();
 
-        // Reset UI
-        showScreen('storeSelection');
+        // === FULL STATE RESET ===
+        selectedStore = null;
         document.getElementById('storeType').value = '';
         document.querySelectorAll('.brand-pill').forEach(b => b.classList.remove('active'));
         document.getElementById('storeSelect').innerHTML = '<option value="">Choose store...</option>';
         document.getElementById('actionButtons').classList.add('hidden');
         document.getElementById('mapOverview').classList.add('hidden');
-        selectedStore = null;
+        document.getElementById('adminSummary').classList.add('hidden');
+
+        // Reset assignment fields based on role
+        const af = document.getElementById('assignmentFields');
+        if (currentUser.role === 'Admin' || currentUser.role === 'Area Coach') {
+            af.classList.remove('hidden');
+        } else {
+            af.classList.add('hidden');
+        }
+
+        // Clear tech dashboard state
+        if (clockTimerInterval) { clearInterval(clockTimerInterval); clockTimerInterval = null; }
+        activeClockIn = null;
+        document.getElementById('techClockBanner')?.classList.add('hidden');
 
         // Update header
         const initials = currentUser.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
         document.getElementById('userAvatar').textContent = initials || '?';
         document.getElementById('userName').textContent = currentUser.name;
         document.getElementById('userRole').innerHTML = currentUser.role + ' <span style="font-size:10px;color:var(--accent);font-weight:700">(viewing as)</span>';
-        // Route to tech dashboard if viewing as technician
-        if (currentUser.role === 'Technician') {
-            showScreen('techDashboard');
-            initTechDashboard();
-        }
 
-        // Keep admin + viewAs buttons visible
+        // Keep admin + viewAs buttons visible (real user is admin)
         document.getElementById('adminBtn').classList.remove('hidden');
         document.getElementById('viewAsBtn').classList.remove('hidden');
 
-        // Show/hide All Locations pill based on impersonated user's role
+        // Show/hide All Locations pill
         const allPill = document.getElementById('brandPill-all');
         const allOpt = document.querySelector('.admin-only-opt');
         if (currentUser.role === 'Admin' || currentUser.role === 'Technician' || currentUser.stores === 'all') {
@@ -5036,8 +5027,12 @@ function doViewAs() {
             if (allOpt) allOpt.classList.add('hidden');
         }
 
-        // Re-run auto-select for single-store managers
-        if (currentUser.role === 'Manager' && currentUser.stores && !Array.isArray(currentUser.stores)) {
+        // Role-specific routing
+        if (currentUser.role === 'Technician') {
+            showScreen('techDashboard');
+            initTechDashboard();
+        } else if (currentUser.role === 'Manager' && currentUser.stores && !Array.isArray(currentUser.stores)) {
+            showScreen('storeSelection');
             const store = stores.find(s => s.code === currentUser.stores);
             if (store) {
                 selectedStore = store;
@@ -5046,17 +5041,18 @@ function doViewAs() {
                 document.getElementById('storeSelect').value = store.id;
                 selectStore();
             }
-        }
-
-        // Auto-select for multi-store techs/coaches on desktop
-        if (window.innerWidth >= 1100 && isMultiStoreUser()) {
-            if (currentUser.role === 'Admin' || currentUser.role === 'Technician') {
+        } else {
+            showScreen('storeSelection');
+            // Admin summary for admins
+            if (currentUser.role === 'Admin') loadAdminSummary();
+            // Auto-select brand on desktop
+            if (window.innerWidth >= 1100 && isMultiStoreUser()) {
                 setTimeout(() => selectBrand('all'), 100);
             }
         }
 
         initNotificationCenter();
-        showToast(`Viewing as ${currentUser.name}`, 'success');
+        showToast('Viewing as ' + currentUser.name, 'success');
     });
 }
 
@@ -5067,14 +5063,18 @@ function exitViewAs() {
 
     document.getElementById('viewAsModal')?.remove();
 
-    // Reset UI
+    // Full state reset
+    selectedStore = null;
+    if (clockTimerInterval) { clearInterval(clockTimerInterval); clockTimerInterval = null; }
+    activeClockIn = null;
+    document.getElementById('techClockBanner')?.classList.add('hidden');
+
     showScreen('storeSelection');
     document.getElementById('storeType').value = '';
     document.querySelectorAll('.brand-pill').forEach(b => b.classList.remove('active'));
     document.getElementById('storeSelect').innerHTML = '<option value="">Choose store...</option>';
     document.getElementById('actionButtons').classList.add('hidden');
     document.getElementById('mapOverview').classList.add('hidden');
-    selectedStore = null;
 
     // Restore header
     const initials = currentUser.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
@@ -5082,10 +5082,15 @@ function exitViewAs() {
     document.getElementById('userName').textContent = currentUser.name;
     document.getElementById('userRole').textContent = currentUser.role;
 
-    // Restore All Locations for admin
-    if (currentUser.role === 'Admin' || currentUser.role === 'Technician' || currentUser.stores === 'all') {
-        document.getElementById('brandPill-all').classList.remove('hidden');
-        document.querySelector('.admin-only-opt')?.classList.remove('hidden');
+    // Restore admin-specific UI
+    document.getElementById('brandPill-all')?.classList.remove('hidden');
+    document.querySelector('.admin-only-opt')?.classList.remove('hidden');
+    document.getElementById('assignmentFields')?.classList.remove('hidden');
+    loadAdminSummary();
+
+    // Auto-select on desktop
+    if (window.innerWidth >= 1100) {
+        setTimeout(() => selectBrand('all'), 100);
     }
 
     initNotificationCenter();
@@ -5658,7 +5663,7 @@ const esc = escHtml;
 
 function normalizeRole(r) {
     if (!r) return 'Manager';
-    const lower = r.toLowerCase();
+    const lower = r.toLowerCase().trim();
     if (lower === 'admin') return 'Admin';
     if (lower === 'areacoach' || lower === 'area coach') return 'Area Coach';
     if (lower === 'technician') return 'Technician';
@@ -5742,7 +5747,7 @@ const TRANSLATIONS = {
         form_priority: 'Prioridad',
         form_description: 'Descripción',
         form_photos: 'Fotos',
-        form_photos_hint: '(requerida, al menos 1, máximo 3)',
+        form_photos_hint: '(opcional, hasta 3)',
         // Categories
         cat_plumbing: 'Plomería',
         cat_equipment: 'Equipo',
@@ -5769,6 +5774,38 @@ const TRANSLATIONS = {
         photo_hint: 'JPG o PNG, máximo 5MB cada una',
         notifications: 'Notificaciones',
         all_locations: 'Todas las Ubicaciones',
+        // Tech dashboard
+        tech_my_jobs: '🔧 Mis Trabajos',
+        tech_active: 'Activos',
+        tech_completed: 'Completados',
+        tech_urgent: 'Urgente',
+        tech_waiting: 'En Espera',
+        tech_clock_in: 'Registrar Entrada',
+        tech_clock_out: 'Registrar Salida',
+        tech_clocked_in: '⏱️ Registrado',
+        tech_view_details: 'Ver Detalles',
+        tech_no_active: 'No hay trabajos asignados',
+        tech_no_completed: 'No hay trabajos completados',
+        // Admin summary
+        status_open: 'Abiertos',
+        status_assigned: 'Asignados',
+        status_inprogress: 'En Progreso',
+        status_waiting: 'En Espera',
+        status_resolved: 'Resueltos',
+        status_closed: 'Cerrados',
+        // Admin panel
+        admin_pending: 'Aprobación Pendiente',
+        admin_active_users: 'Usuarios Activos',
+        admin_add_user: 'Agregar Nuevo Usuario',
+        admin_vendors: 'Proveedores Aprobados',
+        admin_notify_routing: 'Enrutamiento de Notificaciones',
+        admin_db_cleanup: 'Limpieza de Base de Datos',
+        // Misc
+        with_issues: 'Con Problemas',
+        no_open_tickets: 'No hay tickets abiertos',
+        view_as: 'Ver Como',
+        admin_panel: 'Panel de Admin',
+        sign_out: 'Cerrar Sesión',
     }
 };
 
@@ -5895,8 +5932,8 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v3.2.0</span>
-    <span>Build 3.2.0</span>
+    <span>R&M Tracker v4.0.0</span>
+    <span>Build 4.0.0</span>
 </div>
 
 </body>
