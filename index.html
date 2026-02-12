@@ -1581,6 +1581,97 @@ body {
     border-radius: 8px;
 }
 
+/* ---- Experience profiles (intent-layer UI variants) ---- */
+body.exp-admin-desktop .app-header {
+    height: 68px;
+    padding: 0 28px;
+}
+body.exp-tech-tablet .app-header {
+    height: 58px;
+    padding: 0 16px;
+}
+body.exp-manager-mobile .app-header {
+    height: 52px;
+    padding: 0 10px;
+}
+
+body.exp-admin-desktop .ticket-card-desc {
+    -webkit-line-clamp: unset;
+    display: block;
+}
+body.exp-admin-desktop .ticket-card-meta span { display: inline-flex; }
+
+body.exp-tech-tablet .ticket-card-desc {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+}
+body.exp-tech-tablet .ticket-card-meta span:nth-child(n+5) { display: none; }
+
+body.exp-manager-mobile .ticket-card-desc {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+}
+body.exp-manager-mobile .ticket-card-meta span:nth-child(n+3) { display: none; }
+
+/* Primary action placement by experience */
+.mobile-primary-action-wrap { display: none; }
+body.exp-manager-mobile #existingIssuesScreen .tickets-header .btn-primary { display: none; }
+body.exp-manager-mobile #existingIssuesScreen .mobile-primary-action-wrap {
+    display: block;
+    position: sticky;
+    bottom: 8px;
+    z-index: 25;
+    padding-top: 8px;
+    background: linear-gradient(to top, var(--bg) 45%, transparent);
+}
+body.exp-manager-mobile #existingIssuesScreen .mobile-primary-action-wrap .btn {
+    width: 100%;
+    box-shadow: var(--shadow-lg);
+}
+
+/* Filter control variants: chip row vs compact modal */
+.compact-filter-trigger,
+.compact-filter-modal { display: none; }
+body.exp-manager-mobile .compact-filter-trigger { display: inline-flex; }
+body.exp-manager-mobile #ticketFilters { display: none; }
+body.exp-manager-mobile .compact-filter-modal.open {
+    display: flex;
+    position: fixed;
+    inset: 0;
+    z-index: 220;
+    align-items: flex-end;
+    background: rgba(15, 23, 42, 0.45);
+}
+body.exp-manager-mobile .compact-filter-sheet {
+    width: 100%;
+    background: var(--card);
+    border-top-left-radius: 16px;
+    border-top-right-radius: 16px;
+    padding: 14px;
+    box-shadow: var(--shadow-lg);
+}
+body.exp-manager-mobile .compact-filter-sheet .ticket-filters {
+    display: flex;
+    margin-bottom: 0;
+}
+
+body.exp-manager-mobile .header-title { font-size: 13px; }
+body.exp-manager-mobile .user-badge .user-meta { display: none; }
+body.exp-manager-mobile .user-avatar { width: 28px; height: 28px; font-size: 11px; }
+body.exp-manager-mobile .btn-logout { font-size: 11px; padding: 4px 10px; }
+body.exp-manager-mobile .form-actions { flex-direction: column; }
+body.exp-manager-mobile .form-actions .btn { width: 100%; }
+body.exp-manager-mobile .tickets-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+body.exp-manager-mobile .ticket-filters { gap: 4px; }
+body.exp-manager-mobile .filter-chip { font-size: 11px; padding: 4px 10px; }
+
+body.exp-tech-tablet .header-right { gap: 8px; }
+body.exp-tech-tablet .ticket-filters { gap: 6px; }
+
 /* ---- Responsive ---- */
 
 /* Tablet */
@@ -1590,20 +1681,14 @@ body {
     #overviewMap { height: 300px; }
     .map-header { padding: 10px 14px; }
     .map-stats-bar { padding: 8px 14px; }
-    .header-right { gap: 8px; }
 }
 
 /* Mobile */
 @media (max-width: 600px) {
-    .app-header { padding: 0 10px; height: 50px; }
-    .header-title { font-size: 13px; }
     .theme-toggle { width: 28px; height: 28px; font-size: 14px; }
-    .user-badge .user-meta { display: none; }
-    .user-avatar { width: 28px; height: 28px; font-size: 11px; }
     .admin-btn { font-size: 11px; padding: 4px 8px; }
     .notify-panel { right: 4px; width: calc(100vw - 8px); top: 50px; max-height: 60vh; }
     .notify-item { padding: 10px 12px; }
-    .btn-logout { font-size: 11px; padding: 4px 10px; }
     .app-content { padding: 8px; }
     .store-card { padding: 14px; }
     .store-card h2 { font-size: 16px; }
@@ -1640,8 +1725,6 @@ body {
     .issue-form-header { padding: 14px; }
     .issue-form-header h2 { font-size: 16px; }
     .photo-upload-area { padding: 16px; }
-    .form-actions { flex-direction: column; }
-    .form-actions .btn { width: 100%; }
     .status-select-grid { grid-template-columns: repeat(2, 1fr); }
     .modal-content { max-width: 100%; margin: 0 8px; max-height: 90vh; }
     .modal-body { padding: 14px; }
@@ -1651,10 +1734,7 @@ body {
     .ticket-card-desc { font-size: 13px; }
     .ticket-card-meta { font-size: 11px; }
     .ticket-id { font-size: 11px; }
-    .tickets-header { flex-direction: column; align-items: flex-start; gap: 8px; }
     .tickets-header h2 { font-size: 16px; }
-    .ticket-filters { gap: 4px; }
-    .filter-chip { font-size: 11px; padding: 4px 10px; }
     .back-row { margin-bottom: 8px; }
     .btn-back { font-size: 12px; }
     .admin-section-header { padding: 12px 14px; }
@@ -2345,7 +2425,7 @@ body {
 
     </style>
 </head>
-<body>
+<body class="exp-manager-mobile">
 
 <!-- ============================================================
      LOGIN SCREEN
@@ -2799,7 +2879,10 @@ body {
 
             <div class="tickets-header">
                 <h2>Tickets <span id="ticketStoreName" style="font-weight:400; color: var(--text-muted); font-size: 15px;"></span></h2>
-                <button class="btn btn-primary btn-sm" onclick="showNewIssueScreen()">+ New Ticket</button>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <button class="btn btn-secondary btn-sm compact-filter-trigger" onclick="toggleCompactFilters(true)">Filters</button>
+                    <button class="btn btn-primary btn-sm" onclick="showNewIssueScreen()">+ New Ticket</button>
+                </div>
             </div>
 
             <div class="ticket-filters" id="ticketFilters">
@@ -2814,6 +2897,28 @@ body {
 
             <div class="tickets-list" id="ticketsList">
                 <!-- Populated by JS -->
+            </div>
+
+            <div class="mobile-primary-action-wrap">
+                <button class="btn btn-primary" onclick="showNewIssueScreen()">+ New Ticket</button>
+            </div>
+
+            <div class="compact-filter-modal" id="compactFilterModal" onclick="if(event.target.id==='compactFilterModal')toggleCompactFilters(false)">
+                <div class="compact-filter-sheet">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                        <strong>Filter tickets</strong>
+                        <button class="btn btn-ghost btn-sm" onclick="toggleCompactFilters(false)">Close</button>
+                    </div>
+                    <div class="ticket-filters" id="compactTicketFilters">
+                        <button class="filter-chip active" data-filter="all" onclick="filterTickets('all', this)">All</button>
+                        <button class="filter-chip" data-filter="open" onclick="filterTickets('open', this)">Open</button>
+                        <button class="filter-chip" data-filter="assigned" onclick="filterTickets('assigned', this)">Assigned</button>
+                        <button class="filter-chip" data-filter="inprogress" onclick="filterTickets('inprogress', this)">In Progress</button>
+                        <button class="filter-chip" data-filter="waiting" onclick="filterTickets('waiting', this)">Waiting</button>
+                        <button class="filter-chip" data-filter="resolved" onclick="filterTickets('resolved', this)">Resolved</button>
+                        <button class="filter-chip" data-filter="closed" onclick="filterTickets('closed', this)">Closed</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -3437,6 +3542,16 @@ function isAdminDesktopExperience() {
     return !!currentUser && getExperienceProfile(currentUser.role) === 'admin-desktop';
 }
 
+function applyExperienceClass(role, viewport = getViewportHints()) {
+    const profile = getExperienceProfile(role, viewport);
+    const expClass = `exp-${profile}`;
+    document.body.classList.forEach(c => {
+        if (c.startsWith('exp-')) document.body.classList.remove(c);
+    });
+    document.body.classList.add(expClass);
+    return expClass;
+}
+
 function getExperienceProfile(role, viewport = getViewportHints()) {
     const normalizedRole = normalizeRole(role || 'Manager').toLowerCase();
     let device = 'desktop';
@@ -3475,6 +3590,7 @@ function showAppScreen() {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('appContainer').style.display = 'flex';
     const experienceProfile = getExperienceProfile(currentUser.role);
+    applyExperienceClass(currentUser.role);
 
     // Populate header
     const initials = currentUser.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
@@ -4155,6 +4271,7 @@ goBack = function() {
 // Handle window resize for map
 window.addEventListener('resize', () => {
     if (overviewMap) setTimeout(() => overviewMap.invalidateSize(), 200);
+    if (currentUser) applyExperienceClass(currentUser.role);
 });
 
 // ============================================================
@@ -6230,10 +6347,18 @@ function loadTickets() {
     activeTicketListener = () => ref.off('value', handler);
 }
 
+function toggleCompactFilters(open) {
+    const modal = document.getElementById('compactFilterModal');
+    if (!modal) return;
+    modal.classList.toggle('open', !!open);
+}
+
 function filterTickets(filter, chipEl) {
     currentFilter = filter;
-    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
-    if (chipEl) chipEl.classList.add('active');
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.toggle('active', c.dataset.filter === filter));
+    if (document.body.classList.contains('exp-manager-mobile')) {
+        toggleCompactFilters(false);
+    }
     renderTickets();
 }
 
