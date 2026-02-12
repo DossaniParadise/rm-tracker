@@ -2603,7 +2603,9 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                 </div>
 
                 <!-- Brand buttons - clickable, trigger store type + map -->
-                <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:12px">
+                <div id="coachHub" class="coach-hub"></div>
+
+                <div id="brandPillsWrap" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:12px">
                     <button onclick="selectBrand('all')" class="brand-pill hidden" id="brandPill-all">
                         <span class="brand-pill-icon" style="background:var(--primary);color:#fff;font-size:14px;font-weight:700">📍</span>
                         <span>All Locations</span>
@@ -2623,7 +2625,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                 </div>
 
                 <div class="form-row">
-                    <div class="form-group">
+                    <div class="form-group" id="storeTypeGroup">
                         <label class="form-label" data-i18n="store_type">Store Type</label>
                         <select class="form-select" id="storeType" onchange="filterStores()">
                             <option value="">Choose type...</option>
@@ -3602,6 +3604,13 @@ function routeToProfileLanding(profile) {
     }
 
     showScreen('storeSelection');
+    applyStoreSelectorVisibility();
+
+    if (currentUser && currentUser.role === 'Area Coach') {
+        renderAreaCoachHub();
+        document.getElementById('mapOverview').classList.add('hidden');
+        return;
+    }
 
     if (profile === 'admin-desktop') {
         loadAdminSummary();
@@ -3722,7 +3731,15 @@ function goBack() {
 // STORE SELECTION
 // ============================================================
 function filterStores() {
-    const type = document.getElementById('storeType').value;
+    let type = document.getElementById('storeType').value;
+    if (!shouldShowStoreTypeSelector()) {
+        const userStores = getUserStoresList();
+        const types = [...new Set(userStores.map(s => s.type))];
+        if (types.length === 1) {
+            type = types[0];
+            document.getElementById('storeType').value = type;
+        }
+    }
     const sel = document.getElementById('storeSelect');
     sel.innerHTML = '<option value="">Choose store...</option>';
     document.getElementById('actionButtons').classList.add('hidden');
@@ -5748,13 +5765,16 @@ function doViewAs() {
         // Stash real user if not already impersonating
         if (!realUser) realUser = { ...currentUser };
 
+        const viewEmail = (data.email || '').toLowerCase();
+        const known = USER_DIRECTORY[viewEmail] || null;
+
         // Impersonate
         currentUser = {
             uid: realUser.uid,
             email: data.email || '',
-            name: data.name || 'Unknown',
-            role: normalizeRole(data.role),
-            stores: data.stores || [],
+            name: data.name || (known && known.name) || 'Unknown',
+            role: normalizeRole(data.role || (known && known.role)),
+            stores: data.stores || (known && known.stores) || [],
             _impersonating: data.name || data.email
         };
 
@@ -5787,6 +5807,10 @@ function doViewAs() {
         document.getElementById('userAvatar').textContent = initials || '?';
         document.getElementById('userName').textContent = currentUser.name;
         document.getElementById('userRole').innerHTML = currentUser.role + ' <span style="font-size:10px;color:var(--accent);font-weight:700">(viewing as)</span>';
+
+        applyExperienceClass(currentUser.role);
+        document.body.classList.toggle('exp-simple-ui', !isITSupportUser());
+        applyStoreSelectorVisibility();
 
         // Keep admin + viewAs buttons visible (real user is admin)
         document.getElementById('adminBtn').classList.remove('hidden');
@@ -5826,6 +5850,7 @@ function exitViewAs() {
     if (!realUser) return;
     currentUser = { ...realUser };
     realUser = null;
+    document.body.classList.toggle('exp-simple-ui', !isITSupportUser());
 
     document.getElementById('viewAsModal')?.remove();
 
@@ -5836,6 +5861,8 @@ function exitViewAs() {
     document.getElementById('techClockBanner')?.classList.add('hidden');
 
     showScreen('storeSelection');
+    applyStoreSelectorVisibility();
+    if (currentUser && currentUser.role === 'Area Coach') renderAreaCoachHub();
     document.getElementById('storeType').value = '';
     document.querySelectorAll('.brand-pill').forEach(b => b.classList.remove('active'));
     document.getElementById('storeSelect').innerHTML = '<option value="">Choose store...</option>';
@@ -6677,6 +6704,8 @@ function goHome() {
         return;
     }
     showScreen('storeSelection');
+    applyStoreSelectorVisibility();
+    if (currentUser && currentUser.role === 'Area Coach') renderAreaCoachHub();
     document.getElementById('storeType').value = '';
     document.querySelectorAll('.brand-pill').forEach(b => b.classList.remove('active'));
     document.getElementById('storeSelect').innerHTML = '<option value="">Choose store...</option>';
