@@ -1061,6 +1061,47 @@ body {
 
 .form-actions .btn { flex: 1; }
 
+/* Mobile manager wizard */
+.wizard-mode .full-form-mode { display: none; }
+.wizard-container { display: none; }
+.wizard-mode .wizard-container { display: block; }
+.wizard-step-chip-row { display: flex; gap: 6px; margin-bottom: 14px; }
+.wizard-step-chip { flex: 1; height: 5px; border-radius: 999px; background: var(--border); }
+.wizard-step-chip.active { background: var(--primary); }
+.wizard-step { display: none; }
+.wizard-step.active { display: block; }
+.wizard-title { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+.wizard-subtitle { color: var(--text-mid); font-size: 13px; margin-bottom: 14px; }
+.wizard-store-list,
+.wizard-touch-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.wizard-store-btn,
+.wizard-touch-card {
+    width: 100%;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--border-light);
+    text-align: left;
+    padding: 14px;
+    font: inherit;
+    cursor: pointer;
+}
+.wizard-store-btn.selected,
+.wizard-touch-card.selected { border-color: var(--primary); background: var(--primary-light); }
+.wizard-touch-card .cat-icon { font-size: 24px; margin-right: 10px; }
+.wizard-touch-card { display: flex; align-items: center; font-size: 16px; font-weight: 600; }
+.wizard-photo-hint { font-size: 13px; color: var(--text-mid); margin: 8px 0 10px; }
+.wizard-dictation-row { display: flex; gap: 8px; margin-top: 8px; }
+.wizard-dictation-row .btn { flex: 1; }
+.wizard-priority-hint { color: var(--text-mid); font-size: 12px; margin-top: 2px; }
+.wizard-review-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; background: var(--border-light); margin-bottom: 12px; }
+.wizard-review-row { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; margin-bottom: 6px; }
+.wizard-review-row strong { color: var(--text-mid); font-weight: 600; }
+
+@media (min-width: 768px) {
+    .wizard-store-list,
+    .wizard-touch-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 /* ============================================================
    EXISTING ISSUES / TICKET LIST
    ============================================================ */
@@ -2397,6 +2438,7 @@ body {
                 </div>
 
                 <div class="issue-form-body">
+                    <div class="full-form-mode">
                     <!-- Category -->
                     <div class="form-group">
                         <label class="form-label" data-i18n="form_category">Category</label>
@@ -2446,7 +2488,7 @@ body {
                     <!-- Contact Info -->
                     <div class="form-group">
                         <label class="form-label" data-i18n="form_name">Your Name</label>
-                        <input class="form-input" type="text" id="contactName" placeholder="Name of person reporting issue" autocomplete="off">
+                        <input class="form-input" type="text" id="contactName" placeholder="Name of person reporting issue" autocomplete="off" oninput="saveNewIssueDraft()">
                     </div>
                     <div class="form-group">
                         <label class="form-label" data-i18n="form_phone">Your Contact Phone</label>
@@ -2504,7 +2546,7 @@ body {
                     <!-- Description -->
                     <div class="form-group">
                         <label class="form-label" data-i18n="form_description">Description</label>
-                        <textarea class="form-textarea" id="issueDescription" placeholder="Describe the issue in detail. What's broken? Where exactly? When did it start?"></textarea>
+                        <textarea class="form-textarea" id="issueDescription" placeholder="Describe the issue in detail. What's broken? Where exactly? When did it start?" oninput="saveNewIssueDraft()"></textarea>
                     </div>
 
                     <!-- Photos -->
@@ -2515,13 +2557,81 @@ body {
                             <div class="upload-text" data-i18n="tap_photos">Tap to add photos</div>
                             <div class="upload-hint" data-i18n="photo_hint">JPG or PNG, max 5MB each</div>
                         </div>
-                        <input type="file" id="photoInput" accept="image/*" multiple style="display:none" onchange="handlePhotos(this)">
+                        <input type="file" id="photoInput" accept="image/*" capture="environment" multiple style="display:none" onchange="handlePhotos(this)">
                         <div class="photo-preview-grid" id="photoPreviewGrid"></div>
+                    </div>
+                    </div>
+
+                    <div class="wizard-container" id="newIssueWizard">
+                        <div class="wizard-step-chip-row" id="wizardStepChips"></div>
+
+                        <div class="wizard-step" data-step="1">
+                            <div class="wizard-title">Step 1: Pick location</div>
+                            <div class="wizard-subtitle">Choose the store where the issue is happening.</div>
+                            <div id="wizardStoreList" class="wizard-store-list"></div>
+                        </div>
+
+                        <div class="wizard-step" data-step="2">
+                            <div class="wizard-title">Step 2: Pick category</div>
+                            <div class="wizard-subtitle">Tap the issue type.</div>
+                            <div class="wizard-touch-grid" id="wizardCategoryGrid"></div>
+                        </div>
+
+                        <div class="wizard-step" data-step="3">
+                            <div class="wizard-title">Step 3: Add photo first</div>
+                            <div class="wizard-subtitle">Take a picture now so the repair team can quickly triage.</div>
+                            <div class="photo-upload-area" onclick="document.getElementById('photoInput').click()">
+                                <div class="upload-icon">📸</div>
+                                <div class="upload-text">Open camera / photos</div>
+                                <div class="upload-hint">Tip: Include the full area and close-up detail.</div>
+                            </div>
+                            <div class="wizard-photo-hint">You can submit without a photo, but adding one improves first-time fix rates.</div>
+                            <div class="photo-preview-grid" id="wizardPhotoPreviewGrid"></div>
+                        </div>
+
+                        <div class="wizard-step" data-step="4">
+                            <div class="wizard-title">Step 4: Describe issue</div>
+                            <div class="wizard-subtitle">Dictation friendly: tap the mic on your keyboard and speak naturally.</div>
+                            <textarea class="form-textarea" id="wizardIssueDescription" placeholder="Try: 'Ice machine leaking behind left panel since this morning.'" oninput="saveNewIssueDraft()"></textarea>
+                            <div class="wizard-dictation-row">
+                                <button class="btn btn-secondary" type="button" onclick="copyWizardDescriptionToMain()">Use this description</button>
+                            </div>
+                        </div>
+
+                        <div class="wizard-step" data-step="5">
+                            <div class="wizard-title">Step 5: Priority</div>
+                            <div class="wizard-subtitle">How urgent is this for operations or safety?</div>
+                            <div class="priority-options">
+                                <button class="priority-btn p-routine" data-priority="routine" onclick="selectPriority(this)">
+                                    <span class="priority-icon">🟢</span>
+                                    <span class="priority-label">Routine</span>
+                                    <span class="wizard-priority-hint">Still usable. Can wait up to a week.</span>
+                                </button>
+                                <button class="priority-btn p-urgent" data-priority="urgent" onclick="selectPriority(this)">
+                                    <span class="priority-icon">🟡</span>
+                                    <span class="priority-label">Urgent</span>
+                                    <span class="wizard-priority-hint">Impacts service. Needs attention in 72h.</span>
+                                </button>
+                                <button class="priority-btn p-emergency" data-priority="emergency" onclick="selectPriority(this)">
+                                    <span class="priority-icon">🔴</span>
+                                    <span class="priority-label">Emergency</span>
+                                    <span class="wizard-priority-hint">Safety/compliance risk or outage. Act in 24h.</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="wizard-step" data-step="6">
+                            <div class="wizard-title">Step 6: Review + submit</div>
+                            <div class="wizard-subtitle">Confirm details, then submit the ticket.</div>
+                            <div class="wizard-review-card" id="wizardReviewCard"></div>
+                        </div>
                     </div>
 
                     <!-- Submit -->
                     <div class="form-actions">
                         <button class="btn btn-secondary" onclick="goBack()">Cancel</button>
+                        <button class="btn btn-secondary hidden" id="wizardPrevBtn" onclick="wizardPrevStep()">Back</button>
+                        <button class="btn btn-secondary hidden" id="wizardNextBtn" onclick="wizardNextStep()">Next</button>
                         <button class="btn btn-primary" onclick="submitTicket()" id="submitBtn">Submit Ticket</button>
                     </div>
                 </div>
@@ -3199,7 +3309,7 @@ function routeToProfileLanding(profile) {
     }
 
     if (profile === 'manager-mobile' && selectedStore) {
-        showExistingIssuesScreen();
+        showNewIssueScreen();
     }
 }
 
@@ -5130,25 +5240,217 @@ function exitViewAs() {
 // ============================================================
 // NEW ISSUE FORM
 // ============================================================
+const NEW_ISSUE_DRAFT_KEY = 'rm_new_issue_draft_v1';
+let wizardModeEnabled = false;
+let wizardStep = 1;
+const wizardTotalSteps = 6;
+
+function getAccessibleStores() {
+    if (!currentUser) return [];
+    if (currentUser.role === 'Admin' || currentUser.stores === 'all') return [...stores];
+    const allowed = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
+    return stores.filter(s => allowed.includes(s.code));
+}
+
 function showNewIssueScreen() {
     if (!selectedStore) return;
     resetNewIssueForm();
+    wizardModeEnabled = getExperienceProfile(currentUser.role) === 'manager-mobile';
+    const screen = document.getElementById('newIssueScreen');
+    screen.classList.toggle('wizard-mode', wizardModeEnabled);
     document.getElementById('newIssueStoreName').textContent = selectedStore.name;
     populateAssignDropdown(); // refresh based on selected store geography
+    initWizardMode();
+    restoreNewIssueDraft();
     showScreen('newIssueScreen');
+}
+
+function initWizardMode() {
+    if (!wizardModeEnabled) return;
+    initWizardCategoryCards();
+    renderWizardStoreOptions();
+    wizardStep = 1;
+    syncWizardView();
+}
+
+function initWizardCategoryCards() {
+    const host = document.getElementById('wizardCategoryGrid');
+    if (!host || host.childElementCount) return;
+    document.querySelectorAll('#categoryGrid .category-btn').forEach(btn => {
+        const cat = btn.dataset.cat;
+        const icon = btn.querySelector('.cat-icon')?.textContent || '📎';
+        const label = btn.querySelector('.cat-label')?.textContent || cat;
+        const card = document.createElement('button');
+        card.className = 'wizard-touch-card';
+        card.dataset.cat = cat;
+        card.type = 'button';
+        card.innerHTML = `<span class="cat-icon">${icon}</span><span>${label}</span>`;
+        card.onclick = () => selectCategory(card);
+        host.appendChild(card);
+    });
+}
+
+function renderWizardStoreOptions() {
+    const host = document.getElementById('wizardStoreList');
+    if (!host) return;
+    host.innerHTML = '';
+    const available = getAccessibleStores();
+    if (!selectedStore && available.length === 1) {
+        selectedStore = available[0];
+        document.getElementById('newIssueStoreName').textContent = selectedStore.name;
+        document.getElementById('storeSelect').value = selectedStore.id;
+    }
+    available.forEach(store => {
+        const btn = document.createElement('button');
+        btn.className = 'wizard-store-btn';
+        btn.type = 'button';
+        btn.textContent = store.name;
+        btn.dataset.storeId = store.id;
+        btn.classList.toggle('selected', selectedStore && selectedStore.id === store.id);
+        btn.onclick = () => {
+            selectedStore = store;
+            document.getElementById('newIssueStoreName').textContent = store.name;
+            document.getElementById('storeSelect').value = store.id;
+            renderWizardStoreOptions();
+            saveNewIssueDraft();
+        };
+        host.appendChild(btn);
+    });
+}
+
+function syncWizardView() {
+    document.querySelectorAll('.wizard-step').forEach(step => {
+        step.classList.toggle('active', Number(step.dataset.step) === wizardStep);
+    });
+    const chips = document.getElementById('wizardStepChips');
+    if (chips) {
+        chips.innerHTML = '';
+        for (let i = 1; i <= wizardTotalSteps; i++) {
+            const chip = document.createElement('div');
+            chip.className = 'wizard-step-chip' + (i <= wizardStep ? ' active' : '');
+            chips.appendChild(chip);
+        }
+    }
+    const prevBtn = document.getElementById('wizardPrevBtn');
+    const nextBtn = document.getElementById('wizardNextBtn');
+    const submitBtn = document.getElementById('submitBtn');
+    prevBtn.classList.toggle('hidden', wizardStep === 1);
+    nextBtn.classList.toggle('hidden', wizardStep >= wizardTotalSteps);
+    submitBtn.classList.toggle('hidden', wizardStep < wizardTotalSteps);
+    if (wizardStep === wizardTotalSteps) renderWizardReview();
+}
+
+function wizardNextStep() {
+    if (!wizardModeEnabled) return;
+    if (wizardStep < wizardTotalSteps) wizardStep += 1;
+    syncWizardView();
+    saveNewIssueDraft();
+}
+
+function wizardPrevStep() {
+    if (!wizardModeEnabled) return;
+    if (wizardStep > 1) wizardStep -= 1;
+    syncWizardView();
+    saveNewIssueDraft();
+}
+
+function copyWizardDescriptionToMain() {
+    const wizardDesc = document.getElementById('wizardIssueDescription')?.value || '';
+    document.getElementById('issueDescription').value = wizardDesc;
+    saveNewIssueDraft();
+}
+
+function renderWizardReview() {
+    const review = document.getElementById('wizardReviewCard');
+    if (!review) return;
+    const categoryLabel = document.querySelector(`#categoryGrid .category-btn[data-cat="${selectedCategory || ''}"] .cat-label`)?.textContent || 'Not selected';
+    review.innerHTML = `
+        <div class="wizard-review-row"><strong>Store</strong><span>${selectedStore ? selectedStore.name : 'Not selected'}</span></div>
+        <div class="wizard-review-row"><strong>Category</strong><span>${categoryLabel}</span></div>
+        <div class="wizard-review-row"><strong>Photos</strong><span>${uploadedPhotos.length}</span></div>
+        <div class="wizard-review-row"><strong>Description</strong><span>${(document.getElementById('issueDescription').value || '').trim().slice(0, 64) || 'Not provided'}</span></div>
+        <div class="wizard-review-row"><strong>Priority</strong><span>${capitalize(selectedPriority || 'not selected')}</span></div>
+    `;
+}
+
+function saveNewIssueDraft() {
+    if (!currentUser) return;
+    const draft = {
+        user: currentUser.email,
+        storeId: selectedStore ? selectedStore.id : '',
+        category: selectedCategory,
+        location: selectedLocation,
+        priority: selectedPriority,
+        contactName: document.getElementById('contactName')?.value || '',
+        contactPhone: document.getElementById('contactPhone')?.value || '',
+        description: document.getElementById('issueDescription')?.value || '',
+        wizardDescription: document.getElementById('wizardIssueDescription')?.value || '',
+        wizardStep,
+        wizardModeEnabled,
+        updatedAt: Date.now()
+    };
+    localStorage.setItem(NEW_ISSUE_DRAFT_KEY, JSON.stringify(draft));
+}
+
+function restoreNewIssueDraft() {
+    let draft = null;
+    try {
+        draft = JSON.parse(localStorage.getItem(NEW_ISSUE_DRAFT_KEY) || 'null');
+    } catch (e) {
+        draft = null;
+    }
+    if (!draft || draft.user !== currentUser?.email) return;
+    if (draft.storeId) {
+        const store = stores.find(s => s.id === draft.storeId);
+        if (store && getAccessibleStores().some(x => x.id === store.id)) {
+            selectedStore = store;
+            document.getElementById('storeSelect').value = store.id;
+            document.getElementById('newIssueStoreName').textContent = store.name;
+            renderWizardStoreOptions();
+        }
+    }
+    if (draft.category) {
+        const btn = document.querySelector(`.category-btn[data-cat="${draft.category}"]`) || document.querySelector(`.wizard-touch-card[data-cat="${draft.category}"]`);
+        if (btn) selectCategory(btn);
+    }
+    if (draft.location) {
+        const locBtn = document.querySelector(`.priority-btn[data-loc="${draft.location}"]`);
+        if (locBtn) selectLocation(locBtn);
+    }
+    if (draft.priority) {
+        const priBtn = document.querySelector(`.priority-btn[data-priority="${draft.priority}"]`);
+        if (priBtn) selectPriority(priBtn);
+    }
+    document.getElementById('contactName').value = draft.contactName || '';
+    document.getElementById('contactPhone').value = draft.contactPhone || '';
+    document.getElementById('issueDescription').value = draft.description || '';
+    document.getElementById('wizardIssueDescription').value = draft.wizardDescription || draft.description || '';
+    if (wizardModeEnabled) {
+        wizardStep = Math.min(Math.max(draft.wizardStep || 1, 1), wizardTotalSteps);
+        syncWizardView();
+    }
+}
+
+function clearNewIssueDraft() {
+    localStorage.removeItem(NEW_ISSUE_DRAFT_KEY);
 }
 
 function resetNewIssueForm() {
     selectedCategory = null;
     selectedPriority = null;
     selectedLocation = null;
+    wizardStep = 1;
     uploadedPhotos = [];
-    document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('selected'));
+    document.querySelectorAll('.category-btn,.wizard-touch-card').forEach(b => b.classList.remove('selected'));
     document.querySelectorAll('.priority-btn').forEach(b => b.classList.remove('selected'));
     document.getElementById('issueDescription').value = '';
+    const wizardDesc = document.getElementById('wizardIssueDescription');
+    if (wizardDesc) wizardDesc.value = '';
     document.getElementById('contactName').value = '';
     document.getElementById('contactPhone').value = '';
     document.getElementById('photoPreviewGrid').innerHTML = '';
+    const wizardGrid = document.getElementById('wizardPhotoPreviewGrid');
+    if (wizardGrid) wizardGrid.innerHTML = '';
     document.getElementById('photoUploadArea').classList.remove('has-photos');
     const assignTo = document.getElementById('assignTo');
     if (assignTo) assignTo.value = '';
@@ -5160,15 +5462,20 @@ function resetNewIssueForm() {
 }
 
 function selectCategory(el) {
-    document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('selected'));
-    el.classList.add('selected');
-    selectedCategory = el.dataset.cat;
+    const cat = el.dataset.cat;
+    document.querySelectorAll(`.category-btn[data-cat="${cat}"], .wizard-touch-card[data-cat="${cat}"]`).forEach(b => b.classList.add('selected'));
+    document.querySelectorAll('.category-btn, .wizard-touch-card').forEach(b => {
+        if (b.dataset.cat !== cat) b.classList.remove('selected');
+    });
+    selectedCategory = cat;
+    saveNewIssueDraft();
 }
 
 function selectLocation(el) {
-    el.parentElement.querySelectorAll('.priority-btn').forEach(b => b.classList.remove('selected'));
+    el.parentElement.querySelectorAll('.priority-btn[data-loc]').forEach(b => b.classList.remove('selected'));
     el.classList.add('selected');
     selectedLocation = el.dataset.loc;
+    saveNewIssueDraft();
 }
 
 function formatPhone(input) {
@@ -5180,12 +5487,14 @@ function formatPhone(input) {
     } else {
         input.value = v;
     }
+    saveNewIssueDraft();
 }
 
 function selectPriority(el) {
-    document.querySelectorAll('.priority-btn').forEach(b => b.classList.remove('selected'));
-    el.classList.add('selected');
-    selectedPriority = el.dataset.priority;
+    const p = el.dataset.priority;
+    document.querySelectorAll('.priority-btn[data-priority]').forEach(b => b.classList.toggle('selected', b.dataset.priority === p));
+    selectedPriority = p;
+    saveNewIssueDraft();
 }
 
 function handlePhotos(input) {
@@ -5197,18 +5506,28 @@ function handlePhotos(input) {
     });
     renderPhotoPreview();
     input.value = '';
+    saveNewIssueDraft();
 }
 
 function renderPhotoPreview() {
     const grid = document.getElementById('photoPreviewGrid');
+    const wizardGrid = document.getElementById('wizardPhotoPreviewGrid');
     grid.innerHTML = '';
+    if (wizardGrid) wizardGrid.innerHTML = '';
     document.getElementById('photoUploadArea').classList.toggle('has-photos', uploadedPhotos.length > 0);
 
     uploadedPhotos.forEach((p, i) => {
+        const html = `<img src="${p.previewUrl}" alt="Photo"><button class="photo-remove" onclick="removePhoto(${i})">✕</button>`;
         const div = document.createElement('div');
         div.className = 'photo-preview';
-        div.innerHTML = `<img src="${p.previewUrl}" alt="Photo"><button class="photo-remove" onclick="removePhoto(${i})">✕</button>`;
+        div.innerHTML = html;
         grid.appendChild(div);
+        if (wizardGrid) {
+            const wdiv = document.createElement('div');
+            wdiv.className = 'photo-preview';
+            wdiv.innerHTML = html;
+            wizardGrid.appendChild(wdiv);
+        }
     });
 }
 
@@ -5216,6 +5535,7 @@ function removePhoto(i) {
     URL.revokeObjectURL(uploadedPhotos[i].previewUrl);
     uploadedPhotos.splice(i, 1);
     renderPhotoPreview();
+    saveNewIssueDraft();
 }
 
 function showAssignPrompt() {
@@ -5255,13 +5575,17 @@ function showPhotoConfirm() {
 }
 
 async function submitTicket() {
+    if (!selectedStore) { toast('Select a store', 'error'); return; }
+    if (wizardModeEnabled) copyWizardDescriptionToMain();
     // Validate
     if (!selectedCategory) { toast('Select a category', 'error'); return; }
     if (!selectedLocation) { toast('Select interior or exterior', 'error'); return; }
-    const contactName = document.getElementById('contactName').value.trim();
+    let contactName = document.getElementById('contactName').value.trim();
+    if (!contactName && wizardModeEnabled) contactName = currentUser?.name || '';
     if (!contactName) { toast('Enter your name', 'error'); return; }
-    const contactPhone = document.getElementById('contactPhone').value.trim();
-    if (!contactPhone || contactPhone.replace(/\D/g,'').length < 10) { toast('Enter a valid phone number', 'error'); return; }
+    let contactPhone = document.getElementById('contactPhone').value.trim();
+    if (!contactPhone && wizardModeEnabled) contactPhone = '';
+    if (!wizardModeEnabled && (!contactPhone || contactPhone.replace(/\D/g,'').length < 10)) { toast('Enter a valid phone number', 'error'); return; }
     if (!selectedPriority) { toast('Select a priority', 'error'); return; }
     // Photos optional but encouraged
     if (uploadedPhotos.length === 0) {
@@ -5360,6 +5684,7 @@ async function submitTicket() {
 
         await db.ref(`tickets/${ticketId}`).set(ticket);
 
+        clearNewIssueDraft();
         toast('Ticket submitted!', 'success');
 
         // Navigate to existing issues view for this store
