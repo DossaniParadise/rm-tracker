@@ -1683,6 +1683,29 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
     .map-stats-bar { padding: 8px 14px; }
 }
 
+/* Manager role - streamlined view (just 2 buttons) */
+.exp-manager-mobile .store-card-header,
+.exp-manager-tablet .store-card-header,
+.exp-manager-desktop .store-card-header { display: none; }
+.exp-manager-mobile .brand-pill,
+.exp-manager-tablet .brand-pill,
+.exp-manager-desktop .brand-pill { display: none; }
+.exp-manager-mobile #storeType,
+.exp-manager-tablet #storeType,
+.exp-manager-desktop #storeType { display: none; }
+.exp-manager-mobile .form-label,
+.exp-manager-tablet .form-label,
+.exp-manager-desktop .form-label { display: none; }
+.exp-manager-mobile #storeSelect,
+.exp-manager-tablet #storeSelect,
+.exp-manager-desktop #storeSelect { display: none; }
+.exp-manager-mobile #mapOverview,
+.exp-manager-tablet #mapOverview,
+.exp-manager-desktop #mapOverview { display: none; }
+.exp-manager-mobile .desktop-store-list,
+.exp-manager-tablet .desktop-store-list,
+.exp-manager-desktop .desktop-store-list { display: none; }
+
 /* Mobile */
 @media (max-width: 600px) {
     .theme-toggle { width: 28px; height: 28px; font-size: 14px; }
@@ -2312,7 +2335,8 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
 .asc-num.purple { color: #7c3aed; }
 .asc-num.gray { color: #6b7280; }
 
-.desktop-insights-grid {
+.desktop-insights-grid { display: none !important; }
+.desktop-insights-grid-DISABLED {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 10px;
@@ -2576,6 +2600,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                 <div class="store-card-header">
                     <h2 data-i18n="select_store">Select Your Store</h2>
                     <p data-i18n="select_store_sub">Choose a location to report or check issues</p>
+                    <div id="managerStoreName" class="hidden" style="font-size:20px;font-weight:700;color:var(--text);margin:8px 0"></div>
                 </div>
 
                 <!-- Brand buttons - clickable, trigger store type + map -->
@@ -2620,13 +2645,18 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                 <div id="actionButtons" class="action-grid hidden">
                     <div class="action-card" onclick="showNewIssueScreen()">
                         <div class="action-icon">📝</div>
-                        <div class="action-title">Report New Issue</div>
-                        <div class="action-desc">Submit a repair ticket</div>
+                        <div class="action-title" data-i18n="report_issue">Report New Issue</div>
+                        <div class="action-desc" data-i18n="report_issue_desc">Submit a repair ticket</div>
                     </div>
                     <div class="action-card" onclick="showExistingIssuesScreen()">
                         <div class="action-icon">📋</div>
-                        <div class="action-title">Existing Tickets</div>
-                        <div class="action-desc">View and track open issues</div>
+                        <div class="action-title" data-i18n="view_tickets">Existing Tickets</div>
+                        <div class="action-desc" data-i18n="view_tickets_desc">View and track open issues</div>
+                    </div>
+                    <div class="action-card coach-only-action hidden" id="viewAllCoachTickets" onclick="showCoachAllTickets()">
+                        <div class="action-icon">🔍</div>
+                        <div class="action-title" data-i18n="view_all_tickets">View All Open Tickets</div>
+                        <div class="action-desc" data-i18n="view_all_desc">All stores sorted by location</div>
                     </div>
                 </div>
 
@@ -3127,7 +3157,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-<!-- Data files + Application logic (single-file build v4.0.0) -->
+<!-- Data files + Application logic (single-file build v5.0.0) -->
 <script>
 // ============================================================
 // STORES DATA - Dossani Paradise Management
@@ -3567,6 +3597,7 @@ function getExperienceProfile(role, viewport = getViewportHints()) {
 }
 
 function routeToProfileLanding(profile) {
+    // Tech: dedicated dashboard
     if (profile.startsWith('tech-')) {
         showScreen('techDashboard');
         initTechDashboard();
@@ -3575,15 +3606,28 @@ function routeToProfileLanding(profile) {
 
     showScreen('storeSelection');
 
-    if (profile === 'admin-desktop') {
+    // Admin: summary cards + map with all locations
+    if (currentUser.role === 'Admin') {
         loadAdminSummary();
-        setTimeout(() => selectBrand('all'), 100);
+        if (window.innerWidth >= 1100) {
+            setTimeout(() => selectBrand('all'), 100);
+        }
         return;
     }
 
-    if (profile === 'manager-mobile' && selectedStore) {
-        showNewIssueScreen();
+    // Area Coach: show store selector - auto-select their brand
+    if (currentUser.role === 'Area Coach') {
+        if (window.innerWidth >= 1100 && isMultiStoreUser()) {
+            const userStoreList = getAccessibleStores();
+            const types = [...new Set(userStoreList.map(s => s.type))];
+            if (types.length === 1) {
+                setTimeout(() => selectBrand(types[0]), 100);
+            }
+        }
+        return;
     }
+
+    // Manager: store is auto-selected in showAppScreen/doViewAs, just show action buttons
 }
 
 function showAppScreen() {
@@ -3630,6 +3674,9 @@ function showAppScreen() {
             filterStores();
             document.getElementById('storeSelect').value = store.id;
             selectStore();
+            // Show store name for manager
+            const nameEl = document.getElementById('managerStoreName');
+            if (nameEl) { nameEl.textContent = store.name; nameEl.classList.remove('hidden'); }
         }
     }
 
@@ -3728,6 +3775,16 @@ function selectStore() {
     if (!id) { document.getElementById('actionButtons').classList.add('hidden'); selectedStore = null; return; }
     selectedStore = stores.find(s => s.id === id);
     document.getElementById('actionButtons').classList.remove('hidden');
+    // Show "View All" for coaches and admins
+    const viewAllBtn = document.getElementById('viewAllCoachTickets');
+    if (viewAllBtn) {
+        if (currentUser.role === 'Area Coach' || currentUser.role === 'Admin') {
+            viewAllBtn.classList.remove('hidden');
+        } else {
+            viewAllBtn.classList.add('hidden');
+        }
+    }
+    populateAssignDropdown();
 }
 
 
@@ -5330,7 +5387,8 @@ function loadAdminSummary() {
                 <div class="asc-label" data-i18n="status_closed">Closed</div>
             </div>`;
 
-        if (isAdminDesktopExperience()) {
+        if (false && isAdminDesktopExperience()) {
+            // Disabled: insights panels too cluttered. Keep 6 status cards only.
             desktopTicketInsights = buildDesktopInsights(tickets);
             renderDesktopInsightsCards('adminDesktopInsights', desktopTicketInsights);
         }
@@ -5512,6 +5570,17 @@ document.addEventListener('click', (e) => {
 // ============================================================
 let allTicketsData = [];
 let allTicketsDrilldown = null;
+
+function showCoachAllTickets() {
+    // Area Coach: show all open tickets across their stores, sorted by store
+    showAllTickets('open');
+    // After the screen renders, set filter to show all their stores
+    setTimeout(() => {
+        const storeFilter = document.getElementById('allTicketsStoreFilter');
+        if (storeFilter) storeFilter.value = '';
+        filterAllTickets();
+    }, 200);
+}
 
 function showAllTickets(defaultStatus) {
     showScreen('allTicketsScreen');
@@ -5751,6 +5820,8 @@ function doViewAs() {
 
         // === FULL STATE RESET ===
         selectedStore = null;
+        const msnEl = document.getElementById('managerStoreName');
+        if (msnEl) { msnEl.textContent = ''; msnEl.classList.add('hidden'); }
         document.getElementById('storeType').value = '';
         document.querySelectorAll('.brand-pill').forEach(b => b.classList.remove('active'));
         document.getElementById('storeSelect').innerHTML = '<option value="">Choose store...</option>';
@@ -5781,6 +5852,9 @@ function doViewAs() {
         document.getElementById('adminBtn').classList.remove('hidden');
         document.getElementById('viewAsBtn').classList.remove('hidden');
 
+        // Apply experience class for impersonated role
+        applyExperienceClass(currentUser.role);
+
         // Show/hide All Locations pill
         const allPill = document.getElementById('brandPill-all');
         const allOpt = document.querySelector('.admin-only-opt');
@@ -5792,7 +5866,7 @@ function doViewAs() {
             if (allOpt) allOpt.classList.add('hidden');
         }
 
-        // Profile-based routing
+        // Auto-select store for single-store managers
         if (currentUser.role === 'Manager' && currentUser.stores && !Array.isArray(currentUser.stores)) {
             const store = stores.find(s => s.code === currentUser.stores);
             if (store) {
@@ -5801,10 +5875,14 @@ function doViewAs() {
                 filterStores();
                 document.getElementById('storeSelect').value = store.id;
                 selectStore();
+                const nameEl = document.getElementById('managerStoreName');
+                if (nameEl) { nameEl.textContent = store.name; nameEl.classList.remove('hidden'); }
             }
         }
 
-        routeToProfileLanding(getExperienceProfile(currentUser.role));
+        // Route to the correct landing for this role
+        const profile = getExperienceProfile(currentUser.role);
+        routeToProfileLanding(profile);
 
         initNotificationCenter();
         showToast('Viewing as ' + currentUser.name, 'success');
@@ -5837,16 +5915,13 @@ function exitViewAs() {
     document.getElementById('userName').textContent = currentUser.name;
     document.getElementById('userRole').textContent = currentUser.role;
 
-    // Restore admin-specific UI
+    // Restore admin experience
+    applyExperienceClass(currentUser.role);
     document.getElementById('brandPill-all')?.classList.remove('hidden');
     document.querySelector('.admin-only-opt')?.classList.remove('hidden');
     document.getElementById('assignmentFields')?.classList.remove('hidden');
-    loadAdminSummary();
 
-    // Auto-select on desktop
-    if (window.innerWidth >= 1100) {
-        setTimeout(() => selectBrand('all'), 100);
-    }
+    routeToProfileLanding(getExperienceProfile(currentUser.role));
 
     initNotificationCenter();
     showToast('Back to IT Support', 'success');
@@ -6777,6 +6852,13 @@ const TRANSLATIONS = {
         status_waiting: 'En Espera',
         status_resolved: 'Resueltos',
         status_closed: 'Cerrados',
+        // Action buttons
+        report_issue: 'Reportar Problema',
+        report_issue_desc: 'Enviar ticket de reparación',
+        view_tickets: 'Tickets Existentes',
+        view_tickets_desc: 'Ver y seguir problemas abiertos',
+        view_all_tickets: 'Ver Todos los Tickets',
+        view_all_desc: 'Todas las tiendas por ubicación',
         // Admin panel
         admin_pending: 'Aprobación Pendiente',
         admin_active_users: 'Usuarios Activos',
@@ -6916,8 +6998,8 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v4.0.0</span>
-    <span>Build 4.0.0</span>
+    <span>R&M Tracker v5.0.0</span>
+    <span>Build 5.0.0</span>
 </div>
 
 </body>
