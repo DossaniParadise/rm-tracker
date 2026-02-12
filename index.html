@@ -2232,6 +2232,63 @@ body {
 .asc-num.purple { color: #7c3aed; }
 .asc-num.gray { color: #6b7280; }
 
+.desktop-insights-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+}
+.desktop-insight-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+}
+.desktop-insight-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-mid);
+    text-transform: uppercase;
+    letter-spacing: 0.35px;
+    margin-bottom: 8px;
+}
+.desktop-insight-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.desktop-insight-item {
+    width: 100%;
+    border: 1px solid var(--border-light);
+    background: transparent;
+    border-radius: 8px;
+    padding: 8px 9px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text);
+    cursor: pointer;
+    font-family: inherit;
+}
+.desktop-insight-item:hover { border-color: var(--primary); background: var(--primary-light); }
+.desktop-insight-item .di-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.desktop-insight-item .di-count { font-weight: 700; color: var(--text-mid); }
+.desktop-insight-empty {
+    font-size: 12px;
+    color: var(--text-muted);
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    padding: 8px;
+}
+
+[data-theme="dark"] .desktop-insight-item:hover { background: rgba(91,156,246,0.12); }
+
+@media (max-width: 1099px) {
+    .desktop-insights-grid { display: none !important; }
+}
+
 /* Dark mode for tech/admin dashboards */
 [data-theme="dark"] .tech-job-card { background: var(--card); border-color: var(--border); }
 [data-theme="dark"] .tech-job-card.active-job { background: rgba(5,150,105,0.08); border-color: #34d399; }
@@ -2430,6 +2487,7 @@ body {
         <!-- ===== SCREEN: Admin Summary (top of store selection for admins) ===== -->
         <div id="adminSummary" class="hidden">
             <div class="admin-summary-grid" id="adminSummaryGrid"></div>
+            <div class="desktop-insights-grid" id="adminDesktopInsights"></div>
         </div>
 
         <!-- ===== SCREEN: Store Selection ===== -->
@@ -2514,6 +2572,7 @@ body {
                     </div>
                     <div id="overviewMap"></div>
                     <div id="storeListView" class="store-list-view" style="display:none"></div>
+                    <div class="desktop-insights-grid" id="mapDesktopInsights" style="display:none"></div>
                     <div class="map-stats-bar" id="mapStatsBar"></div>
                 </div>
             </div>
@@ -2766,6 +2825,7 @@ body {
             <div class="tickets-header">
                 <h2 id="allTicketsTitle">All Tickets</h2>
             </div>
+            <div id="allTicketsDrilldownBanner" class="desktop-insight-empty" style="display:none;margin-bottom:10px"></div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
                 <select class="form-select" id="atFilterStatus" onchange="filterAllTickets()" style="width:auto;min-width:130px;font-size:13px;padding:6px 10px">
                     <option value="open">Open Tickets</option>
@@ -3373,6 +3433,10 @@ function getViewportHints() {
     };
 }
 
+function isAdminDesktopExperience() {
+    return !!currentUser && getExperienceProfile(currentUser.role) === 'admin-desktop';
+}
+
 function getExperienceProfile(role, viewport = getViewportHints()) {
     const normalizedRole = normalizeRole(role || 'Manager').toLowerCase();
     let device = 'desktop';
@@ -3558,6 +3622,14 @@ function selectStore() {
 let overviewMap = null;
 let mapMarkers = [];
 let allTicketCounts = {}; // { storeCode: { open: N, total: N } }
+let desktopTicketInsights = {
+    slaRisk: [],
+    agingBuckets: [],
+    unassignedCritical: [],
+    techWorkload: [],
+    pendingApprovals: [],
+    vendorFollowups: []
+};
 
 function isMultiStoreUser() {
     return currentUser && (currentUser.role === 'Admin' || currentUser.role === 'Area Coach' || currentUser.role === 'Technician');
@@ -3700,6 +3772,8 @@ function loadMapOverview(type) {
             '<div class="mstat"><strong>' + filtered.length + '</strong>stores</div>' +
             '<div class="mstat" style="cursor:pointer" onclick="showAllTickets(\'open\')"><strong style="color:' + (totalOpen > 0 ? '#dc2626' : '#059669') + '">' + totalOpen + '</strong>open tickets</div>' +
             '<div class="mstat" style="cursor:pointer" onclick="showAllTickets(\'open\')"><strong>' + storesWithIssues + '</strong>need attention</div>' +
+            '<div class="mstat" style="cursor:pointer" onclick="desktopDrilldown({status:\'open\',scope:\'sla\'})"><strong>' + desktopTicketInsights.slaRisk.length + '</strong>SLA risk</div>' +
+            '<div class="mstat" style="cursor:pointer" onclick="desktopDrilldown({status:\'waiting\',scope:\'vendor-followup\'})"><strong>' + desktopTicketInsights.vendorFollowups.length + '</strong>vendor follow-ups</div>' +
             '<div class="mstat" style="cursor:pointer" onclick="showAllTickets(\'all\')"><strong>' + totalAll + '</strong>total tickets</div>';
 
         // Desktop store list sidebar with toggle
@@ -3723,13 +3797,15 @@ function fetchTicketCounts(codes, callback) {
     // Priority weighting: emergency = auto red (score 3), urgent = 2, routine = 1
     db.ref('tickets').once('value', snap => {
         allTicketCounts = {};
+        const scopedTickets = [];
         codes.forEach(c => allTicketCounts[c] = { open: 0, total: 0, score: 0, hasEmergency: false });
         snap.forEach(child => {
-            const t = child.val();
+            const t = { _key: child.key, ...child.val() };
             if (codes.includes(t.storeCode)) {
+                scopedTickets.push(t);
                 if (!allTicketCounts[t.storeCode]) allTicketCounts[t.storeCode] = { open: 0, total: 0, score: 0, hasEmergency: false };
                 allTicketCounts[t.storeCode].total++;
-                if (t.status && t.status !== 'closed' && t.status !== 'resolved') {
+                if (isActiveTicketStatus(t.status)) {
                     allTicketCounts[t.storeCode].open++;
                     if (t.priority === 'emergency') {
                         allTicketCounts[t.storeCode].score += 3;
@@ -3742,8 +3818,171 @@ function fetchTicketCounts(codes, callback) {
                 }
             }
         });
+
+        if (isAdminDesktopExperience()) {
+            desktopTicketInsights = buildDesktopInsights(scopedTickets, codes);
+            renderDesktopInsightsCards('mapDesktopInsights', desktopTicketInsights);
+        }
+        const mapInsights = document.getElementById('mapDesktopInsights');
+        if (mapInsights) mapInsights.style.display = (window.innerWidth >= 1100 && isAdminDesktopExperience()) ? '' : 'none';
+
         callback();
     });
+}
+
+
+function getTicketAgeHours(ticket) {
+    const createdAt = Number(ticket && ticket.createdAt) || 0;
+    if (!createdAt) return 0;
+    return Math.max(0, (Date.now() - createdAt) / 3600000);
+}
+
+function getSlaHoursForPriority(priority) {
+    if (priority === 'emergency') return 24;
+    if (priority === 'urgent') return 72;
+    return 168;
+}
+
+function isActiveTicketStatus(status) {
+    return !!status && status !== 'closed' && status !== 'resolved';
+}
+
+function buildDesktopInsights(ticketList, allowedStoreCodes = null) {
+    const active = ticketList.filter(t => isActiveTicketStatus(t.status));
+    const inScope = allowedStoreCodes && allowedStoreCodes.length
+        ? active.filter(t => allowedStoreCodes.includes(t.storeCode))
+        : active;
+
+    const slaRisk = [];
+    const agingBuckets = [
+        { key: 'age-0-4h', label: '0-4h', min: 0, max: 4, count: 0 },
+        { key: 'age-4-24h', label: '4-24h', min: 4, max: 24, count: 0 },
+        { key: 'age-1-3d', label: '1-3d', min: 24, max: 72, count: 0 },
+        { key: 'age-3d-plus', label: '>3d', min: 72, max: Infinity, count: 0 }
+    ];
+    const unassignedCritical = [];
+    const techWorkloadMap = {};
+    const vendorFollowups = [];
+
+    inScope.forEach(t => {
+        const ageH = getTicketAgeHours(t);
+        const slaH = getSlaHoursForPriority(t.priority || 'routine');
+        const ratio = slaH > 0 ? ageH / slaH : 0;
+
+        if (ratio >= 0.8) {
+            slaRisk.push({
+                key: t._key || t.id,
+                ticket: t,
+                ratio,
+                over: ratio >= 1
+            });
+        }
+
+        const bucket = agingBuckets.find(b => ageH >= b.min && ageH < b.max);
+        if (bucket) bucket.count++;
+
+        if ((t.priority === 'urgent' || t.priority === 'emergency') && !String(t.assignedTo || '').trim()) {
+            unassignedCritical.push(t);
+        }
+
+        if (String(t.assignedTo || '').trim() && t.assigneeType !== 'vendor') {
+            techWorkloadMap[t.assignedTo] = (techWorkloadMap[t.assignedTo] || 0) + 1;
+        }
+
+        if (t.status === 'waiting' && (t.assigneeType === 'vendor' || /vendor/i.test(String(t.assignedTo || '')))) {
+            vendorFollowups.push(t);
+        }
+    });
+
+    const techWorkload = Object.entries(techWorkloadMap)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 6);
+
+    slaRisk.sort((a, b) => b.ratio - a.ratio);
+    unassignedCritical.sort((a, b) => {
+        const p = { emergency: 0, urgent: 1, routine: 2 };
+        return (p[a.priority] || 2) - (p[b.priority] || 2);
+    });
+
+    return {
+        slaRisk: slaRisk.slice(0, 8),
+        agingBuckets,
+        unassignedCritical: unassignedCritical.slice(0, 8),
+        techWorkload,
+        pendingApprovals: Object.values(pendingUsers || {}).filter(u => u).slice(0, 8),
+        vendorFollowups: vendorFollowups.slice(0, 8)
+    };
+}
+
+function desktopDrilldown(filter) {
+    if (window.innerWidth < 1100 || !isAdminDesktopExperience()) return;
+    allTicketsDrilldown = filter;
+    const defaultStatus = filter && filter.status ? filter.status : 'open';
+    showAllTickets(defaultStatus);
+}
+
+function renderDesktopInsightsCards(containerId, insights) {
+    const el = document.getElementById(containerId);
+    if (!el || window.innerWidth < 1100 || !isAdminDesktopExperience()) return;
+
+    const makeItems = (items, emptyLabel) => {
+        if (!items.length) return `<div class="desktop-insight-empty">${emptyLabel}</div>`;
+        return `<div class="desktop-insight-list">${items.join('')}</div>`;
+    };
+
+    const slaItems = insights.slaRisk.map(entry => {
+        const t = entry.ticket;
+        const icon = entry.over ? '🔴' : '🟠';
+        const label = `${icon} ${escHtml(t.id || '')} ${entry.over ? 'Over SLA' : 'Near SLA'}`;
+        return `<button class="desktop-insight-item" onclick='desktopDrilldown(${JSON.stringify({ status: 'open', ticketId: t.id, scope: 'sla' })})'><span class="di-label">${label}</span><span class="di-count">${Math.round(entry.ratio * 100)}%</span></button>`;
+    });
+
+    const ageItems = insights.agingBuckets.map(b =>
+        `<button class="desktop-insight-item" onclick='desktopDrilldown(${JSON.stringify({ status: 'open', agingKey: b.key, scope: 'aging' })})'><span class="di-label">${b.label}</span><span class="di-count">${b.count}</span></button>`
+    );
+
+    const unassignedItems = insights.unassignedCritical.map(t =>
+        `<button class="desktop-insight-item" onclick='desktopDrilldown(${JSON.stringify({ status: 'open', ticketId: t.id, scope: 'unassigned-critical' })})'><span class="di-label">${escHtml(t.id || '')} · ${capitalize(t.priority || 'urgent')}</span><span class="di-count">Unassigned</span></button>`
+    );
+
+    const workloadItems = insights.techWorkload.map(row =>
+        `<button class="desktop-insight-item" onclick='desktopDrilldown(${JSON.stringify({ status: 'open', assignedTo: row.name, scope: 'tech-workload' })})'><span class="di-label">${escHtml(row.name)}</span><span class="di-count">${row.count}</span></button>`
+    );
+
+    const approvalItems = insights.pendingApprovals.map(u =>
+        `<button class="desktop-insight-item" onclick="showAdminPanel()"><span class="di-label">${escHtml(u.name || u.email || 'Pending user')}</span><span class="di-count">Pending</span></button>`
+    );
+
+    const vendorItems = insights.vendorFollowups.map(t =>
+        `<button class="desktop-insight-item" onclick='desktopDrilldown(${JSON.stringify({ status: 'waiting', ticketId: t.id, scope: 'vendor-followup' })})'><span class="di-label">${escHtml(t.id || '')} · ${escHtml(t.assignedTo || 'Vendor')}</span><span class="di-count">Waiting</span></button>`
+    );
+
+    el.innerHTML = `
+        <div class="desktop-insight-card">
+            <div class="desktop-insight-title">SLA At-Risk Queue</div>
+            ${makeItems(slaItems, 'No tickets near SLA breach')}
+        </div>
+        <div class="desktop-insight-card">
+            <div class="desktop-insight-title">Aging Buckets</div>
+            ${makeItems(ageItems, 'No active tickets')}
+        </div>
+        <div class="desktop-insight-card">
+            <div class="desktop-insight-title">Unassigned Urgent / Emergency</div>
+            ${makeItems(unassignedItems, 'No unassigned urgent tickets')}
+        </div>
+        <div class="desktop-insight-card">
+            <div class="desktop-insight-title">Tech Workload Balance</div>
+            ${makeItems(workloadItems, 'No assigned tech workload')}
+        </div>
+        <div class="desktop-insight-card">
+            <div class="desktop-insight-title">Pending Approvals</div>
+            ${makeItems(approvalItems, 'No pending user approvals')}
+        </div>
+        <div class="desktop-insight-card">
+            <div class="desktop-insight-title">Vendor Follow-ups</div>
+            ${makeItems(vendorItems, 'No unresolved vendor follow-ups')}
+        </div>`;
 }
 
 function mapSelectStore(storeId, action) {
@@ -3770,13 +4009,21 @@ function renderDesktopStoreList() {
     const withIssues = desktopStoreData.filter(s => s.counts.open > 0);
     const displayList = dslShowAll ? desktopStoreData : withIssues;
     
+    const showDesktopOpsWidgets = isAdminDesktopExperience();
+    const overSlaCount = desktopTicketInsights.slaRisk.filter(x => x.over).length;
+    const unassignedCount = desktopTicketInsights.unassignedCritical.length;
+
     let html = `<div class="dsl-header">
         <span>${displayList.length} store${displayList.length !== 1 ? 's' : ''}</span>
         <div class="dsl-toggle">
             <button class="${dslShowAll ? '' : 'active'}" onclick="dslShowAll=false;renderDesktopStoreList()">With Issues</button>
             <button class="${dslShowAll ? 'active' : ''}" onclick="dslShowAll=true;renderDesktopStoreList()">All</button>
         </div>
-    </div>`;
+    </div>
+    ${showDesktopOpsWidgets ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px 2px">
+        <button class="quick-chip" onclick='desktopDrilldown(${JSON.stringify({ status: 'open', scope: 'sla' })})'>SLA Risk ${overSlaCount ? '(' + overSlaCount + ')' : ''}</button>
+        <button class="quick-chip" onclick='desktopDrilldown(${JSON.stringify({ status: 'open', scope: 'unassigned-critical' })})'>Unassigned Critical ${unassignedCount ? '(' + unassignedCount + ')' : ''}</button>
+    </div>` : ''}`;
     
     if (displayList.length === 0) {
         html += '<div style="padding:12px;text-align:center;font-size:13px;color:var(--text-muted)">🎉 No open issues!</div>';
@@ -4933,39 +5180,43 @@ function loadAdminSummary() {
     db.ref('tickets').once('value', snap => {
         const tickets = [];
         snap.forEach(child => { tickets.push({ _key: child.key, ...child.val() }); });
-        
-        const open = tickets.filter(t => t.status === 'open').length;
-        const assigned = tickets.filter(t => t.status === 'assigned').length;
-        const inprogress = tickets.filter(t => t.status === 'inprogress').length;
-        const waiting = tickets.filter(t => t.status === 'waiting').length;
-        const resolved = tickets.filter(t => t.status === 'resolved').length;
-        const closed = tickets.filter(t => t.status === 'closed').length;
-        
+
+        const statusCounts = { open: 0, assigned: 0, inprogress: 0, waiting: 0, resolved: 0, closed: 0 };
+        tickets.forEach(t => {
+            const key = (t.status || '').toLowerCase();
+            if (Object.prototype.hasOwnProperty.call(statusCounts, key)) statusCounts[key]++;
+        });
+
         document.getElementById('adminSummaryGrid').innerHTML = `
             <div class="admin-sum-card" onclick="selectBrand('all');setTimeout(()=>showAllTickets('open'),200)">
-                <div class="asc-num red">${open}</div>
+                <div class="asc-num red">${statusCounts.open}</div>
                 <div class="asc-label" data-i18n="status_open">Open</div>
             </div>
             <div class="admin-sum-card" onclick="selectBrand('all');setTimeout(()=>showAllTickets('assigned'),200)">
-                <div class="asc-num purple">${assigned}</div>
+                <div class="asc-num purple">${statusCounts.assigned}</div>
                 <div class="asc-label" data-i18n="status_assigned">Assigned</div>
             </div>
             <div class="admin-sum-card" onclick="selectBrand('all');setTimeout(()=>showAllTickets('inprogress'),200)">
-                <div class="asc-num blue">${inprogress}</div>
+                <div class="asc-num blue">${statusCounts.inprogress}</div>
                 <div class="asc-label" data-i18n="status_inprogress">In Progress</div>
             </div>
             <div class="admin-sum-card" onclick="selectBrand('all');setTimeout(()=>showAllTickets('waiting'),200)">
-                <div class="asc-num orange">${waiting}</div>
+                <div class="asc-num orange">${statusCounts.waiting}</div>
                 <div class="asc-label" data-i18n="status_waiting">Waiting</div>
             </div>
             <div class="admin-sum-card" onclick="selectBrand('all');setTimeout(()=>showAllTickets('resolved'),200)">
-                <div class="asc-num green">${resolved}</div>
+                <div class="asc-num green">${statusCounts.resolved}</div>
                 <div class="asc-label" data-i18n="status_resolved">Resolved</div>
             </div>
             <div class="admin-sum-card" onclick="selectBrand('all');setTimeout(()=>showAllTickets('closed'),200)">
-                <div class="asc-num gray">${closed}</div>
+                <div class="asc-num gray">${statusCounts.closed}</div>
                 <div class="asc-label" data-i18n="status_closed">Closed</div>
             </div>`;
+
+        if (isAdminDesktopExperience()) {
+            desktopTicketInsights = buildDesktopInsights(tickets);
+            renderDesktopInsightsCards('adminDesktopInsights', desktopTicketInsights);
+        }
 
         document.getElementById('adminSummary').classList.remove('hidden');
     });
@@ -5143,11 +5394,16 @@ document.addEventListener('click', (e) => {
 // ALL TICKETS SCREEN
 // ============================================================
 let allTicketsData = [];
+let allTicketsDrilldown = null;
 
 function showAllTickets(defaultStatus) {
     showScreen('allTicketsScreen');
     const statusSel = document.getElementById('atFilterStatus');
     statusSel.value = defaultStatus || 'open';
+    if (!allTicketsDrilldown) {
+        const banner = document.getElementById('allTicketsDrilldownBanner');
+        if (banner) banner.style.display = 'none';
+    }
     
     // Populate store filter
     const type = document.getElementById('storeType').value;
@@ -5219,6 +5475,52 @@ function filterAllTickets() {
     // Store filter
     if (storeCode) {
         filtered = filtered.filter(t => t.storeCode === storeCode);
+    }
+
+    if (allTicketsDrilldown) {
+        const d = allTicketsDrilldown;
+        if (d.ticketId) filtered = filtered.filter(t => t.id === d.ticketId);
+        if (d.assignedTo) filtered = filtered.filter(t => t.assignedTo === d.assignedTo);
+        if (d.scope === 'sla') {
+            filtered = filtered.filter(t => {
+                if (!isActiveTicketStatus(t.status)) return false;
+                const ratio = getTicketAgeHours(t) / getSlaHoursForPriority(t.priority || 'routine');
+                return ratio >= 0.8;
+            });
+        }
+        if (d.scope === 'unassigned-critical') {
+            filtered = filtered.filter(t => isActiveTicketStatus(t.status) && (t.priority === 'urgent' || t.priority === 'emergency') && !String(t.assignedTo || '').trim());
+        }
+        if (d.scope === 'vendor-followup') {
+            filtered = filtered.filter(t => t.status === 'waiting' && (t.assigneeType === 'vendor' || /vendor/i.test(String(t.assignedTo || ''))));
+        }
+        if (d.scope === 'aging' && d.agingKey) {
+            filtered = filtered.filter(t => {
+                if (!isActiveTicketStatus(t.status)) return false;
+                const age = getTicketAgeHours(t);
+                if (d.agingKey === 'age-0-4h') return age >= 0 && age < 4;
+                if (d.agingKey === 'age-4-24h') return age >= 4 && age < 24;
+                if (d.agingKey === 'age-1-3d') return age >= 24 && age < 72;
+                if (d.agingKey === 'age-3d-plus') return age >= 72;
+                return true;
+            });
+        }
+    }
+
+    const banner = document.getElementById('allTicketsDrilldownBanner');
+    if (banner) {
+        if (allTicketsDrilldown) {
+            const d = allTicketsDrilldown;
+            const label = d.scope === 'sla' ? 'SLA at-risk queue' :
+                d.scope === 'aging' ? 'Aging bucket' :
+                d.scope === 'unassigned-critical' ? 'Unassigned urgent/emergency' :
+                d.scope === 'tech-workload' ? 'Tech workload' :
+                d.scope === 'vendor-followup' ? 'Vendor follow-ups' : 'Drilldown';
+            banner.style.display = '';
+            banner.innerHTML = `<strong>${label}</strong> active. <button class="quick-chip" onclick="allTicketsDrilldown=null;filterAllTickets()" style="margin-left:8px">Clear</button>`;
+        } else {
+            banner.style.display = 'none';
+        }
     }
     
     const title = document.getElementById('allTicketsTitle');
