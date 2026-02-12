@@ -426,6 +426,8 @@ body {
     height: 64px;
     display: flex;
     justify-content: space-between;
+    position: relative;
+    z-index: 50;
     align-items: center;
     box-shadow: var(--shadow-sm);
     position: sticky;
@@ -1545,7 +1547,11 @@ body {
 @media (max-width: 900px) {
     .app-content { padding: 12px; }
     .store-card { padding: 16px; }
-    #overviewMap { height: 300px; }
+    #mapOverview {
+    position: relative;
+    z-index: 1;
+}
+#overviewMap { height: 300px; }
     .map-header { padding: 10px 14px; }
     .map-stats-bar { padding: 8px 14px; }
     .header-right { gap: 8px; }
@@ -1577,7 +1583,11 @@ body {
     .action-icon { font-size: 24px; }
     .action-title { font-size: 14px; }
     .action-desc { font-size: 11px; }
-    #overviewMap { height: 250px; }
+    #mapOverview {
+    position: relative;
+    z-index: 1;
+}
+#overviewMap { height: 250px; }
     .map-header { padding: 8px 12px; gap: 6px; }
     .map-header h2 { font-size: 13px; }
     .map-legend { display: none; }
@@ -1637,7 +1647,11 @@ body {
     .brand-pill-icon img { width: 16px; height: 16px; }
     .store-card { padding: 10px; }
     .app-content { padding: 6px; }
-    #overviewMap { height: 200px; }
+    #mapOverview {
+    position: relative;
+    z-index: 1;
+}
+#overviewMap { height: 200px; }
 }
     
 /* ============================================================
@@ -1687,6 +1701,10 @@ body {
 .dot-green { background: #34d399; }
 .dot-yellow { background: #fbbf24; }
 .dot-red { background: #f87171; }
+#mapOverview {
+    position: relative;
+    z-index: 1;
+}
 #overviewMap {
     width: 100%;
     height: 420px;
@@ -2109,6 +2127,8 @@ body {
 
 /* Admin Summary Dashboard */
 .admin-summary-grid {
+    position: relative;
+    z-index: 1;
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: 10px;
@@ -2148,7 +2168,9 @@ body {
     .tech-clock-banner { flex-direction: column; text-align: center; }
     .tcb-timer { font-size: 24px; }
     .tech-stats { grid-template-columns: repeat(2, 1fr); }
-    .admin-summary-grid { grid-template-columns: repeat(2, 1fr); }
+    .admin-summary-grid {
+    position: relative;
+    z-index: 1; grid-template-columns: repeat(2, 1fr); }
     .tech-dash-header { flex-direction: column; align-items: flex-start; }
     .tech-dash-header h2 { font-size: 18px; }
     #clockOutModal .modal-content { margin: 0 8px; max-height: 90vh; }
@@ -2757,7 +2779,7 @@ body {
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-<!-- Data files + Application logic (single-file build v3.1.0) -->
+<!-- Data files + Application logic (single-file build v3.2.0) -->
 <script>
 // ============================================================
 // STORES DATA - Dossani Paradise Management
@@ -3348,7 +3370,14 @@ filterStores = function() {
     if (type === 'all') {
         const storeSelect = document.getElementById('storeSelect');
         let allStores = [...stores];
-        if (currentUser.role !== 'Admin' && currentUser.stores !== 'all') {
+        if (currentUser.role === 'Technician' && currentUser.stores === 'all') {
+            const techInfo = TECH_INFO.find(t => t.email === currentUser.email);
+            if (techInfo && techInfo.zone === 'west') {
+                allStores = allStores.filter(s => !RAVAY_ONLY_STORES.includes(s.code));
+            } else if (techInfo && techInfo.zone === 'east') {
+                allStores = allStores.filter(s => RAVAY_ONLY_STORES.includes(s.code));
+            }
+        } else if (currentUser.role !== 'Admin' && currentUser.stores !== 'all') {
             const us = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
             allStores = allStores.filter(s => us.includes(s.code));
         }
@@ -3361,7 +3390,15 @@ function loadMapOverview(type) {
     let filtered = type === 'all' ? [...stores] : stores.filter(s => s.type === type);
     
     // Permission filter
-    if (currentUser.role !== 'Admin' && currentUser.stores !== 'all') {
+    if (currentUser.role === 'Technician' && currentUser.stores === 'all') {
+        // Filter by tech's geographic zone
+        const techInfo = TECH_INFO.find(t => t.email === currentUser.email);
+        if (techInfo && techInfo.zone === 'west') {
+            filtered = filtered.filter(s => !RAVAY_ONLY_STORES.includes(s.code));
+        } else if (techInfo && techInfo.zone === 'east') {
+            filtered = filtered.filter(s => RAVAY_ONLY_STORES.includes(s.code));
+        }
+    } else if (currentUser.role !== 'Admin' && currentUser.stores !== 'all') {
         const us = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
         filtered = filtered.filter(s => us.includes(s.code));
     }
@@ -3572,12 +3609,12 @@ function setMapView(view) {
     if (view === 'list') {
         mapEl.style.display = 'none';
         listEl.style.display = '';
-        if (legend) legend.style.display = 'none';
+        if (legend) { legend.style.visibility = 'hidden'; legend.style.pointerEvents = 'none'; }
         renderStoreListView();
     } else {
         mapEl.style.display = '';
         listEl.style.display = 'none';
-        if (legend) legend.style.display = '';
+        if (legend) { legend.style.visibility = ''; legend.style.pointerEvents = ''; }
         if (overviewMap) setTimeout(() => overviewMap.invalidateSize(), 100);
     }
 }
@@ -4575,8 +4612,9 @@ function loadAdminSummary() {
         const assigned = tickets.filter(t => t.status === 'assigned').length;
         const inprogress = tickets.filter(t => t.status === 'inprogress').length;
         const waiting = tickets.filter(t => t.status === 'waiting').length;
-        const urgent = tickets.filter(t => (t.priority === 'urgent' || t.priority === 'emergency') && t.status !== 'closed' && t.status !== 'resolved').length;
+
         const resolved = tickets.filter(t => t.status === 'resolved').length;
+        const closed = tickets.filter(t => t.status === 'closed').length;
         
         document.getElementById('adminSummaryGrid').innerHTML = `
             <div class="admin-sum-card" onclick="selectBrand('all');setTimeout(()=>showAllTickets('open'),200)">
@@ -4595,13 +4633,13 @@ function loadAdminSummary() {
                 <div class="asc-num orange">${waiting}</div>
                 <div class="asc-label">Waiting</div>
             </div>
-            <div class="admin-sum-card">
-                <div class="asc-num red">${urgent}</div>
-                <div class="asc-label">Urgent/Emergency</div>
-            </div>
             <div class="admin-sum-card" onclick="selectBrand('all');setTimeout(()=>showAllTickets('resolved'),200)">
                 <div class="asc-num green">${resolved}</div>
                 <div class="asc-label">Resolved</div>
+            </div>
+            <div class="admin-sum-card" onclick="selectBrand('all');setTimeout(()=>showAllTickets('closed'),200)">
+                <div class="asc-num gray">${closed}</div>
+                <div class="asc-label">Closed</div>
             </div>`;
 
         document.getElementById('adminSummary').classList.remove('hidden');
@@ -4917,6 +4955,7 @@ function showViewAsModal() {
         const overlay = document.createElement('div');
         overlay.className = 'admin-modal';
         overlay.id = 'viewAsModal';
+        overlay.style.zIndex = '200';
         overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
         overlay.innerHTML = `<div class="modal-card">
             <h3>View As Another User</h3>
@@ -4989,7 +5028,7 @@ function doViewAs() {
         // Show/hide All Locations pill based on impersonated user's role
         const allPill = document.getElementById('brandPill-all');
         const allOpt = document.querySelector('.admin-only-opt');
-        if (currentUser.role === 'Admin' || currentUser.stores === 'all') {
+        if (currentUser.role === 'Admin' || currentUser.role === 'Technician' || currentUser.stores === 'all') {
             if (allPill) allPill.classList.remove('hidden');
             if (allOpt) allOpt.classList.remove('hidden');
         } else {
@@ -5006,6 +5045,13 @@ function doViewAs() {
                 filterStores();
                 document.getElementById('storeSelect').value = store.id;
                 selectStore();
+            }
+        }
+
+        // Auto-select for multi-store techs/coaches on desktop
+        if (window.innerWidth >= 1100 && isMultiStoreUser()) {
+            if (currentUser.role === 'Admin' || currentUser.role === 'Technician') {
+                setTimeout(() => selectBrand('all'), 100);
             }
         }
 
@@ -5615,6 +5661,7 @@ function normalizeRole(r) {
     const lower = r.toLowerCase();
     if (lower === 'admin') return 'Admin';
     if (lower === 'areacoach' || lower === 'area coach') return 'Area Coach';
+    if (lower === 'technician') return 'Technician';
     return 'Manager';
 }
 
@@ -5848,8 +5895,8 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v3.1.0</span>
-    <span>Build 3.1.0</span>
+    <span>R&M Tracker v3.2.0</span>
+    <span>Build 3.2.0</span>
 </div>
 
 </body>
