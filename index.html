@@ -2077,6 +2077,35 @@ body {
 .tcb-store { font-size: 12px; opacity: 0.8; }
 .tcb-timer { font-size: 28px; font-weight: 700; font-family: 'JetBrains Mono', monospace; letter-spacing: 1px; }
 
+.tcb-emergency {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #fee2e2;
+    background: rgba(127, 29, 29, 0.45);
+    padding: 3px 8px;
+    border-radius: 999px;
+    margin-top: 2px;
+}
+.tech-banner-actions { display: flex; gap: 8px; align-items: center; }
+
+.btn-tech-primary {
+    background: #0f172a;
+    color: #fff;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: transform 0.12s, background 0.12s;
+}
+.btn-tech-primary:hover { background: #1e293b; transform: translateY(-1px); }
+.btn-tech-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
 .tech-stats {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -2096,6 +2125,23 @@ body {
 .tech-stat-card .tsc-num { font-size: 24px; font-weight: 700; color: var(--text); }
 .tech-stat-card .tsc-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.3px; margin-top: 2px; }
 
+.tech-layout {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+}
+.tech-list-pane { min-width: 0; }
+.tech-detail-pane {
+    display: none;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 14px;
+    min-height: 220px;
+    position: sticky;
+    top: 72px;
+}
+.tech-detail-empty { font-size: 13px; color: var(--text-muted); }
 .tech-job-list { display: flex; flex-direction: column; gap: 10px; }
 
 .tech-job-card {
@@ -2120,6 +2166,17 @@ body {
 .tjc-desc { font-size: 13px; color: var(--text-mid); line-height: 1.4; }
 .tjc-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 12px; }
 .tjc-actions { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; min-width: 100px; }
+.tjc-fast-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+.quick-chip {
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-mid);
+    font-size: 11px;
+    border-radius: 999px;
+    padding: 4px 9px;
+    cursor: pointer;
+}
+.quick-chip:hover { border-color: var(--primary); color: var(--primary); }
 
 .btn-clock-in {
     background: #059669;
@@ -2187,7 +2244,9 @@ body {
 @media (max-width: 600px) {
     .tech-job-card { grid-template-columns: 1fr; }
     .tjc-actions { flex-direction: row; min-width: auto; }
-    .tech-clock-banner { flex-direction: column; text-align: center; }
+    .btn-clock-in, .btn-tech-primary, .btn-view-ticket { min-height: 44px; font-size: 14px; }
+    .quick-chip { min-height: 36px; font-size: 12px; padding: 6px 10px; }
+     .tech-clock-banner { flex-direction: column; text-align: center; position: sticky; top: 60px; z-index: 20; }
     .tcb-timer { font-size: 24px; }
     .tech-stats { grid-template-columns: repeat(2, 1fr); }
     .admin-summary-grid { grid-template-columns: repeat(2, 1fr); }
@@ -2197,6 +2256,25 @@ body {
     #clockOutModal .modal-body { padding: 12px; }
     .status-select-grid { grid-template-columns: 1fr !important; }
 }
+@media (min-width: 768px) and (max-width: 1099px) {
+    .tech-layout { grid-template-columns: minmax(320px, 0.95fr) minmax(340px, 1.05fr); align-items: start; }
+    .tech-detail-pane { display: block; }
+}
+
+@media (max-width: 767px) {
+    .tech-mobile-footer {
+        position: sticky;
+        bottom: 0;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        padding: 10px 0 0;
+        background: linear-gradient(to top, var(--bg), rgba(255,255,255,0));
+        z-index: 15;
+    }
+    .tech-mobile-footer .btn { min-height: 46px; }
+}
+
 .modal-card .modal-actions { display: flex; gap: 8px; margin-top: 16px; }
 
 .empty-state {
@@ -2319,17 +2397,33 @@ body {
                     <span class="tcb-status" data-i18n="tech_clocked_in">⏱️ Clocked In</span>
                     <span class="tcb-ticket" id="tcbTicketId"></span>
                     <span class="tcb-store" id="tcbStoreName"></span>
+                    <span class="tcb-emergency hidden" id="tcbEmergency">🚨 Emergency</span>
                 </div>
                 <div class="tcb-timer" id="tcbTimer">00:00:00</div>
-                <button class="btn btn-sm" style="background:#dc2626;color:#fff;border:none" onclick="showClockOutPrompt()">Clock Out</button>
+                <div class="tech-banner-actions">
+                    <button class="btn-tech-primary" id="techPrimaryActionBtn" onclick="techAdvanceExecutionMode()">🚗 Start Travel</button>
+                    <button class="btn btn-sm" style="background:#dc2626;color:#fff;border:none" onclick="showClockOutPrompt()">Clock Out</button>
+                </div>
             </div>
 
             <!-- Summary stats -->
             <div class="tech-stats" id="techStats"></div>
 
-            <!-- Job list -->
-            <div class="tech-job-list" id="techJobList">
-                <div class="empty-state">Loading jobs...</div>
+            <div class="tech-layout" id="techLayout">
+                <div class="tech-list-pane">
+                    <!-- Job list -->
+                    <div class="tech-job-list" id="techJobList">
+                        <div class="empty-state">Loading jobs...</div>
+                    </div>
+                </div>
+                <div class="tech-detail-pane" id="techDetailPane">
+                    <div class="tech-detail-empty">Select a job to view full details.</div>
+                </div>
+            </div>
+
+            <div class="tech-mobile-footer hidden" id="techMobileFooter">
+                <button class="btn-tech-primary" id="techMobilePrimaryBtn" onclick="techAdvanceExecutionMode()">🚗 Start Travel</button>
+                <button class="btn" style="background:#dc2626;color:#fff;border:none" onclick="showClockOutPrompt()">Clock Out</button>
             </div>
         </div>
 
@@ -4436,7 +4530,9 @@ function initTechDashboard() {
                     ticketKey: entry.ticketKey,
                     ticketId: entry.ticketId,
                     storeName: entry.storeName,
-                    startTime: entry.startTime
+                    startTime: entry.startTime,
+                    modeStatus: entry.modeStatus || 'assigned',
+                    emergency: !!entry.emergency
                 };
                 showClockBanner();
                 break;
@@ -4465,8 +4561,70 @@ function loadTechJobs() {
     });
 }
 
+function getExecutionModeState(status = 'inprogress') {
+    if (status === 'assigned' || status === 'open') return { key: 'travel', label: '🚗 Start Travel', nextStatus: 'inprogress', note: 'Travel started to site' };
+    if (status === 'inprogress') return { key: 'arrived', label: '📍 Arrived', nextStatus: 'inprogress', note: 'Arrived onsite and began diagnosis' };
+    if (status === 'waiting') return { key: 'waiting', label: '📦 Waiting Parts', nextStatus: 'waiting', note: 'Waiting on parts / vendor support' };
+    return { key: 'complete', label: '✅ Complete', nextStatus: 'resolved', note: 'Work completed, ready to close out' };
+}
+
+function getTicketByKey(key) {
+    return techJobs.find(x => x._key === key) || currentTickets.find(x => x._key === key);
+}
+
+function renderTechDetailPane(key) {
+    const pane = document.getElementById('techDetailPane');
+    if (!pane) return;
+    const t = getTicketByKey(key || (activeClockIn && activeClockIn.ticketKey));
+    if (!t) {
+        pane.innerHTML = '<div class="tech-detail-empty">Select a job to view full details.</div>';
+        return;
+    }
+    const statusLabel = { open:'Open', assigned:'Assigned', inprogress:'In Progress', waiting:'Waiting', resolved:'Resolved', closed:'Closed' };
+    const catIcons = { plumbing:'🚿', equipment:'⚙️', it:'💻', structural:'🧱', safety:'🛡️', other:'📎' };
+    const notes = [
+        'On site — troubleshooting now',
+        'Part ordered — ETA pending',
+        'Temporary fix in place',
+        'Need manager follow-up'
+    ];
+    pane.innerHTML = `
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;flex-wrap:wrap;margin-bottom:10px">
+            <div>
+                <div style="font-weight:700">${escHtml(t.id || t._key)}</div>
+                <div style="font-size:12px;color:var(--text-muted)">${escHtml((stores.find(s => s.code === t.storeCode) || {}).name || t.storeCode || '')}</div>
+            </div>
+            <span class="ticket-status-badge status-${t.status}" style="font-size:11px">${statusLabel[t.status] || t.status}</span>
+        </div>
+        <div style="font-size:13px;line-height:1.4;margin-bottom:8px">${catIcons[t.category] || '📎'} ${escHtml(t.description || '')}</div>
+        <div class="tjc-fast-actions" style="margin-bottom:10px">
+            ${notes.map(n => `<button class="quick-chip" onclick="prefillTechNote('${escHtml(n)}')">${escHtml(n)}</button>`).join('')}
+        </div>
+        <textarea class="form-textarea" id="techQuickNote" placeholder="Quick update note" style="min-height:78px;font-size:13px"></textarea>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+            <button class="btn btn-sm" style="background:var(--primary);color:#fff;border:none" onclick="saveTechQuickUpdate('${t._key}', 'inprogress')">Save Update</button>
+            <button class="btn-view-ticket" onclick="openTicketDetail('${t._key}', true)">Open Full Details</button>
+        </div>`;
+}
+
+function prefillTechNote(text) {
+    const el = document.getElementById('techQuickNote');
+    if (el) el.value = text;
+}
+
+async function saveTechQuickUpdate(key, fallbackStatus) {
+    const t = getTicketByKey(key);
+    if (!t) return;
+    const note = document.getElementById('techQuickNote')?.value?.trim();
+    if (!note) { toast('Add a quick note first.', 'error'); return; }
+    const status = (activeClockIn && activeClockIn.ticketKey === key && activeClockIn.modeStatus) || t.status || fallbackStatus;
+    const activity = { action: 'note', by: currentUser.name, byEmail: currentUser.email, timestamp: Date.now(), newStatus: status, note };
+    await db.ref('tickets/' + key + '/activity').push(activity);
+    toast('Update saved', 'success');
+    renderTechDetailPane(key);
+}
+
 function renderTechDashboard() {
-    // Stats - all jobs in techJobs are assigned to this tech
     const active = techJobs.filter(t => t.status !== 'closed' && t.status !== 'resolved');
     const urgent = active.filter(t => t.priority === 'emergency' || t.priority === 'urgent');
     const waiting = active.filter(t => t.status === 'waiting');
@@ -4490,15 +4648,10 @@ function renderTechDashboard() {
             <div class="tsc-label" data-i18n="tech_completed">Completed</div>
         </div>`;
 
-    // Filter jobs
-    let displayJobs;
-    if (techFilter === 'completed') {
-        displayJobs = techJobs.filter(t => t.status === 'resolved' || t.status === 'closed');
-    } else { // 'active'
-        displayJobs = techJobs.filter(t => t.status !== 'closed' && t.status !== 'resolved');
-    }
+    let displayJobs = techFilter === 'completed'
+        ? techJobs.filter(t => t.status === 'resolved' || t.status === 'closed')
+        : techJobs.filter(t => t.status !== 'closed' && t.status !== 'resolved');
 
-    // Sort: emergency first, then urgent, then by date
     displayJobs.sort((a, b) => {
         const p = { emergency: 0, urgent: 1, routine: 2 };
         const pd = (p[a.priority] || 2) - (p[b.priority] || 2);
@@ -4506,9 +4659,14 @@ function renderTechDashboard() {
         return (b.createdAt || 0) - (a.createdAt || 0);
     });
 
+    if (activeClockIn) {
+        const activeJob = displayJobs.find(t => t._key === activeClockIn.ticketKey) || techJobs.find(t => t._key === activeClockIn.ticketKey);
+        if (activeJob) displayJobs = [activeJob, ...displayJobs.filter(t => t._key !== activeClockIn.ticketKey)];
+    }
+
     const listEl = document.getElementById('techJobList');
     if (displayJobs.length === 0) {
-        const msg = techFilter === 'active' ? 'No jobs assigned to you' : techFilter === 'completed' ? 'No completed jobs yet' : 'No open tickets';
+        const msg = techFilter === 'active' ? 'No jobs assigned to you' : 'No completed jobs yet';
         listEl.innerHTML = `<div class="empty-state" style="padding:40px;text-align:center;color:var(--text-muted)">${msg}</div>`;
         return;
     }
@@ -4520,7 +4678,6 @@ function renderTechDashboard() {
     listEl.innerHTML = displayJobs.map(t => {
         const storeName = (stores.find(s => s.code === t.storeCode) || {}).name || t.storeCode;
         const shortStore = storeName.replace(/^Burger King /, 'BK ').replace(/^Paradise QS /, 'PQS ');
-        const isMyJob = true; // All jobs in tech dashboard are assigned to this tech
         const isActiveJob = activeClockIn && activeClockIn.ticketKey === t._key;
         const prBadge = {routine:'<span class="priority-word p-routine">Routine</span>',urgent:'<span class="priority-word p-urgent">Urgent</span>',emergency:'<span class="priority-word p-emergency">Emergency</span>'}[t.priority] || '';
         const desc = (t.description || '').substring(0, 100) + ((t.description || '').length > 100 ? '...' : '');
@@ -4528,10 +4685,11 @@ function renderTechDashboard() {
 
         let actionBtn = '';
         if (isActiveJob) {
-            actionBtn = `<button class="btn btn-sm" style="background:#dc2626;color:#fff;border:none;padding:8px 16px;border-radius:8px;font-weight:600;cursor:pointer" onclick="event.stopPropagation();showClockOutPrompt()">⏹ Clock Out</button>`;
-        } else if (isMyJob && !isClocked && t.status !== 'resolved' && t.status !== 'closed') {
-            actionBtn = `<button class="btn-clock-in" onclick="event.stopPropagation();clockIn('${t._key}','${escHtml(t.id)}','${escHtml(shortStore)}')">▶ Clock In</button>`;
-        } else if (isMyJob && isClocked && !isActiveJob) {
+            const mode = getExecutionModeState(activeClockIn.modeStatus || t.status);
+            actionBtn = `<button class="btn-tech-primary" onclick="event.stopPropagation();techAdvanceExecutionMode()">${mode.label}</button>`;
+        } else if (!isClocked && t.status !== 'resolved' && t.status !== 'closed') {
+            actionBtn = `<button class="btn-clock-in" onclick="event.stopPropagation();clockIn('${t._key}','${escHtml(t.id)}','${escHtml(shortStore)}', '${t.priority || ''}')">▶ Clock In</button>`;
+        } else if (isClocked && !isActiveJob) {
             actionBtn = `<button class="btn-clock-in" disabled title="Finish current job first">▶ Clock In</button>`;
         }
 
@@ -4546,15 +4704,27 @@ function renderTechDashboard() {
                 <div class="tjc-meta">
                     <span class="ticket-status-badge status-${t.status}" style="font-size:11px;padding:2px 8px">${statusLabel[t.status] || t.status}</span>
                     <span style="color:var(--text-muted)">${time}</span>
-                    ${isMyJob ? '<span style="color:#059669;font-weight:600">Assigned to you</span>' : ''}
+                    <span style="color:#059669;font-weight:600">Assigned to you</span>
+                </div>
+                <div class="tjc-fast-actions">
+                    <button class="quick-chip" onclick="event.stopPropagation();saveTechQuickChip('${t._key}','On site — troubleshooting now')">On site</button>
+                    <button class="quick-chip" onclick="event.stopPropagation();saveTechQuickChip('${t._key}','Waiting on parts')">Waiting parts</button>
+                    <button class="quick-chip" onclick="event.stopPropagation();saveTechQuickChip('${t._key}','Need callback from store')">Need callback</button>
                 </div>
             </div>
             <div class="tjc-actions">
                 ${actionBtn}
-                <button class="btn-view-ticket" onclick="event.stopPropagation();techOpenTicket('${t._key}')">View Details</button>
+                ${isActiveJob ? '<button class="btn-view-ticket" onclick="event.stopPropagation();showClockOutPrompt()">Clock Out</button>' : ''}
             </div>
         </div>`;
     }).join('');
+
+    if (activeClockIn) renderTechDetailPane(activeClockIn.ticketKey);
+}
+
+async function saveTechQuickChip(key, note) {
+    await db.ref('tickets/' + key + '/activity').push({ action: 'note', by: currentUser.name, byEmail: currentUser.email, timestamp: Date.now(), note });
+    toast('Note added', 'success');
 }
 
 function filterTechJobs(filter, btn) {
@@ -4568,48 +4738,66 @@ function filterTechJobs(filter, btn) {
 function techOpenTicket(key) {
     const t = techJobs.find(x => x._key === key);
     if (!t) return;
-    // Set selectedStore context so ticket detail modal works correctly
     const store = stores.find(s => s.code === t.storeCode);
     if (store) selectedStore = store;
     currentTickets = [t];
-    openTicketDetail(key);
+    if ((window.innerWidth || 0) >= 768 && (window.innerWidth || 0) < 1100) {
+        renderTechDetailPane(key);
+        return;
+    }
+    openTicketDetail(key, false);
 }
 
-// Clock In
-function clockIn(ticketKey, ticketId, storeName) {
+function clockIn(ticketKey, ticketId, storeName, priority = 'routine') {
     if (activeClockIn) { toast('Already clocked into a job. Clock out first.', 'error'); return; }
-    
+
     const now = Date.now();
     const entry = {
         techEmail: currentUser.email,
         techName: currentUser.name,
-        ticketKey: ticketKey,
-        ticketId: ticketId,
-        storeName: storeName,
+        ticketKey,
+        ticketId,
+        storeName,
         startTime: now,
-        endTime: null
+        endTime: null,
+        modeStatus: 'assigned',
+        emergency: priority === 'emergency'
     };
-    
+
     const ref = db.ref('timeEntries').push();
     ref.set(entry).then(() => {
-        activeClockIn = { entryKey: ref.key, ticketKey, ticketId, storeName, startTime: now };
-        // Update ticket status to in progress
-        db.ref('tickets/' + ticketKey + '/status').set('inprogress');
+        activeClockIn = { entryKey: ref.key, ticketKey, ticketId, storeName, startTime: now, modeStatus: 'assigned', emergency: priority === 'emergency' };
+        db.ref('tickets/' + ticketKey + '/status').set('assigned');
         db.ref('tickets/' + ticketKey + '/assignedTo').set(currentUser.email);
         db.ref('tickets/' + ticketKey + '/assigneeType').set('tech');
-        // Add activity
         db.ref('tickets/' + ticketKey + '/activity').push({
-            action: 'status',
-            by: currentUser.name,
-            oldStatus: 'assigned',
-            newStatus: 'inprogress',
-            note: 'Clocked in',
-            timestamp: now
+            action: 'status', by: currentUser.name, oldStatus: 'assigned', newStatus: 'assigned', note: 'Clocked in and preparing travel', timestamp: now
         });
         showClockBanner();
-        toast('Clocked in!', 'success');
+        toast('Clocked in! Execution mode enabled.', 'success');
         loadTechJobs();
     }).catch(err => { toast('Failed to clock in: ' + err.message, 'error'); });
+}
+
+async function techAdvanceExecutionMode() {
+    if (!activeClockIn) return;
+    const mode = getExecutionModeState(activeClockIn.modeStatus || 'assigned');
+    const now = Date.now();
+    try {
+        await db.ref('tickets/' + activeClockIn.ticketKey + '/status').set(mode.nextStatus);
+        await db.ref('tickets/' + activeClockIn.ticketKey + '/activity').push({
+            action: 'status', by: currentUser.name, oldStatus: activeClockIn.modeStatus || 'assigned', newStatus: mode.nextStatus, note: mode.note, timestamp: now
+        });
+        activeClockIn.modeStatus = mode.nextStatus === 'resolved' ? 'resolved' : (mode.key === 'travel' ? 'inprogress' : mode.nextStatus);
+        if (mode.nextStatus === 'resolved') {
+            showClockOutPrompt();
+            return;
+        }
+        showClockBanner();
+        loadTechJobs();
+    } catch (err) {
+        toast('Unable to update execution mode: ' + err.message, 'error');
+    }
 }
 
 function showClockBanner() {
@@ -4618,8 +4806,15 @@ function showClockBanner() {
     banner.classList.remove('hidden');
     document.getElementById('tcbTicketId').textContent = activeClockIn.ticketId;
     document.getElementById('tcbStoreName').textContent = activeClockIn.storeName;
-    
-    // Start timer
+    const mode = getExecutionModeState(activeClockIn.modeStatus || 'assigned');
+    document.getElementById('techPrimaryActionBtn').textContent = mode.label;
+    const mobileBtn = document.getElementById('techMobilePrimaryBtn');
+    if (mobileBtn) mobileBtn.textContent = mode.label;
+    const emergency = document.getElementById('tcbEmergency');
+    emergency.classList.toggle('hidden', !activeClockIn.emergency);
+    const mobileFooter = document.getElementById('techMobileFooter');
+    if (mobileFooter) mobileFooter.classList.toggle('hidden', !(window.innerWidth < 768 && activeClockIn));
+
     if (clockTimerInterval) clearInterval(clockTimerInterval);
     clockTimerInterval = setInterval(updateClockTimer, 1000);
     updateClockTimer();
@@ -4638,21 +4833,21 @@ function updateClockTimer() {
 function showClockOutPrompt() {
     if (!activeClockIn) return;
     clockOutPhotos = [];
-    clockOutStatus = 'inprogress';
-    
+    clockOutStatus = activeClockIn.modeStatus === 'waiting' ? 'waiting' : 'resolved';
+
     const elapsed = Date.now() - activeClockIn.startTime;
     const mins = Math.round(elapsed / 60000);
-    
+
     document.getElementById('clockOutInfo').innerHTML = `
         <div style="font-size:14px;margin-bottom:4px"><strong>${escHtml(activeClockIn.ticketId)}</strong> at ${escHtml(activeClockIn.storeName)}</div>
-        <div style="font-size:13px;color:var(--text-muted)">Time on job: ${mins} minute${mins !== 1 ? 's' : ''}</div>`;
-    
+        <div style="font-size:13px;color:var(--text-muted)">Execution mode active • time on job: ${mins} minute${mins !== 1 ? 's' : ''}</div>`;
+
     const statusOptions = ['inprogress', 'waiting', 'resolved'];
-    const statusLabels = { inprogress: 'Still In Progress', waiting: 'Waiting on Parts', resolved: 'Resolved' };
+    const statusLabels = { inprogress: 'Continue Working', waiting: 'Waiting on Parts', resolved: 'Resolved / Completed' };
     document.getElementById('clockOutStatusGrid').innerHTML = statusOptions.map(s =>
         `<button class="status-option ${s === clockOutStatus ? 'active' : ''}" onclick="clockOutStatus='${s}';this.parentElement.querySelectorAll('.status-option').forEach(b=>b.classList.remove('active'));this.classList.add('active')">${statusLabels[s]}</button>`
     ).join('');
-    
+
     document.getElementById('clockOutNotes').value = '';
     document.getElementById('clockOutPhotoPreview').innerHTML = '';
     document.getElementById('clockOutModal').classList.add('open');
@@ -4719,6 +4914,7 @@ async function confirmClockOut() {
         clockOutPhotos = [];
         
         document.getElementById('techClockBanner').classList.add('hidden');
+        document.getElementById('techMobileFooter')?.classList.add('hidden');
         document.getElementById('clockOutModal').classList.remove('open');
         toast('Clocked out!', 'success');
         loadTechJobs();
@@ -5793,7 +5989,7 @@ function renderTickets() {
 // ============================================================
 // TICKET DETAIL MODAL
 // ============================================================
-function openTicketDetail(key) {
+function openTicketDetail(key, forceModal = true) {
     const t = currentTickets.find(x => x._key === key);
     if (!t) return;
 
@@ -5890,6 +6086,12 @@ function openTicketDetail(key) {
                 </div>
             `).join('')}
         </div>`;
+    }
+
+    const profile = currentUser ? getExperienceProfile(currentUser.role) : '';
+    if (profile.startsWith('tech-') && profile.endsWith('tablet') && !forceModal) {
+        renderTechDetailPane(key);
+        return;
     }
 
     document.getElementById('modalBody').innerHTML = html;
