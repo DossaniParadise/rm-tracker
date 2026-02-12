@@ -3154,9 +3154,59 @@ function showLoginScreen() {
     document.getElementById('appContainer').style.display = 'none';
 }
 
+function getViewportHints() {
+    const width = window.innerWidth || document.documentElement.clientWidth || 0;
+    const height = window.innerHeight || document.documentElement.clientHeight || 0;
+    const touchCapable = window.matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+    return {
+        width,
+        height,
+        touchCapable,
+        isMobile: width <= 767,
+        isTablet: width >= 768 && width <= 1099,
+        isDesktop: width >= 1100
+    };
+}
+
+function getExperienceProfile(role, viewport = getViewportHints()) {
+    const normalizedRole = normalizeRole(role || 'Manager').toLowerCase();
+    let device = 'desktop';
+
+    if (viewport.isMobile) {
+        device = 'mobile';
+    } else if (viewport.isTablet || (viewport.touchCapable && viewport.width < 1200)) {
+        device = 'tablet';
+    }
+
+    const rolePrefix = normalizedRole === 'area coach' ? 'manager' : normalizedRole;
+    return `${rolePrefix}-${device}`;
+}
+
+function routeToProfileLanding(profile) {
+    if (profile.startsWith('tech-')) {
+        showScreen('techDashboard');
+        initTechDashboard();
+        return;
+    }
+
+    showScreen('storeSelection');
+
+    if (profile === 'admin-desktop') {
+        loadAdminSummary();
+        setTimeout(() => selectBrand('all'), 100);
+        return;
+    }
+
+    if (profile === 'manager-mobile' && selectedStore) {
+        showExistingIssuesScreen();
+    }
+}
+
 function showAppScreen() {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('appContainer').style.display = 'flex';
+    const experienceProfile = getExperienceProfile(currentUser.role);
 
     // Populate header
     const initials = currentUser.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
@@ -3224,17 +3274,7 @@ function showAppScreen() {
     // Load vendor list
     loadVendors();
 
-    // Role-specific home screens
-    if (currentUser.role === 'Technician') {
-        showScreen('techDashboard');
-        initTechDashboard();
-        return; // Techs get their own dedicated view
-    }
-
-    // Admin summary dashboard
-    if (currentUser.role === 'Admin') {
-        loadAdminSummary();
-    }
+    routeToProfileLanding(experienceProfile);
 }
 
 function showError(msg) {
@@ -3249,13 +3289,13 @@ function showScreen(screenId) {
         document.getElementById(id).classList.toggle('hidden', id !== screenId);
     });
     // Admin summary shows alongside storeSelection for admins
-    if (screenId === 'storeSelection' && currentUser && currentUser.role === 'Admin') {
+    if (screenId === 'storeSelection' && currentUser && getExperienceProfile(currentUser.role) === 'admin-desktop') {
         document.getElementById('adminSummary').classList.remove('hidden');
     }
 }
 
 function goBack() {
-    if (currentUser && currentUser.role === 'Technician') {
+    if (currentUser && getExperienceProfile(currentUser.role).startsWith('tech-')) {
         showScreen('techDashboard');
         loadTechJobs();
     } else {
@@ -5027,12 +5067,8 @@ function doViewAs() {
             if (allOpt) allOpt.classList.add('hidden');
         }
 
-        // Role-specific routing
-        if (currentUser.role === 'Technician') {
-            showScreen('techDashboard');
-            initTechDashboard();
-        } else if (currentUser.role === 'Manager' && currentUser.stores && !Array.isArray(currentUser.stores)) {
-            showScreen('storeSelection');
+        // Profile-based routing
+        if (currentUser.role === 'Manager' && currentUser.stores && !Array.isArray(currentUser.stores)) {
             const store = stores.find(s => s.code === currentUser.stores);
             if (store) {
                 selectedStore = store;
@@ -5041,15 +5077,9 @@ function doViewAs() {
                 document.getElementById('storeSelect').value = store.id;
                 selectStore();
             }
-        } else {
-            showScreen('storeSelection');
-            // Admin summary for admins
-            if (currentUser.role === 'Admin') loadAdminSummary();
-            // Auto-select brand on desktop
-            if (window.innerWidth >= 1100 && isMultiStoreUser()) {
-                setTimeout(() => selectBrand('all'), 100);
-            }
         }
+
+        routeToProfileLanding(getExperienceProfile(currentUser.role));
 
         initNotificationCenter();
         showToast('Viewing as ' + currentUser.name, 'success');
@@ -5671,7 +5701,7 @@ function normalizeRole(r) {
 }
 
 function goHome() {
-    if (currentUser && currentUser.role === 'Technician') {
+    if (currentUser && getExperienceProfile(currentUser.role).startsWith('tech-')) {
         showScreen('techDashboard');
         loadTechJobs();
         return;
