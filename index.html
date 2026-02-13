@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Dossani Paradise Repair and Maintenance Tracker</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
@@ -751,10 +751,11 @@ body {
 
 /* ---- Action Cards ---- */
 .action-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+    flex-wrap: wrap;
     gap: 14px;
     margin-top: 20px;
+    justify-content: center;
 }
 
 .action-card {
@@ -767,6 +768,9 @@ body {
     text-align: center;
     position: relative;
     overflow: hidden;
+    flex: 1 1 140px;
+    max-width: 200px;
+    min-width: 130px;
 }
 
 .action-card::after {
@@ -783,26 +787,29 @@ body {
 
 .action-card:hover {
     border-color: var(--primary);
-    transform: translateY(-3px);
+    transform: translateY(-2px);
     box-shadow: var(--shadow);
 }
+.action-card:active { transform: translateY(0); }
 
 .action-card:hover::after { transform: scaleX(1); }
 
 .action-icon {
-    font-size: 36px;
-    margin-bottom: 10px;
+    font-size: 32px;
+    margin-bottom: 8px;
 }
 
 .action-title {
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 700;
     margin-bottom: 4px;
+    line-height: 1.3;
 }
 
 .action-desc {
     color: var(--text-muted);
-    font-size: 13px;
+    font-size: 12px;
+    line-height: 1.3;
 }
 
 /* ---- Back Button ---- */
@@ -820,7 +827,8 @@ body {
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
-    padding: 6px 2px;
+    padding: 10px 4px;
+    min-height: 44px;
     font-family: inherit;
 }
 .btn-back:hover { color: var(--primary); }
@@ -1125,7 +1133,7 @@ body {
 }
 
 .filter-chip {
-    padding: 6px 14px;
+    padding: 8px 16px;
     border: 1px solid var(--border);
     border-radius: 20px;
     background: var(--card);
@@ -1135,6 +1143,9 @@ body {
     transition: all 0.15s;
     font-family: inherit;
     color: var(--text-mid);
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
 }
 
 .filter-chip:hover { border-color: var(--primary); color: var(--primary); }
@@ -1683,16 +1694,16 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
     .map-stats-bar { padding: 8px 14px; }
 }
 
-.role-landing { max-width: 700px; margin: 0 auto; padding: 20px 0; }
-.landing-store-name { font-size: 22px; font-weight: 700; color: var(--text); text-align: center; margin-bottom: 24px; padding: 16px; background: var(--card); border-radius: var(--radius-lg); border: 1px solid var(--border); }
-.landing-header { text-align: center; margin-bottom: 16px; }
-.landing-header h2 { font-size: 20px; font-weight: 700; color: var(--text); }
-.landing-actions { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
-.coach-store-btn { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; text-align: center; cursor: pointer; transition: all 0.15s; min-height: 80px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 4px; }
-.coach-store-btn:hover { border-color: var(--primary); box-shadow: var(--shadow); transform: translateY(-1px); }
+.role-landing { max-width: 720px; margin: 0 auto; padding: 24px 12px; }
+.landing-store-name { font-size: 20px; font-weight: 700; color: var(--text); text-align: center; margin-bottom: 20px; padding: 14px 20px; background: var(--card); border-radius: var(--radius-lg); border: 1px solid var(--border); line-height: 1.3; }
+.landing-header { text-align: center; margin-bottom: 20px; }
+.landing-header h2 { font-size: 20px; font-weight: 700; color: var(--text); margin: 0; }
+.landing-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+.coach-store-btn { background: var(--card); border: 2px solid var(--border); border-radius: var(--radius-lg); padding: 16px 12px; text-align: center; cursor: pointer; transition: all 0.15s; min-height: 80px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 4px; flex: 1 1 140px; max-width: 180px; min-width: 120px; }
+.coach-store-btn:hover { border-color: var(--primary); box-shadow: var(--shadow); transform: translateY(-2px); }
 .coach-store-btn:active { transform: translateY(0); }
-.coach-store-btn .csb-name { font-size: 14px; font-weight: 600; color: var(--text); }
-.coach-store-btn .csb-brand { font-size: 11px; color: var(--text-muted); }
+.coach-store-btn .csb-name { font-size: 14px; font-weight: 700; color: var(--text); line-height: 1.2; }
+.coach-store-btn .csb-brand { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
 .coach-store-btn .csb-tickets { font-size: 12px; font-weight: 600; margin-top: 4px; }
 .coach-store-btn .csb-tickets.has-issues { color: #dc2626; }
 .coach-store-btn .csb-tickets.no-issues { color: #059669; }
@@ -1716,9 +1727,11 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
     .form-row { grid-template-columns: 1fr; }
     .form-label { font-size: 11px; }
     .form-select, .form-input { font-size: 13px; padding: 8px 10px; }
-    .action-grid { grid-template-columns: 1fr; gap: 8px; }
-    .action-card { padding: 16px; }
+    .action-grid { gap: 10px; }
+    .action-card { padding: 16px 12px; min-width: 110px; max-width: 48%; }
     .action-icon { font-size: 24px; }
+    .action-title { font-size: 13px; }
+    .action-desc { font-size: 11px; }
     .action-title { font-size: 14px; }
     .action-desc { font-size: 11px; }
     #overviewMap { height: 250px; }
@@ -2204,10 +2217,11 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
 .btn-tech-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
 .tech-stats {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    display: flex;
+    flex-wrap: wrap;
     gap: 10px;
     margin-bottom: 16px;
+    justify-content: center;
 }
 .tech-stat-card {
     background: var(--card);
@@ -2217,6 +2231,9 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
     border: 1px solid var(--border);
     cursor: pointer;
     transition: all 0.15s;
+    flex: 1 1 80px;
+    max-width: 140px;
+    min-width: 75px;
 }
 .tech-stat-card:hover { border-color: var(--primary); transform: translateY(-1px); }
 .tech-stat-card .tsc-num { font-size: 24px; font-weight: 700; color: var(--text); }
@@ -2305,10 +2322,11 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
 
 /* Admin Summary Dashboard */
 .admin-summary-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    display: flex;
+    flex-wrap: wrap;
     gap: 10px;
     margin-bottom: 16px;
+    justify-content: center;
 }
 .admin-sum-card {
     background: var(--card);
@@ -2318,6 +2336,9 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
     border: 1px solid var(--border);
     cursor: pointer;
     transition: all 0.15s;
+    flex: 1 1 100px;
+    max-width: 150px;
+    min-width: 85px;
 }
 .admin-sum-card:hover { border-color: var(--primary); transform: translateY(-1px); }
 .admin-sum-card .asc-num { font-size: 28px; font-weight: 700; }
@@ -2403,12 +2424,15 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
     .quick-chip { min-height: 36px; font-size: 12px; padding: 6px 10px; }
      .tech-clock-banner { flex-direction: column; text-align: center; position: sticky; top: 60px; z-index: 20; }
     .tcb-timer { font-size: 24px; }
-    .tech-stats { grid-template-columns: repeat(2, 1fr); }
-    .admin-summary-grid { grid-template-columns: repeat(2, 1fr); }
-    .landing-actions { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-    .coach-store-btn { padding: 12px; min-height: 64px; }
-    .coach-store-btn .csb-name { font-size: 13px; }
-    .landing-store-name { font-size: 18px; padding: 12px; }
+    .tech-stats { gap: 8px; }
+    .tech-stat-card { min-width: 65px; max-width: 45%; }
+    .admin-summary-grid { gap: 8px; }
+    .admin-sum-card { min-width: 70px; max-width: 45%; }
+    .landing-actions { gap: 8px; }
+    .coach-store-btn { padding: 12px 8px; min-height: 64px; min-width: 100px; max-width: 48%; }
+    .coach-store-btn .csb-name { font-size: 12px; }
+    .coach-store-btn .csb-brand { font-size: 10px; }
+    .landing-store-name { font-size: 16px; padding: 12px; }
     .tech-dash-header { flex-direction: column; align-items: flex-start; }
     .tech-dash-header h2 { font-size: 18px; }
     #clockOutModal .modal-content { margin: 0 8px; max-height: 90vh; }
@@ -2561,7 +2585,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                 <div class="tcb-timer" id="tcbTimer">00:00:00</div>
                 <div class="tech-banner-actions">
                     <button class="btn-tech-primary" id="techPrimaryActionBtn" onclick="techAdvanceExecutionMode()">🚗 Start Travel</button>
-                    <button class="btn btn-sm" style="background:#dc2626;color:#fff;border:none" onclick="showClockOutPrompt()">Clock Out</button>
+                    <button class="btn btn-sm" style="background:#dc2626;color:#fff;border:none" onclick="showClockOutPrompt()" data-i18n="tech_clock_out">Clock Out</button>
                 </div>
             </div>
 
@@ -2572,17 +2596,17 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                 <div class="tech-list-pane">
                     <!-- Job list -->
                     <div class="tech-job-list" id="techJobList">
-                        <div class="empty-state">Loading jobs...</div>
+                        <div class="empty-state" data-i18n="tech_loading">Loading jobs...</div>
                     </div>
                 </div>
                 <div class="tech-detail-pane" id="techDetailPane">
-                    <div class="tech-detail-empty">Select a job to view full details.</div>
+                    <div class="tech-detail-empty" data-i18n="tech_select_job">Select a job to view full details.</div>
                 </div>
             </div>
 
             <div class="tech-mobile-footer hidden" id="techMobileFooter">
                 <button class="btn-tech-primary" id="techMobilePrimaryBtn" onclick="techAdvanceExecutionMode()">🚗 Start Travel</button>
-                <button class="btn" style="background:#dc2626;color:#fff;border:none" onclick="showClockOutPrompt()">Clock Out</button>
+                <button class="btn" style="background:#dc2626;color:#fff;border:none" onclick="showClockOutPrompt()" data-i18n="tech_clock_out">Clock Out</button>
             </div>
         </div>
 
@@ -2618,8 +2642,8 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                     <h2 data-i18n="coach_my_stores">My Stores</h2>
                 </div>
                 <div class="landing-actions" id="coachStoreGrid"></div>
-                <div style="text-align:center;margin-top:16px">
-                    <button class="btn btn-primary" onclick="showAllTickets('open')" style="padding:12px 28px;font-size:15px;border-radius:12px" data-i18n="view_all_tickets">🔍 View All Open Tickets</button>
+                <div style="text-align:center;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+                    <button class="btn btn-primary" onclick="showAllTickets('open')" style="padding:14px 32px;font-size:15px;border-radius:12px;font-weight:600" data-i18n="view_all_tickets">🔍 View All Open Tickets</button>
                 </div>
             </div>
         </div>
@@ -2627,7 +2651,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
         <!-- ===== SCREEN: Coach Store View (2 buttons for selected store) ===== -->
         <div id="coachStoreView" class="hidden">
             <div class="role-landing">
-                <button class="btn-back" onclick="showScreen('coachLanding');initCoachLanding()" style="margin-bottom:12px">← Back to My Stores</button>
+                <button class="btn-back" onclick="showScreen('coachLanding');initCoachLanding()" style="margin-bottom:12px" data-i18n="back_my_stores">← Back to My Stores</button>
                 <div id="coachSelectedStoreName" class="landing-store-name"></div>
                 <div class="landing-actions">
                     <div class="action-card" onclick="showNewIssueScreen()">
@@ -2653,22 +2677,22 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                 </div>
 
                 <!-- Brand buttons - clickable, trigger store type + map -->
-                <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:12px">
+                <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:12px;padding:0 8px">
                     <button onclick="selectBrand('all')" class="brand-pill hidden" id="brandPill-all">
                         <span class="brand-pill-icon" style="background:var(--primary);color:#fff;font-size:14px;font-weight:700">📍</span>
-                        <span>All Locations</span>
+                        <span data-i18n="all_locations">All Locations</span>
                     </button>
                     <button onclick="selectBrand('fastfood')" class="brand-pill" id="brandPill-fastfood">
                         <span class="brand-pill-icon"><img src="logos/bk-logo.png" alt=""></span>
-                        <span>Fast Food</span>
+                        <span data-i18n="brand_fastfood">Fast Food</span>
                     </button>
                     <button onclick="selectBrand('cstore')" class="brand-pill" id="brandPill-cstore">
                         <span class="brand-pill-icon"><img src="logos/pqs-logo.png" alt=""></span>
-                        <span>C-Store</span>
+                        <span data-i18n="brand_cstore">C-Store</span>
                     </button>
                     <button onclick="selectBrand('carwash')" class="brand-pill" id="brandPill-carwash">
                         <span class="brand-pill-icon"><img src="logos/cw-logo.png" alt=""></span>
-                        <span>Car Wash</span>
+                        <span data-i18n="brand_carwash">Car Wash</span>
                     </button>
                 </div>
 
@@ -2694,13 +2718,13 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                 <div id="actionButtons" class="action-grid hidden">
                     <div class="action-card" onclick="showNewIssueScreen()">
                         <div class="action-icon">📝</div>
-                        <div class="action-title">Report New Issue</div>
-                        <div class="action-desc">Submit a repair ticket</div>
+                        <div class="action-title" data-i18n="report_issue">Report New Issue</div>
+                        <div class="action-desc" data-i18n="report_issue_desc">Submit a repair ticket</div>
                     </div>
                     <div class="action-card" onclick="showExistingIssuesScreen()">
                         <div class="action-icon">📋</div>
-                        <div class="action-title">Existing Tickets</div>
-                        <div class="action-desc">View and track open issues</div>
+                        <div class="action-title" data-i18n="view_tickets">Existing Tickets</div>
+                        <div class="action-desc" data-i18n="view_tickets_desc">View and track open issues</div>
                     </div>
                 </div>
 
@@ -2952,7 +2976,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
             </div>
 
             <div class="tickets-header">
-                <h2>Tickets <span id="ticketStoreName" style="font-weight:400; color: var(--text-muted); font-size: 15px;"></span></h2>
+                <h2 data-i18n="tickets_title">Tickets <span id="ticketStoreName" style="font-weight:400; color: var(--text-muted); font-size: 15px;"></span></h2>
                 <div style="display:flex; gap:8px; align-items:center;">
                     <button class="btn btn-secondary btn-sm compact-filter-trigger" onclick="toggleCompactFilters(true)">Filters</button>
                     <button class="btn btn-primary btn-sm" onclick="showNewIssueScreen()">+ New Ticket</button>
@@ -2960,13 +2984,13 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
             </div>
 
             <div class="ticket-filters" id="ticketFilters">
-                <button class="filter-chip active" data-filter="all" onclick="filterTickets('all', this)">All</button>
-                <button class="filter-chip" data-filter="open" onclick="filterTickets('open', this)">Open</button>
-                <button class="filter-chip" data-filter="assigned" onclick="filterTickets('assigned', this)">Assigned</button>
-                <button class="filter-chip" data-filter="inprogress" onclick="filterTickets('inprogress', this)">In Progress</button>
-                <button class="filter-chip" data-filter="waiting" onclick="filterTickets('waiting', this)">Waiting</button>
-                <button class="filter-chip" data-filter="resolved" onclick="filterTickets('resolved', this)">Resolved</button>
-                <button class="filter-chip" data-filter="closed" onclick="filterTickets('closed', this)">Closed</button>
+                <button class="filter-chip active" data-filter="all" onclick="filterTickets('all', this)" data-i18n="filter_all">All</button>
+                <button class="filter-chip" data-filter="open" onclick="filterTickets('open', this)" data-i18n="filter_open">Open</button>
+                <button class="filter-chip" data-filter="assigned" onclick="filterTickets('assigned', this)" data-i18n="filter_assigned">Assigned</button>
+                <button class="filter-chip" data-filter="inprogress" onclick="filterTickets('inprogress', this)" data-i18n="filter_inprogress">In Progress</button>
+                <button class="filter-chip" data-filter="waiting" onclick="filterTickets('waiting', this)" data-i18n="filter_waiting">Waiting</button>
+                <button class="filter-chip" data-filter="resolved" onclick="filterTickets('resolved', this)" data-i18n="filter_resolved">Resolved</button>
+                <button class="filter-chip" data-filter="closed" onclick="filterTickets('closed', this)" data-i18n="filter_closed">Closed</button>
             </div>
 
             <div class="tickets-list" id="ticketsList">
@@ -3002,7 +3026,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                 <button class="btn-back" onclick="goHome()">← Back to overview</button>
             </div>
             <div class="tickets-header">
-                <h2 id="allTicketsTitle">All Tickets</h2>
+                <h2 id="allTicketsTitle" data-i18n="all_tickets_title">All Tickets</h2>
             </div>
             <div id="allTicketsDrilldownBanner" class="desktop-insight-empty" style="display:none;margin-bottom:10px"></div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
@@ -3032,7 +3056,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
         <div id="adminScreen" class="hidden">
             <div class="back-row">
                 <button class="btn btn-ghost" onclick="goBackFromAdmin()">← Back</button>
-                <h2>Admin Panel</h2>
+                <h2 data-i18n="admin_panel">Admin Panel</h2>
             </div>
 
             <!-- Pending Users -->
@@ -3201,7 +3225,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-<!-- Data files + Application logic (single-file build v5.1.0) -->
+<!-- Data files + Application logic (single-file build v5.2.0) -->
 <script>
 // ============================================================
 // STORES DATA - Dossani Paradise Management
@@ -6883,6 +6907,27 @@ const TRANSLATIONS = {
         view_all_tickets: '🔍 Ver Todos los Tickets',
         view_all_desc: 'Todas las tiendas por ubicación',
         coach_my_stores: 'Mis Tiendas',
+        back_my_stores: '← Volver a Mis Tiendas',
+        // Brands
+        brand_fastfood: 'Comida Rápida',
+        brand_cstore: 'Tienda',
+        brand_carwash: 'Lavado de Autos',
+        // Tech
+        tech_clock_out: 'Registrar Salida',
+        tech_loading: 'Cargando trabajos...',
+        tech_select_job: 'Selecciona un trabajo para ver detalles.',
+        // Tickets / Filters
+        tickets_title: 'Tickets',
+        filter_all: 'Todos',
+        filter_open: 'Abiertos',
+        filter_assigned: 'Asignados',
+        filter_inprogress: 'En Progreso',
+        filter_waiting: 'En Espera',
+        filter_resolved: 'Resueltos',
+        filter_closed: 'Cerrados',
+        all_tickets_title: 'Todos los Tickets',
+        // Admin
+        admin_panel: 'Panel de Administración',
         // Admin panel
         admin_pending: 'Aprobación Pendiente',
         admin_active_users: 'Usuarios Activos',
@@ -7022,8 +7067,8 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v5.1.0</span>
-    <span>Build 5.1.0</span>
+    <span>R&M Tracker v5.2.0</span>
+    <span>Build 5.2.0</span>
 </div>
 
 </body>
