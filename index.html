@@ -1683,6 +1683,23 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
     .map-stats-bar { padding: 8px 14px; }
 }
 
+.role-landing { max-width: 700px; margin: 0 auto; padding: 20px 0; }
+.landing-store-name { font-size: 22px; font-weight: 700; color: var(--text); text-align: center; margin-bottom: 24px; padding: 16px; background: var(--card); border-radius: var(--radius-lg); border: 1px solid var(--border); }
+.landing-header { text-align: center; margin-bottom: 16px; }
+.landing-header h2 { font-size: 20px; font-weight: 700; color: var(--text); }
+.landing-actions { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.coach-store-btn { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; text-align: center; cursor: pointer; transition: all 0.15s; min-height: 80px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 4px; }
+.coach-store-btn:hover { border-color: var(--primary); box-shadow: var(--shadow); transform: translateY(-1px); }
+.coach-store-btn:active { transform: translateY(0); }
+.coach-store-btn .csb-name { font-size: 14px; font-weight: 600; color: var(--text); }
+.coach-store-btn .csb-brand { font-size: 11px; color: var(--text-muted); }
+.coach-store-btn .csb-tickets { font-size: 12px; font-weight: 600; margin-top: 4px; }
+.coach-store-btn .csb-tickets.has-issues { color: #dc2626; }
+.coach-store-btn .csb-tickets.no-issues { color: #059669; }
+[data-theme="dark"] .coach-store-btn { background: var(--card); border-color: var(--border); }
+[data-theme="dark"] .coach-store-btn:hover { border-color: var(--primary); }
+[data-theme="dark"] .landing-store-name { background: var(--card); border-color: var(--border); }
+
 /* Mobile */
 @media (max-width: 600px) {
     .theme-toggle { width: 28px; height: 28px; font-size: 14px; }
@@ -2313,7 +2330,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
 .asc-num.gray { color: #6b7280; }
 
 .desktop-insights-grid { display: none !important; }
-._desktop-insights-grid-disabled {
+._disabled_desktop-insights-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 10px;
@@ -2388,6 +2405,10 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
     .tcb-timer { font-size: 24px; }
     .tech-stats { grid-template-columns: repeat(2, 1fr); }
     .admin-summary-grid { grid-template-columns: repeat(2, 1fr); }
+    .landing-actions { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .coach-store-btn { padding: 12px; min-height: 64px; }
+    .coach-store-btn .csb-name { font-size: 13px; }
+    .landing-store-name { font-size: 18px; padding: 12px; }
     .tech-dash-header { flex-direction: column; align-items: flex-start; }
     .tech-dash-header h2 { font-size: 18px; }
     #clockOutModal .modal-content { margin: 0 8px; max-height: 90vh; }
@@ -2571,11 +2592,44 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
             <div class="desktop-insights-grid" id="adminDesktopInsights"></div>
         </div>
 
-        <!-- ===== SCREEN: Manager Landing (2 buttons only) ===== -->
+        <!-- ===== SCREEN: Manager Landing ===== -->
         <div id="managerLanding" class="hidden">
-            <div class="store-card" style="max-width:500px;margin:0 auto;text-align:center;padding:32px 24px">
-                <div id="mgrStoreName" style="font-size:22px;font-weight:700;color:var(--text);margin-bottom:24px"></div>
-                <div class="action-grid" style="grid-template-columns:1fr 1fr;max-width:360px;margin:0 auto">
+            <div class="role-landing">
+                <div id="mgrStoreName" class="landing-store-name"></div>
+                <div class="landing-actions">
+                    <div class="action-card" onclick="showNewIssueScreen()">
+                        <div class="action-icon">📝</div>
+                        <div class="action-title" data-i18n="report_issue">Report New Issue</div>
+                        <div class="action-desc" data-i18n="report_issue_desc">Submit a repair ticket</div>
+                    </div>
+                    <div class="action-card" onclick="showExistingIssuesScreen()">
+                        <div class="action-icon">📋</div>
+                        <div class="action-title" data-i18n="view_tickets">Existing Tickets</div>
+                        <div class="action-desc" data-i18n="view_tickets_desc">View and track open issues</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== SCREEN: Coach Landing ===== -->
+        <div id="coachLanding" class="hidden">
+            <div class="role-landing">
+                <div class="landing-header">
+                    <h2 data-i18n="coach_my_stores">My Stores</h2>
+                </div>
+                <div class="landing-actions" id="coachStoreGrid"></div>
+                <div style="text-align:center;margin-top:16px">
+                    <button class="btn btn-primary" onclick="showAllTickets('open')" style="padding:12px 28px;font-size:15px;border-radius:12px" data-i18n="view_all_tickets">🔍 View All Open Tickets</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== SCREEN: Coach Store View (2 buttons for selected store) ===== -->
+        <div id="coachStoreView" class="hidden">
+            <div class="role-landing">
+                <button class="btn-back" onclick="showScreen('coachLanding');initCoachLanding()" style="margin-bottom:12px">← Back to My Stores</button>
+                <div id="coachSelectedStoreName" class="landing-store-name"></div>
+                <div class="landing-actions">
                     <div class="action-card" onclick="showNewIssueScreen()">
                         <div class="action-icon">📝</div>
                         <div class="action-title" data-i18n="report_issue">Report New Issue</div>
@@ -2640,18 +2694,13 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                 <div id="actionButtons" class="action-grid hidden">
                     <div class="action-card" onclick="showNewIssueScreen()">
                         <div class="action-icon">📝</div>
-                        <div class="action-title" data-i18n="report_issue">Report New Issue</div>
-                        <div class="action-desc" data-i18n="report_issue_desc">Submit a repair ticket</div>
+                        <div class="action-title">Report New Issue</div>
+                        <div class="action-desc">Submit a repair ticket</div>
                     </div>
                     <div class="action-card" onclick="showExistingIssuesScreen()">
                         <div class="action-icon">📋</div>
-                        <div class="action-title" data-i18n="view_tickets">Existing Tickets</div>
-                        <div class="action-desc" data-i18n="view_tickets_desc">View and track open issues</div>
-                    </div>
-                    <div class="action-card hidden" id="viewAllCoachBtn" onclick="showAllTickets('open')">
-                        <div class="action-icon">🔍</div>
-                        <div class="action-title" data-i18n="view_all_tickets">View All Open Tickets</div>
-                        <div class="action-desc" data-i18n="view_all_desc">All stores sorted by location</div>
+                        <div class="action-title">Existing Tickets</div>
+                        <div class="action-desc">View and track open issues</div>
                     </div>
                 </div>
 
@@ -3591,17 +3640,18 @@ function getExperienceProfile(role, viewport = getViewportHints()) {
     return `${rolePrefix}-${device}`;
 }
 
-function routeToProfileLanding(profile) {
-    // Technician: dedicated job dashboard
-    if (currentUser.role === 'Technician') {
+function routeToProfileLanding() {
+    const role = currentUser.role;
+
+    // TECHNICIAN: job dashboard with clock in/out
+    if (role === 'Technician') {
         showScreen('techDashboard');
         initTechDashboard();
         return;
     }
 
-    // Manager: clean 2-button landing
-    if (currentUser.role === 'Manager') {
-        // Auto-select their single store (needed for issue submission)
+    // MANAGER: clean 2-button landing
+    if (role === 'Manager') {
         if (currentUser.stores && !Array.isArray(currentUser.stores)) {
             const store = stores.find(s => s.code === currentUser.stores);
             if (store) {
@@ -3613,25 +3663,57 @@ function routeToProfileLanding(profile) {
         return;
     }
 
-    // Area Coach: store selector with their stores
-    if (currentUser.role === 'Area Coach') {
-        showScreen('storeSelection');
-        if (window.innerWidth >= 1100 && isMultiStoreUser()) {
-            const userStores = getAccessibleStores();
-            const types = [...new Set(userStores.map(s => s.type))];
-            if (types.length === 1) {
-                setTimeout(() => selectBrand(types[0]), 100);
-            }
-        }
+    // AREA COACH: store grid + view all tickets
+    if (role === 'Area Coach') {
+        showScreen('coachLanding');
+        initCoachLanding();
         return;
     }
 
-    // Admin: summary cards + map
+    // ADMIN: summary cards + map (list default off, map default on)
     showScreen('storeSelection');
     loadAdminSummary();
     if (window.innerWidth >= 1100) {
         setTimeout(() => selectBrand('all'), 100);
     }
+}
+
+function initCoachLanding() {
+    const myStores = getAccessibleStores();
+    const grid = document.getElementById('coachStoreGrid');
+    // Fetch ticket counts for coach stores
+    const codes = myStores.map(s => s.code);
+    fetchTicketCounts(codes, () => {
+        const brandLabels = { fastfood: 'Burger King', cstore: 'C-Store', carwash: 'Car Wash' };
+        grid.innerHTML = myStores
+            .sort((a, b) => {
+                const ca = (allTicketCounts[a.code] || {}).open || 0;
+                const cb = (allTicketCounts[b.code] || {}).open || 0;
+                return cb - ca || a.name.localeCompare(b.name);
+            })
+            .map(s => {
+                const tc = allTicketCounts[s.code] || { open: 0 };
+                const shortName = s.name.replace(/^Burger King /, 'BK ').replace(/^Paradise QS /, 'PQS ');
+                const hasIssues = tc.open > 0;
+                return '<div class="coach-store-btn" onclick="coachSelectStore(\'' + s.id + '\')">' +
+                    '<div class="csb-name">' + escHtml(shortName) + '</div>' +
+                    '<div class="csb-brand">' + (brandLabels[s.type] || s.type) + '</div>' +
+                    (hasIssues
+                        ? '<div class="csb-tickets has-issues">' + tc.open + ' open</div>'
+                        : '<div class="csb-tickets no-issues">✓ No issues</div>') +
+                '</div>';
+            }).join('');
+        applyLang();
+    });
+}
+
+function coachSelectStore(storeId) {
+    const store = stores.find(s => s.id === storeId);
+    if (!store) return;
+    selectedStore = store;
+    document.getElementById('coachSelectedStoreName').textContent = store.name;
+    showScreen('coachStoreView');
+    populateAssignDropdown();
 }
 
 function showAppScreen() {
@@ -3669,7 +3751,7 @@ function showAppScreen() {
         initNotificationCenter();
     });
 
-    // Manager store auto-select is handled by routeToProfileLanding
+    // Manager/Coach store selection handled by routeToProfileLanding
 
     // Show assignment fields for coaches/admins
     if (currentUser.role === 'Admin' || currentUser.role === 'Area Coach') {
@@ -3696,7 +3778,7 @@ function showAppScreen() {
     // Load vendor list
     loadVendors();
 
-    routeToProfileLanding(experienceProfile);
+    routeToProfileLanding();
 }
 
 function showError(msg) {
@@ -3707,26 +3789,26 @@ function showError(msg) {
 }
 
 function showScreen(screenId) {
-    ['managerLanding', 'techDashboard', 'adminSummary', 'storeSelection', 'newIssueScreen', 'existingIssuesScreen', 'allTicketsScreen', 'adminScreen'].forEach(id => {
+    ['managerLanding', 'coachLanding', 'coachStoreView', 'techDashboard', 'adminSummary', 'storeSelection', 'newIssueScreen', 'existingIssuesScreen', 'allTicketsScreen', 'adminScreen'].forEach(id => {
         document.getElementById(id).classList.toggle('hidden', id !== screenId);
     });
     // Admin summary shows alongside storeSelection for admins
-    if (screenId === 'storeSelection' && currentUser && getExperienceProfile(currentUser.role) === 'admin-desktop') {
+    if (screenId === 'storeSelection' && currentUser && currentUser.role === 'Admin') {
         document.getElementById('adminSummary').classList.remove('hidden');
     }
 }
 
 function goBack() {
-    if (currentUser && currentUser.role === 'Technician') {
-        showScreen('techDashboard');
-        loadTechJobs();
-    } else if (currentUser && currentUser.role === 'Manager') {
-        showScreen('managerLanding');
-    } else {
-        showScreen('storeSelection');
-    }
     resetNewIssueForm();
     if (activeTicketListener) { activeTicketListener(); activeTicketListener = null; }
+    if (currentUser.role === 'Technician') { showScreen('techDashboard'); loadTechJobs(); return; }
+    if (currentUser.role === 'Manager') { showScreen('managerLanding'); return; }
+    if (currentUser.role === 'Area Coach') {
+        // If we came from a specific store, go back to coach store view
+        if (selectedStore) { showScreen('coachStoreView'); return; }
+        showScreen('coachLanding'); initCoachLanding(); return;
+    }
+    showScreen('storeSelection');
 }
 
 // ============================================================
@@ -3768,12 +3850,6 @@ function selectStore() {
     if (!id) { document.getElementById('actionButtons').classList.add('hidden'); selectedStore = null; return; }
     selectedStore = stores.find(s => s.id === id);
     document.getElementById('actionButtons').classList.remove('hidden');
-    // Show View All for coaches/admins
-    const vab = document.getElementById('viewAllCoachBtn');
-    if (vab) {
-        vab.classList.toggle('hidden', !(currentUser.role === 'Area Coach' || currentUser.role === 'Admin'));
-    }
-    populateAssignDropdown();
 }
 
 
@@ -5376,7 +5452,7 @@ function loadAdminSummary() {
                 <div class="asc-label" data-i18n="status_closed">Closed</div>
             </div>`;
 
-        if (false) { // Insights panels disabled for cleaner admin view
+        if (isAdminDesktopExperience()) {
             desktopTicketInsights = buildDesktopInsights(tickets);
             renderDesktopInsightsCards('adminDesktopInsights', desktopTicketInsights);
         }
@@ -5827,10 +5903,10 @@ function doViewAs() {
         document.getElementById('adminBtn').classList.remove('hidden');
         document.getElementById('viewAsBtn').classList.remove('hidden');
 
-        // Show/hide All Locations pill
+        // Show/hide admin-only UI
         const allPill = document.getElementById('brandPill-all');
         const allOpt = document.querySelector('.admin-only-opt');
-        if (currentUser.role === 'Admin' || currentUser.role === 'Technician' || currentUser.stores === 'all') {
+        if (currentUser.role === 'Admin') {
             if (allPill) allPill.classList.remove('hidden');
             if (allOpt) allOpt.classList.remove('hidden');
         } else {
@@ -5838,11 +5914,9 @@ function doViewAs() {
             if (allOpt) allOpt.classList.add('hidden');
         }
 
-        // Apply CSS experience class for impersonated role
+        // Apply experience CSS + route to correct landing
         applyExperienceClass(currentUser.role);
-
-        // Route to correct landing for this role
-        routeToProfileLanding(getExperienceProfile(currentUser.role));
+        routeToProfileLanding();
 
         initNotificationCenter();
         showToast('Viewing as ' + currentUser.name, 'success');
@@ -5875,13 +5949,12 @@ function exitViewAs() {
     document.getElementById('userName').textContent = currentUser.name;
     document.getElementById('userRole').textContent = currentUser.role;
 
-    // Restore admin experience  
+    // Restore admin experience
     applyExperienceClass(currentUser.role);
     document.getElementById('brandPill-all')?.classList.remove('hidden');
     document.querySelector('.admin-only-opt')?.classList.remove('hidden');
     document.getElementById('assignmentFields')?.classList.remove('hidden');
-
-    routeToProfileLanding(getExperienceProfile(currentUser.role));
+    routeToProfileLanding();
 
     initNotificationCenter();
     showToast('Back to IT Support', 'success');
@@ -6690,25 +6763,9 @@ function normalizeRole(r) {
 }
 
 function goHome() {
-    if (currentUser && currentUser.role === 'Manager') {
-        showScreen('managerLanding');
-        resetNewIssueForm();
-        if (activeTicketListener) { activeTicketListener(); activeTicketListener = null; }
-        return;
-    }
-    if (currentUser && getExperienceProfile(currentUser.role).startsWith('tech-')) {
-        showScreen('techDashboard');
-        loadTechJobs();
-        return;
-    }
-    showScreen('storeSelection');
-    document.getElementById('storeType').value = '';
-    document.querySelectorAll('.brand-pill').forEach(b => b.classList.remove('active'));
-    document.getElementById('storeSelect').innerHTML = '<option value="">Choose store...</option>';
-    document.getElementById('actionButtons').classList.add('hidden');
-    document.getElementById('mapOverview').classList.add('hidden');
-    selectedStore = null;
     if (activeTicketListener) { activeTicketListener(); activeTicketListener = null; }
+    resetNewIssueForm();
+    routeToProfileLanding();
 }
 
 // ============================================================
@@ -6818,13 +6875,14 @@ const TRANSLATIONS = {
         status_waiting: 'En Espera',
         status_resolved: 'Resueltos',
         status_closed: 'Cerrados',
-        // Action buttons
+        // Action buttons & coach
         report_issue: 'Reportar Problema',
         report_issue_desc: 'Enviar ticket de reparación',
         view_tickets: 'Tickets Existentes',
         view_tickets_desc: 'Ver y seguir problemas abiertos',
-        view_all_tickets: 'Ver Todos los Tickets',
+        view_all_tickets: '🔍 Ver Todos los Tickets',
         view_all_desc: 'Todas las tiendas por ubicación',
+        coach_my_stores: 'Mis Tiendas',
         // Admin panel
         admin_pending: 'Aprobación Pendiente',
         admin_active_users: 'Usuarios Activos',
