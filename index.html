@@ -4038,8 +4038,10 @@ function loadMapOverview(type) {
         });
         document.getElementById('mapStatsBar').innerHTML = 
             '<div class="mstat"><strong>' + filtered.length + '</strong>stores</div>' +
-            '<div class="mstat" style="cursor:pointer" onclick="showAllTickets(\'unassigned\')"><strong style="color:' + (totalOpen > 0 ? '#dc2626' : '#059669') + '">' + totalOpen + '</strong>unassigned tickets</div>' +
-            '<div class="mstat" style="cursor:pointer" onclick="showAllTickets(\'unassigned\')"><strong>' + storesWithIssues + '</strong>need assignment</div>' +
+            '<div class="mstat" style="cursor:pointer" onclick="showAllTickets(\'open\')"><strong style="color:' + (totalOpen > 0 ? '#dc2626' : '#059669') + '">' + totalOpen + '</strong>unassigned tickets</div>' +
+            '<div class="mstat" style="cursor:pointer" onclick="showAllTickets(\'open\')"><strong>' + storesWithIssues + '</strong>need assignment</div>' +
+            '<div class="mstat" style="cursor:pointer" onclick="desktopDrilldown({status:\'open\',scope:\'sla\'})"><strong>' + desktopTicketInsights.slaRisk.length + '</strong>SLA risk</div>' +
+            '<div class="mstat" style="cursor:pointer" onclick="desktopDrilldown({status:\'waiting\',scope:\'vendor-followup\'})"><strong>' + desktopTicketInsights.vendorFollowups.length + '</strong>vendor follow-ups</div>' +
             '<div class="mstat" style="cursor:pointer" onclick="showAllTickets(\'all\')"><strong>' + totalAll + '</strong>total tickets</div>';
 
         // Desktop store list sidebar with toggle
