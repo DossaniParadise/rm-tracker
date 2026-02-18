@@ -3408,6 +3408,16 @@ const USER_DIRECTORY = {
     "ScarboroughTS@dossaniparadise.com": { name: "Travel Stop Manager", role: "Manager", stores: "CW002" }
 };
 
+function getDirectoryProfileByEmail(email) {
+    if (!email) return null;
+    return USER_DIRECTORY[String(email).toLowerCase()] || null;
+}
+
+function getDirectoryTitleByEmail(email, fallback = '') {
+    const profile = getDirectoryProfileByEmail(email);
+    return (profile && profile.title) ? profile.title : fallback;
+}
+
 </script>
 <script>
 // ============================================================
@@ -3606,6 +3616,7 @@ async function loadUserData(user) {
             }
         }
 
+        const fallbackTitle = getDirectoryTitleByEmail(user.email, '');
         currentUser = {
             uid: user.uid,
             email: user.email,
@@ -4124,70 +4135,16 @@ function isActiveTicketStatus(status) {
 }
 
 function buildDesktopInsights(ticketList, allowedStoreCodes = null) {
-    const active = ticketList.filter(t => isActiveTicketStatus(t.status));
-    const inScope = allowedStoreCodes && allowedStoreCodes.length
-        ? active.filter(t => allowedStoreCodes.includes(t.storeCode))
-        : active;
-
-    const slaRisk = [];
-    const agingBuckets = [
-        { key: 'age-0-4h', label: '0-4h', min: 0, max: 4, count: 0 },
-        { key: 'age-4-24h', label: '4-24h', min: 4, max: 24, count: 0 },
-        { key: 'age-1-3d', label: '1-3d', min: 24, max: 72, count: 0 },
-        { key: 'age-3d-plus', label: '>3d', min: 72, max: Infinity, count: 0 }
-    ];
-    const unassignedCritical = [];
-    const techWorkloadMap = {};
-    const vendorFollowups = [];
-
-    inScope.forEach(t => {
-        const ageH = getTicketAgeHours(t);
-        const slaH = getSlaHoursForPriority(t.priority || 'routine');
-        const ratio = slaH > 0 ? ageH / slaH : 0;
-
-        if (ratio >= 0.8) {
-            slaRisk.push({
-                key: t._key || t.id,
-                ticket: t,
-                ratio,
-                over: ratio >= 1
-            });
-        }
-
-        const bucket = agingBuckets.find(b => ageH >= b.min && ageH < b.max);
-        if (bucket) bucket.count++;
-
-        if ((t.priority === 'urgent' || t.priority === 'emergency') && !String(t.assignedTo || '').trim()) {
-            unassignedCritical.push(t);
-        }
-
-        if (String(t.assignedTo || '').trim() && t.assigneeType !== 'vendor') {
-            techWorkloadMap[t.assignedTo] = (techWorkloadMap[t.assignedTo] || 0) + 1;
-        }
-
-        if (t.status === 'waiting' && (t.assigneeType === 'vendor' || /vendor/i.test(String(t.assignedTo || '')))) {
-            vendorFollowups.push(t);
-        }
-    });
-
-    const techWorkload = Object.entries(techWorkloadMap)
-        .map(([name, count]) => ({ name, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 6);
-
-    slaRisk.sort((a, b) => b.ratio - a.ratio);
-    unassignedCritical.sort((a, b) => {
-        const p = { emergency: 0, urgent: 1, routine: 2 };
-        return (p[a.priority] || 2) - (p[b.priority] || 2);
-    });
-
+    // NOTE: legacy SLA/aging insight pipeline intentionally simplified.
+    // We keep a stable return shape for compatibility, but avoid heavy
+    // derived analytics that are no longer part of the core operations flow.
     return {
-        slaRisk: slaRisk.slice(0, 8),
-        agingBuckets,
-        unassignedCritical: unassignedCritical.slice(0, 8),
-        techWorkload,
+        slaRisk: [],
+        agingBuckets: [],
+        unassignedCritical: [],
+        techWorkload: [],
         pendingApprovals: Object.values(pendingUsers || {}).filter(u => u).slice(0, 8),
-        vendorFollowups: vendorFollowups.slice(0, 8)
+        vendorFollowups: []
     };
 }
 
@@ -5712,7 +5669,7 @@ function showAllTickets(defaultStatus) {
     db.ref('tickets').once('value', snap => {
         allTicketsData = [];
         snap.forEach(child => {
-            allTicketsData.push(child.val());
+            allTicketsData.push({ _key: child.key, ...child.val() });
         });
         // Sort newest first
         allTicketsData.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
@@ -5813,7 +5770,7 @@ function filterAllTickets() {
         const prColor = t.priority === 'emergency' ? '#dc2626' : t.priority === 'urgent' ? '#d97706' : '#059669';
         const staleInProgress = normalizeTicketStatus(t.status) === 'inprogress' && ((Date.now() - (t.updatedAt || t.createdAt || 0)) >= 24 * 60 * 60 * 1000);
         
-        return `<div class="ticket-card" onclick="openTicketFromAll('${esc(t.id)}')">
+        return `<div class="ticket-card" onclick="openTicketFromAllByKey('${esc(t._key || t.id)}')">
             <div class="ticket-card-top">
                 <span class="ticket-id">${esc(t.id)}</span>
                 <span class="ticket-status s-${statusClass}">${getStatusLabel(normalizeTicketStatus(t.status))}</span>
@@ -5835,16 +5792,20 @@ function filterAllTickets() {
     }).join('');
 }
 
-function openTicketFromAll(ticketId) {
-    const t = allTicketsData.find(x => x.id === ticketId);
+function openTicketFromAllByKey(ticketKey) {
+    const t = allTicketsData.find(x => x._key === ticketKey || x.id === ticketKey);
     if (!t) return;
     const store = stores.find(s => s.code === t.storeCode);
     if (store) selectedStore = store;
-    // Inject into currentTickets so openTicketDetail can find it
-    if (!t._key) t._key = ticketId;
-    const existing = currentTickets.find(x => x._key === ticketId);
+    if (!t._key) t._key = ticketKey;
+    const existing = currentTickets.find(x => x._key === t._key);
     if (!existing) currentTickets.push(t);
-    openTicketDetail(ticketId);
+    openTicketDetail(t._key);
+}
+
+function openTicketFromAll(ticketId) {
+    // Legacy wrapper retained for compatibility.
+    openTicketFromAllByKey(ticketId);
 }
 
 // ============================================================
@@ -5870,7 +5831,7 @@ function showViewAsModal() {
                 <select class="form-select" id="viewAsSelect" style="font-size:14px">
                     <option value="">Choose a user...</option>
                     ${entries.sort((a,b) => (a[1].name||'').localeCompare(b[1].name||'')).map(([uid, u]) =>
-                        `<option value="${uid}">${esc(u.name || 'Unknown')} — ${esc(u.role || 'Manager')} (${esc(u.email || uid)})</option>`
+                        `<option value="${uid}">${esc(u.name || 'Unknown')} — ${esc(u.title || getDirectoryTitleByEmail(u.email, '') || u.role || 'Manager')} (${esc(u.email || uid)})</option>`
                     ).join('')}
                 </select>
             </div>
@@ -5896,6 +5857,7 @@ function doViewAs() {
         if (!realUser) realUser = { ...currentUser };
 
         // Impersonate
+        const fallbackTitle = getDirectoryTitleByEmail(data.email || '', '');
         currentUser = {
             uid: realUser.uid,
             email: data.email || '',
