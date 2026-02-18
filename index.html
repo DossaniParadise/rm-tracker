@@ -3234,7 +3234,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-<!-- Data files + Application logic (single-file build v5.2.0) -->
+<!-- Data files + Application logic (single-file build v5.2.1) -->
 <script>
 // ============================================================
 // STORES DATA - Dossani Paradise Management
@@ -7015,6 +7015,10 @@ async function saveStatusUpdate(key) {
         pendingWaitingReason = null;
         toast('Ticket updated!', 'success');
         closeModal();
+
+        if (assignmentReminderPayload) {
+            await showAssignReminder(assignmentReminderPayload.ticket, assignmentReminderPayload.party);
+        }
     } catch (err) {
         console.error('Update error:', err);
         toast('Update failed', 'error');
@@ -7427,8 +7431,8 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v5.4.0</span>
-    <span>Build 5.4.0</span>
+    <span>R&M Tracker v5.5.0</span>
+    <span>Build 5.5.0</span>
 </div>
 
 </body>
