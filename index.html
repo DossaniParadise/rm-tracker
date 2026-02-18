@@ -1467,6 +1467,15 @@ body {
 .status-option:hover { border-color: var(--text-muted); }
 .status-option.active { border-color: var(--primary); background: var(--primary-light); }
 
+/* Save bars for ticket updates (shown only when dirty) */
+.ticket-save-row {
+    display: none;
+    margin-top: 10px;
+}
+.ticket-save-row.visible { display: flex; }
+.ticket-save-row.top { margin-top: 0; margin-bottom: 10px; position: sticky; top: 0; z-index: 3; }
+.ticket-save-row .btn { width: 100%; }
+
 /* Activity log */
 .activity-log {
     margin-top: 20px;
@@ -4038,10 +4047,8 @@ function loadMapOverview(type) {
         });
         document.getElementById('mapStatsBar').innerHTML = 
             '<div class="mstat"><strong>' + filtered.length + '</strong>stores</div>' +
-            '<div class="mstat" style="cursor:pointer" onclick="showAllTickets(\'open\')"><strong style="color:' + (totalOpen > 0 ? '#dc2626' : '#059669') + '">' + totalOpen + '</strong>unassigned tickets</div>' +
-            '<div class="mstat" style="cursor:pointer" onclick="showAllTickets(\'open\')"><strong>' + storesWithIssues + '</strong>need assignment</div>' +
-            '<div class="mstat" style="cursor:pointer" onclick="desktopDrilldown({status:\'open\',scope:\'sla\'})"><strong>' + desktopTicketInsights.slaRisk.length + '</strong>SLA risk</div>' +
-            '<div class="mstat" style="cursor:pointer" onclick="desktopDrilldown({status:\'waiting\',scope:\'vendor-followup\'})"><strong>' + desktopTicketInsights.vendorFollowups.length + '</strong>vendor follow-ups</div>' +
+            '<div class="mstat" style="cursor:pointer" onclick="showAllTickets(\'unassigned\')"><strong style="color:' + (totalOpen > 0 ? '#dc2626' : '#059669') + '">' + totalOpen + '</strong>unassigned tickets</div>' +
+            '<div class="mstat" style="cursor:pointer" onclick="showAllTickets(\'unassigned\')"><strong>' + storesWithIssues + '</strong>need assignment</div>' +
             '<div class="mstat" style="cursor:pointer" onclick="showAllTickets(\'all\')"><strong>' + totalAll + '</strong>total tickets</div>';
 
         // Desktop store list sidebar with toggle
@@ -6584,6 +6591,9 @@ function openTicketDetail(key, forceModal = true) {
         html += `
         <div class="status-update-section">
             <h4>Update Status</h4>
+            <div class="ticket-save-row top" id="saveRowTop">
+                <button class="btn btn-primary btn-sm" onclick="saveStatusUpdate('${key}')" id="saveStatusBtnTop">Save Update</button>
+            </div>
             <div class="status-select-grid">
                 ${statuses.map(s => `
                     <button class="status-option ${normalizedStatus === s ? 'active' : ''}" onclick="updateTicketStatus('${key}', '${s}', this)">
@@ -6602,9 +6612,9 @@ function openTicketDetail(key, forceModal = true) {
                 </label>
                 <div id="statusPhotoPreview" style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap"></div>
             </div>
-            <button class="btn btn-primary btn-sm" style="margin-top: 10px;" onclick="saveStatusUpdate('${key}')" id="saveStatusBtn">
-                Save Update
-            </button>
+            <div class="ticket-save-row" id="saveRowBottom">
+                <button class="btn btn-primary btn-sm" onclick="saveStatusUpdate('${key}')" id="saveStatusBtnBottom">Save Update</button>
+            </div>
         </div>`;
     }
 
@@ -6644,12 +6654,136 @@ function openTicketDetail(key, forceModal = true) {
             reassignSel.innerHTML += '<optgroup label="Third-Party Vendors">' + vendorList.map(v => `<option value="vendor:${escHtml(v.name)}">🏢 ${escHtml(v.name)}</option>`).join('') + '</optgroup>';
         }
     }
+
+    // Wire change tracking so save buttons appear only when edits are made
+    captureTicketEditBaseline(t);
+    wireModalChangeTracking(t);
+    setModalSaveVisibility();
+
     document.getElementById('ticketModal').classList.add('open');
 }
 
 let pendingStatusUpdate = null;
 let pendingWaitingReason = null;
 let statusPhotos = [];
+let ticketEditBaseline = null;
+
+// ------------------------------------------------------------
+// Ticket detail modal change tracking (for save button visibility)
+// ------------------------------------------------------------
+function captureTicketEditBaseline(ticket) {
+    ticketEditBaseline = {
+        status: normalizeTicketStatus(ticket.status),
+        priority: ticket.priority || 'routine',
+        assignedTo: ticket.assignedTo || '',
+        assigneeType: ticket.assigneeType || 'unassigned',
+        note: '',
+        priorityReason: '',
+        waitingReason: ticket.waitingReason || '',
+        waitingReasonNote: ticket.waitingReasonNote || ''
+    };
+}
+
+function hasTicketEditChanges() {
+    if (!ticketEditBaseline) return false;
+    const nextStatus = pendingStatusUpdate ? pendingStatusUpdate.status : ticketEditBaseline.status;
+    const priority = document.getElementById('priorityUpdate')?.value || ticketEditBaseline.priority;
+    const reassign = document.getElementById('reassignTo')?.value || '';
+    const note = (document.getElementById('statusNote')?.value || '').trim();
+    const priorityReason = (document.getElementById('priorityReason')?.value || '').trim();
+
+    return (
+        nextStatus !== ticketEditBaseline.status ||
+        priority !== ticketEditBaseline.priority ||
+        reassign !== '' ||
+        note.length > 0 ||
+        priorityReason.length > 0 ||
+        statusPhotos.length > 0 ||
+        !!pendingWaitingReason
+    );
+}
+
+function setModalSaveVisibility() {
+    const visible = hasTicketEditChanges();
+    ['saveRowTop', 'saveRowBottom'].forEach(id => {
+        const row = document.getElementById(id);
+        if (row) row.classList.toggle('visible', visible);
+    });
+}
+
+function setModalSaveBusy(isBusy) {
+    ['saveStatusBtnTop', 'saveStatusBtnBottom'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+        btn.disabled = isBusy;
+        btn.innerHTML = isBusy ? '<span class="spinner"></span>' : 'Save Update';
+    });
+}
+
+function wireModalChangeTracking() {
+    ['statusNote', 'priorityUpdate', 'priorityReason', 'reassignTo'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('input', setModalSaveVisibility);
+        el.addEventListener('change', setModalSaveVisibility);
+    });
+}
+
+function parseAssignmentValue(value) {
+    if (!value) return { assignedTo: '', assigneeType: 'unassigned' };
+    if (value.startsWith('tech:')) return { assignedTo: value.replace('tech:', ''), assigneeType: 'tech' };
+    if (value.startsWith('vendor:')) return { assignedTo: value.replace('vendor:', ''), assigneeType: 'vendor' };
+    return { assignedTo: '', assigneeType: 'unassigned' };
+}
+
+function promptWaitingReason(existingReason = '', existingNote = '') {
+    return new Promise(resolve => {
+        const overlay = document.createElement('div');
+        overlay.className = 'confirm-overlay';
+        overlay.innerHTML = `<div class="confirm-box" style="max-width:460px">
+            <h4>⏳ What are we waiting on?</h4>
+            <div style="display:grid;grid-template-columns:repeat(2,minmax(140px,1fr));gap:8px;margin:12px 0">
+                <button class="btn btn-secondary waiting-btn" data-reason="parts">Waiting on Parts</button>
+                <button class="btn btn-secondary waiting-btn" data-reason="vendor">Waiting on Vendor</button>
+                <button class="btn btn-secondary waiting-btn" data-reason="approval">Waiting on Approval</button>
+                <button class="btn btn-secondary waiting-btn" data-reason="other">Waiting on Other</button>
+            </div>
+            <textarea id="waitingOtherReason" class="form-textarea" placeholder="Explain what we are waiting on (required for 'Other')" style="min-height:72px;display:${existingReason === 'other' ? '' : 'none'}">${escHtml(existingNote || '')}</textarea>
+            <div class="confirm-btns" style="margin-top:10px">
+                <button class="btn btn-ghost" id="waitingCancel">Cancel</button>
+                <button class="btn btn-primary" id="waitingSave">Save Waiting Reason</button>
+            </div>
+        </div>`;
+        document.body.appendChild(overlay);
+
+        let selectedReason = existingReason || '';
+        const setSelected = () => {
+            overlay.querySelectorAll('.waiting-btn').forEach(btn => {
+                btn.classList.toggle('btn-primary', btn.dataset.reason === selectedReason);
+                btn.classList.toggle('btn-secondary', btn.dataset.reason !== selectedReason);
+            });
+            const otherBox = overlay.querySelector('#waitingOtherReason');
+            if (otherBox) otherBox.style.display = selectedReason === 'other' ? '' : 'none';
+        };
+
+        overlay.querySelectorAll('.waiting-btn').forEach(btn => {
+            btn.onclick = (e) => { e.preventDefault(); selectedReason = btn.dataset.reason; setSelected(); };
+        });
+        setSelected();
+
+        overlay.querySelector('#waitingCancel').onclick = () => { overlay.remove(); resolve(null); };
+        overlay.querySelector('#waitingSave').onclick = () => {
+            if (!selectedReason) { toast('Please select a waiting reason', 'error'); return; }
+            const otherText = (overlay.querySelector('#waitingOtherReason')?.value || '').trim();
+            if (selectedReason === 'other' && otherText.length < 10) {
+                toast('Waiting on Other requires at least 10 characters', 'error');
+                return;
+            }
+            overlay.remove();
+            resolve({ reason: selectedReason, note: selectedReason === 'other' ? otherText : '' });
+        };
+    });
+}
 
 function parseAssignmentValue(value) {
     if (!value) return { assignedTo: '', assigneeType: 'unassigned' };
@@ -6718,6 +6852,7 @@ function handleStatusPhotos(input) {
         preview.innerHTML = statusPhotos.map((f,i) => `<div style="position:relative;width:48px;height:48px;border-radius:6px;overflow:hidden;border:1px solid var(--border)"><img src="${URL.createObjectURL(f)}" style="width:100%;height:100%;object-fit:cover"><button onclick="statusPhotos.splice(${i},1);handleStatusPhotos({files:[]})" style="position:absolute;top:-2px;right:-2px;background:var(--danger);color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:10px;cursor:pointer;line-height:1">✕</button></div>`).join('');
     }
     input.value = '';
+    setModalSaveVisibility();
 }
 
 async function updateTicketStatus(key, status, el) {
@@ -6740,6 +6875,33 @@ async function updateTicketStatus(key, status, el) {
     document.querySelectorAll('.status-option').forEach(b => b.classList.remove('active'));
     el.classList.add('active');
     pendingStatusUpdate = { key, status };
+    setModalSaveVisibility();
+}
+
+// ------------------------------------------------------------
+// Keep list/map views in sync after ticket updates
+// ------------------------------------------------------------
+function patchTicketLocally(ticketKey, patch) {
+    const applyPatch = (arr) => {
+        const idx = arr.findIndex(x => x._key === ticketKey || x.id === ticketKey);
+        if (idx >= 0) arr[idx] = { ...arr[idx], ...patch };
+    };
+    applyPatch(currentTickets);
+    applyPatch(allTicketsData);
+    applyPatch(notifyTickets);
+}
+
+function refreshViewsAfterTicketUpdate() {
+    if (!document.getElementById('allTicketsScreen').classList.contains('hidden')) {
+        filterAllTickets();
+    }
+    if (!document.getElementById('existingIssuesScreen').classList.contains('hidden')) {
+        renderTickets();
+    }
+    if (!document.getElementById('storeSelection').classList.contains('hidden') && currentMapView === 'list') {
+        renderStoreListView();
+    }
+    loadAdminSummary();
 }
 
 async function saveStatusUpdate(key) {
@@ -6780,9 +6942,7 @@ async function saveStatusUpdate(key) {
         return;
     }
 
-    const btn = document.getElementById('saveStatusBtn');
-    btn.innerHTML = '<span class="spinner"></span>';
-    btn.disabled = true;
+    setModalSaveBusy(true);
 
     try {
         const updates = {};
@@ -6872,6 +7032,23 @@ async function saveStatusUpdate(key) {
         updates[`tickets/${key}/activity`] = currentActivity;
         await db.ref().update(updates);
 
+        const mergedPatch = {
+            ...(newStatus !== currentStatus ? { status: newStatus } : {}),
+            ...(priorityChanged ? { priority: nextPriority } : {}),
+            ...(newStatus === 'waiting' && pendingWaitingReason ? {
+                waitingReason: pendingWaitingReason.reason,
+                waitingReasonNote: pendingWaitingReason.note || ''
+            } : {}),
+            ...(assignmentChanged ? (() => {
+                const parsed = parseAssignmentValue(reassignVal);
+                return { assignedTo: parsed.assignedTo, assigneeType: parsed.assigneeType, status: (newStatus === 'unassigned' ? 'assigned' : newStatus) };
+            })() : {}),
+            updatedAt: Date.now(),
+            activity: currentActivity
+        };
+        patchTicketLocally(key, mergedPatch);
+        refreshViewsAfterTicketUpdate();
+
         statusPhotos = [];
         pendingWaitingReason = null;
         toast('Ticket updated!', 'success');
@@ -6880,8 +7057,7 @@ async function saveStatusUpdate(key) {
         console.error('Update error:', err);
         toast('Update failed', 'error');
     } finally {
-        btn.innerHTML = 'Save Update';
-        btn.disabled = false;
+        setModalSaveBusy(false);
     }
 }
 
@@ -6889,6 +7065,8 @@ function closeModal() {
     document.getElementById('ticketModal').classList.remove('open');
     pendingStatusUpdate = null;
     pendingWaitingReason = null;
+    ticketEditBaseline = null;
+    statusPhotos = [];
 }
 
 // ============================================================
@@ -7287,8 +7465,8 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v5.2.0</span>
-    <span>Build 5.2.0</span>
+    <span>R&M Tracker v5.4.0</span>
+    <span>Build 5.4.0</span>
 </div>
 
 </body>
