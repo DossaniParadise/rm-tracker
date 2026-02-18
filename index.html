@@ -3623,7 +3623,7 @@ async function loadUserData(user) {
             name: data.name || user.email.split('@')[0],
             role: normalizeRole(data.role),
             stores: data.stores || [],
-            title: data.title || fallbackTitle || data.role || normalizeRole(data.role)
+            title: data.title || data.role || normalizeRole(data.role)
         };
 
         showAppScreen();
@@ -4945,95 +4945,13 @@ function renderInlineAssignControls(ticket, contextPrefix = 'inline') {
     const safeKey = String(ticket._key || ticket.id || '').replace(/[^a-zA-Z0-9_-]/g, '_');
     const selectId = `${contextPrefix}Assign_${safeKey}`;
 
-    const ticketKey = ticket._key || ticket.id || '';
     return `<div class="inline-assign-row" onclick="event.stopPropagation()">
         <select class="form-select inline-assign-select" id="${selectId}">${getAssignmentOptionsHtml(ticket.storeCode)}</select>
-        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();quickAssignTicket('${ticketKey}', '${selectId}')">Assign</button>
+        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();quickAssignTicket('${ticket._key}', '${selectId}')">Assign</button>
     </div>`;
-}
-
-// ------------------------------------------------------------
-// Assignment reminder + email helper (for parties outside app)
-// ------------------------------------------------------------
-function buildAssignEmailDraft(ticket, partyLabel) {
-    const lines = [
-        `Hello ${partyLabel},`,
-        '',
-        `Please find details below for a job we need done at ${ticket.storeName || ticket.storeCode || 'the location'}.`,
-        '',
-        'Details from ticket below:',
-        `- Ticket ID: ${ticket.id || ticket._key || ''}`,
-        `- Location: ${ticket.storeName || ticket.storeCode || ''}`,
-        `- Status: ${getStatusLabel(ticket.status)}`,
-        `- Priority: ${capitalize(ticket.priority || 'routine')}`,
-        `- Category: ${capitalize(ticket.category || '')}${ticket.location ? ' / ' + capitalize(ticket.location) : ''}`,
-        `- Description: ${ticket.description || ''}`,
-        ticket.contactName ? `- Contact: ${ticket.contactName}${ticket.contactPhone ? ' (' + ticket.contactPhone + ')' : ''}` : '',
-        '',
-        'Attach picture below:',
-        ...(Array.isArray(ticket.photos) && ticket.photos.length
-            ? ticket.photos.map((url, i) => `- Photo ${i + 1}: ${url}`)
-            : ['- No photo attached in ticket']),
-        '',
-        'Thank you.'
-    ].filter(Boolean);
-
-    return lines.join('\n');
-}
-
-function openAssignEmailComposer(ticket, partyLabel) {
-    const overlay = document.createElement('div');
-    overlay.className = 'confirm-overlay';
-    const draft = buildAssignEmailDraft(ticket, partyLabel);
-    overlay.innerHTML = `<div class="confirm-box" style="max-width:700px;width:min(92vw,700px)">
-        <h4>✉️ Email Draft</h4>
-        <p style="text-align:left">You can edit this text before copying into your email.</p>
-        <textarea id="assignEmailDraft" class="form-textarea" style="min-height:280px">${escHtml(draft)}</textarea>
-        <div class="confirm-btns" style="margin-top:10px">
-            <button class="btn btn-secondary" id="assignEmailClose">Close</button>
-            <button class="btn btn-primary" id="assignEmailCopy">Copy</button>
-        </div>
-    </div>`;
-    document.body.appendChild(overlay);
-    overlay.querySelector('#assignEmailClose').onclick = () => overlay.remove();
-    overlay.querySelector('#assignEmailCopy').onclick = async () => {
-        const txt = overlay.querySelector('#assignEmailDraft').value;
-        try {
-            await navigator.clipboard.writeText(txt);
-            toast('Email draft copied', 'success');
-        } catch {
-            toast('Could not copy automatically. Please copy manually.', 'error');
-        }
-    };
-}
-
-function showAssignReminder(ticket, partyLabel) {
-    return new Promise(resolve => {
-        const overlay = document.createElement('div');
-        overlay.className = 'confirm-overlay';
-        overlay.innerHTML = `<div class="confirm-box" style="max-width:520px">
-            <h4>📣 Assignment sent</h4>
-            <p>Don’t forget to let <strong>${escHtml(partyLabel)}</strong> know about this job — they don’t have access to this site.</p>
-            <div class="confirm-btns">
-                <button class="btn btn-secondary" id="assignCancel">Cancel</button>
-                <button class="btn btn-primary" id="assignOkay">Okay</button>
-                <button class="btn btn-accent" id="assignEmail">Write me an email</button>
-            </div>
-        </div>`;
-        document.body.appendChild(overlay);
-
-        overlay.querySelector('#assignCancel').onclick = () => { overlay.remove(); resolve('cancel'); };
-        overlay.querySelector('#assignOkay').onclick = () => { overlay.remove(); resolve('okay'); };
-        overlay.querySelector('#assignEmail').onclick = () => {
-            overlay.remove();
-            openAssignEmailComposer(ticket, partyLabel);
-            resolve('email');
-        };
-    });
 }
 
 async function quickAssignTicket(ticketKey, selectId) {
-    if (!ticketKey) { toast('Ticket key is missing. Please refresh and try again.', 'error'); return; }
     const select = document.getElementById(selectId);
     if (!select) return;
     const value = select.value;
@@ -5045,10 +4963,6 @@ async function quickAssignTicket(ticketKey, selectId) {
     if (!parsed.assignedTo) { toast('Invalid assignee', 'error'); return; }
 
     try {
-        const ticketSnap = await db.ref(`tickets/${ticketKey}`).once('value');
-        const ticket = ticketSnap.val();
-        if (!ticket) { toast('Ticket not found. Please refresh.', 'error'); return; }
-
         const updates = {
             [`tickets/${ticketKey}/assignedTo`]: parsed.assignedTo,
             [`tickets/${ticketKey}/assigneeType`]: parsed.assigneeType,
@@ -5071,7 +4985,6 @@ async function quickAssignTicket(ticketKey, selectId) {
 
         await db.ref().update(updates);
         toast('Ticket assigned', 'success');
-        showAssignReminder({ ...ticket, _key: ticketKey, status: 'assigned' }, parsed.assignedTo);
 
         if (!document.getElementById('allTicketsScreen').classList.contains('hidden')) filterAllTickets();
         if (currentMapView === 'list') renderStoreListView();
@@ -5951,7 +5864,7 @@ function doViewAs() {
             name: data.name || 'Unknown',
             role: normalizeRole(data.role),
             stores: data.stores || [],
-            title: data.title || fallbackTitle || data.role || normalizeRole(data.role),
+            title: data.title || data.role || normalizeRole(data.role),
             _impersonating: data.name || data.email
         };
 
@@ -6834,6 +6747,62 @@ function promptWaitingReason(existingReason = '', existingNote = '') {
     });
 }
 
+function parseAssignmentValue(value) {
+    if (!value) return { assignedTo: '', assigneeType: 'unassigned' };
+    if (value.startsWith('tech:')) return { assignedTo: value.replace('tech:', ''), assigneeType: 'tech' };
+    if (value.startsWith('vendor:')) return { assignedTo: value.replace('vendor:', ''), assigneeType: 'vendor' };
+    return { assignedTo: '', assigneeType: 'unassigned' };
+}
+
+function promptWaitingReason(existingReason = '', existingNote = '') {
+    return new Promise(resolve => {
+        const overlay = document.createElement('div');
+        overlay.className = 'confirm-overlay';
+        overlay.innerHTML = `<div class="confirm-box" style="max-width:460px">
+            <h4>⏳ What are we waiting on?</h4>
+            <div style="display:grid;grid-template-columns:repeat(2,minmax(140px,1fr));gap:8px;margin:12px 0">
+                <button class="btn btn-secondary waiting-btn" data-reason="parts">Waiting on Parts</button>
+                <button class="btn btn-secondary waiting-btn" data-reason="vendor">Waiting on Vendor</button>
+                <button class="btn btn-secondary waiting-btn" data-reason="approval">Waiting on Approval</button>
+                <button class="btn btn-secondary waiting-btn" data-reason="other">Waiting on Other</button>
+            </div>
+            <textarea id="waitingOtherReason" class="form-textarea" placeholder="Explain what we are waiting on (required for 'Other')" style="min-height:72px;display:${existingReason === 'other' ? '' : 'none'}">${escHtml(existingNote || '')}</textarea>
+            <div class="confirm-btns" style="margin-top:10px">
+                <button class="btn btn-ghost" id="waitingCancel">Cancel</button>
+                <button class="btn btn-primary" id="waitingSave">Save Waiting Reason</button>
+            </div>
+        </div>`;
+        document.body.appendChild(overlay);
+
+        let selectedReason = existingReason || '';
+        const setSelected = () => {
+            overlay.querySelectorAll('.waiting-btn').forEach(btn => {
+                btn.classList.toggle('btn-primary', btn.dataset.reason === selectedReason);
+                btn.classList.toggle('btn-secondary', btn.dataset.reason !== selectedReason);
+            });
+            const otherBox = overlay.querySelector('#waitingOtherReason');
+            if (otherBox) otherBox.style.display = selectedReason === 'other' ? '' : 'none';
+        };
+
+        overlay.querySelectorAll('.waiting-btn').forEach(btn => {
+            btn.onclick = (e) => { e.preventDefault(); selectedReason = btn.dataset.reason; setSelected(); };
+        });
+        setSelected();
+
+        overlay.querySelector('#waitingCancel').onclick = () => { overlay.remove(); resolve(null); };
+        overlay.querySelector('#waitingSave').onclick = () => {
+            if (!selectedReason) { toast('Please select a waiting reason', 'error'); return; }
+            const otherText = (overlay.querySelector('#waitingOtherReason')?.value || '').trim();
+            if (selectedReason === 'other' && otherText.length < 10) {
+                toast('Waiting on Other requires at least 10 characters', 'error');
+                return;
+            }
+            overlay.remove();
+            resolve({ reason: selectedReason, note: selectedReason === 'other' ? otherText : '' });
+        };
+    });
+}
+
 function handleStatusPhotos(input) {
     const files = Array.from(input.files).slice(0, 3 - statusPhotos.length);
     files.forEach(file => {
@@ -7010,7 +6979,6 @@ async function saveStatusUpdate(key) {
             });
         }
 
-        let assignmentReminderPayload = null;
         if (assignmentChanged) {
             const parsed = parseAssignmentValue(reassignVal);
             currentActivity.push({
@@ -7021,17 +6989,6 @@ async function saveStatusUpdate(key) {
                 assignedTo: parsed.assignedTo,
                 assigneeType: parsed.assigneeType
             });
-
-            assignmentReminderPayload = {
-                ticket: {
-                    ...t,
-                    _key: key,
-                    status: newStatus,
-                    assignedTo: parsed.assignedTo,
-                    assigneeType: parsed.assigneeType
-                },
-                party: parsed.assignedTo
-            };
         }
 
         updates[`tickets/${key}/activity`] = currentActivity;
@@ -7474,8 +7431,8 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v5.2.1</span>
-    <span>Build 5.2.1</span>
+    <span>R&M Tracker v5.5.0</span>
+    <span>Build 5.5.0</span>
 </div>
 
 </body>
