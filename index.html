@@ -636,8 +636,17 @@ body {
 .slv-ticket:last-child { border-bottom: none; }
 .slv-ticket .slv-desc { flex: 1; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .slv-ticket .slv-assignee { font-size: 11px; color: var(--text-muted); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inline-assign-row { display: flex; gap: 6px; align-items: center; margin-left: 8px; }
+.inline-assign-select { min-width: 180px; max-width: 260px; font-size: 12px; padding: 5px 8px; }
 [data-theme="dark"] .slv-store-name { background: #1a1f2e; }
 [data-theme="dark"] .slv-ticket:hover { background: rgba(91,156,246,0.1); }
+
+@media (max-width: 900px) {
+    .slv-ticket { flex-wrap: wrap; align-items: flex-start; }
+    .slv-ticket .slv-desc { white-space: normal; min-width: 100%; }
+    .inline-assign-row { width: 100%; margin-left: 0; margin-top: 6px; }
+    .inline-assign-select { flex: 1; min-width: 0; max-width: none; }
+}
 
 /* Vendor management */
 .vendor-row {
@@ -4002,7 +4011,7 @@ function loadMapOverview(type) {
                 <div class="mp-name">${shortName}</div>
                 <div class="mp-addr" onclick="window.open('${mapsUrl}','_blank')">${s.address}</div>
                 <div class="mp-stats">
-                    <div class="mp-stat"><strong style="color:${counts.open > 0 ? '#f87171' : '#34d399'}">${counts.open}</strong>open</div>
+                    <div class="mp-stat"><strong style="color:${counts.open > 0 ? '#f87171' : '#34d399'}">${counts.open}</strong>unassigned</div>
                     <div class="mp-stat"><strong>${counts.total}</strong>total</div>
                 </div>
                 <div class="mp-btns">
@@ -4185,64 +4194,7 @@ function desktopDrilldown(filter) {
 function renderDesktopInsightsCards(containerId, insights) {
     const el = document.getElementById(containerId);
     if (!el || window.innerWidth < 1100 || !isAdminDesktopExperience()) return;
-
-    const makeItems = (items, emptyLabel) => {
-        if (!items.length) return `<div class="desktop-insight-empty">${emptyLabel}</div>`;
-        return `<div class="desktop-insight-list">${items.join('')}</div>`;
-    };
-
-    const slaItems = insights.slaRisk.map(entry => {
-        const t = entry.ticket;
-        const icon = entry.over ? '🔴' : '🟠';
-        const label = `${icon} ${escHtml(t.id || '')} ${entry.over ? 'Over SLA' : 'Near SLA'}`;
-        return `<button class="desktop-insight-item" onclick='desktopDrilldown(${JSON.stringify({ status: 'unassigned', ticketId: t.id, scope: 'sla' })})'><span class="di-label">${label}</span><span class="di-count">${Math.round(entry.ratio * 100)}%</span></button>`;
-    });
-
-    const ageItems = insights.agingBuckets.map(b =>
-        `<button class="desktop-insight-item" onclick='desktopDrilldown(${JSON.stringify({ status: 'unassigned', agingKey: b.key, scope: 'aging' })})'><span class="di-label">${b.label}</span><span class="di-count">${b.count}</span></button>`
-    );
-
-    const unassignedItems = insights.unassignedCritical.map(t =>
-        `<button class="desktop-insight-item" onclick='desktopDrilldown(${JSON.stringify({ status: 'unassigned', ticketId: t.id, scope: 'unassigned-critical' })})'><span class="di-label">${escHtml(t.id || '')} · ${capitalize(t.priority || 'urgent')}</span><span class="di-count">Unassigned</span></button>`
-    );
-
-    const workloadItems = insights.techWorkload.map(row =>
-        `<button class="desktop-insight-item" onclick='desktopDrilldown(${JSON.stringify({ status: 'unassigned', assignedTo: row.name, scope: 'tech-workload' })})'><span class="di-label">${escHtml(row.name)}</span><span class="di-count">${row.count}</span></button>`
-    );
-
-    const approvalItems = insights.pendingApprovals.map(u =>
-        `<button class="desktop-insight-item" onclick="showAdminPanel()"><span class="di-label">${escHtml(u.name || u.email || 'Pending user')}</span><span class="di-count">Pending</span></button>`
-    );
-
-    const vendorItems = insights.vendorFollowups.map(t =>
-        `<button class="desktop-insight-item" onclick='desktopDrilldown(${JSON.stringify({ status: 'waiting', ticketId: t.id, scope: 'vendor-followup' })})'><span class="di-label">${escHtml(t.id || '')} · ${escHtml(t.assignedTo || 'Vendor')}</span><span class="di-count">Waiting</span></button>`
-    );
-
-    el.innerHTML = `
-        <div class="desktop-insight-card">
-            <div class="desktop-insight-title">SLA At-Risk Queue</div>
-            ${makeItems(slaItems, 'No tickets near SLA breach')}
-        </div>
-        <div class="desktop-insight-card">
-            <div class="desktop-insight-title">Aging Buckets</div>
-            ${makeItems(ageItems, 'No active tickets')}
-        </div>
-        <div class="desktop-insight-card">
-            <div class="desktop-insight-title">Unassigned Urgent / Emergency</div>
-            ${makeItems(unassignedItems, 'No unassigned urgent tickets')}
-        </div>
-        <div class="desktop-insight-card">
-            <div class="desktop-insight-title">Tech Workload Balance</div>
-            ${makeItems(workloadItems, 'No assigned tech workload')}
-        </div>
-        <div class="desktop-insight-card">
-            <div class="desktop-insight-title">Pending Approvals</div>
-            ${makeItems(approvalItems, 'No pending user approvals')}
-        </div>
-        <div class="desktop-insight-card">
-            <div class="desktop-insight-title">Vendor Follow-ups</div>
-            ${makeItems(vendorItems, 'No unresolved vendor follow-ups')}
-        </div>`;
+    el.innerHTML = '';
 }
 
 function mapSelectStore(storeId, action) {
@@ -4269,21 +4221,13 @@ function renderDesktopStoreList() {
     const withIssues = desktopStoreData.filter(s => s.counts.open > 0);
     const displayList = dslShowAll ? desktopStoreData : withIssues;
     
-    const showDesktopOpsWidgets = isAdminDesktopExperience();
-    const overSlaCount = desktopTicketInsights.slaRisk.filter(x => x.over).length;
-    const unassignedCount = desktopTicketInsights.unassignedCritical.length;
-
     let html = `<div class="dsl-header">
         <span>${displayList.length} store${displayList.length !== 1 ? 's' : ''}</span>
         <div class="dsl-toggle">
             <button class="${dslShowAll ? '' : 'active'}" onclick="dslShowAll=false;renderDesktopStoreList()">With Issues</button>
             <button class="${dslShowAll ? 'active' : ''}" onclick="dslShowAll=true;renderDesktopStoreList()">All</button>
         </div>
-    </div>
-    ${showDesktopOpsWidgets ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px 2px">
-        <button class="quick-chip" onclick='desktopDrilldown(${JSON.stringify({ status: 'unassigned', scope: 'sla' })})'>SLA Risk ${overSlaCount ? '(' + overSlaCount + ')' : ''}</button>
-        <button class="quick-chip" onclick='desktopDrilldown(${JSON.stringify({ status: 'unassigned', scope: 'unassigned-critical' })})'>Unassigned Critical ${unassignedCount ? '(' + unassignedCount + ')' : ''}</button>
-    </div>` : ''}`;
+    </div>`;
     
     if (displayList.length === 0) {
         html += '<div style="padding:12px;text-align:center;font-size:13px;color:var(--text-muted)">🎉 No unassigned issues!</div>';
@@ -4294,7 +4238,7 @@ function renderDesktopStoreList() {
             const isSelected = selectedStore && selectedStore.code === s.code;
             html += `<div class="store-list-item ${isSelected ? 'active' : ''}" onclick="desktopSelectStore('${s.id}')">
                 <span class="sli-name">${shortName}</span>
-                <span class="sli-badge ${badgeCls}">${s.counts.open} open</span>
+                <span class="sli-badge ${badgeCls}">${s.counts.open} unassigned</span>
             </div>`;
         });
     }
@@ -4384,6 +4328,7 @@ function renderStoreListView() {
                     <span class="slv-desc">${escHtml(t.description || '').substring(0,80)}</span>
                     <span class="ticket-status-badge status-${normalizeTicketStatus(t.status)}" style="font-size:11px;padding:2px 8px">${statusLabel[normalizeTicketStatus(t.status)] || t.status}</span>
                     ${assignee ? '<span class="slv-assignee">' + escHtml(assignee) + '</span>' : ''}
+                    ${renderInlineAssignControls(t, 'slv')}
                 </div>`;
             });
             html += '</div>';
@@ -5005,6 +4950,84 @@ function populateAssignDropdown() {
             sel.innerHTML += `<option value="vendor:${v.name}">🏢 ${v.name}</option>`;
         });
         sel.innerHTML += '</optgroup>';
+    }
+}
+
+function getAssignmentOptionsHtml(storeCode) {
+    const availTechs = getAvailableTechs(storeCode || '');
+    let html = '<option value="">Assign to...</option>';
+
+    if (availTechs.length) {
+        html += '<optgroup label="Repair Technicians">';
+        availTechs.forEach(t => {
+            html += `<option value="tech:${t.email}">🔧 ${escHtml(t.name)}</option>`;
+        });
+        html += '</optgroup>';
+    }
+
+    if (vendorList.length) {
+        html += '<optgroup label="Approved Vendors">';
+        vendorList.forEach(v => {
+            html += `<option value="vendor:${escHtml(v.name)}">🏢 ${escHtml(v.name)}</option>`;
+        });
+        html += '</optgroup>';
+    }
+
+    return html;
+}
+
+function renderInlineAssignControls(ticket, contextPrefix = 'inline') {
+    if (!canAssignTickets() || normalizeTicketStatus(ticket.status) !== 'unassigned') return '';
+    const safeKey = String(ticket._key || ticket.id || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const selectId = `${contextPrefix}Assign_${safeKey}`;
+
+    return `<div class="inline-assign-row" onclick="event.stopPropagation()">
+        <select class="form-select inline-assign-select" id="${selectId}">${getAssignmentOptionsHtml(ticket.storeCode)}</select>
+        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();quickAssignTicket('${ticket._key}', '${selectId}')">Assign</button>
+    </div>`;
+}
+
+async function quickAssignTicket(ticketKey, selectId) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+    const value = select.value;
+
+    if (!value) { toast('Select a technician or vendor', 'error'); return; }
+    if (!canAssignTickets()) { toast('You do not have assignment permissions', 'error'); return; }
+
+    const parsed = parseAssignmentValue(value);
+    if (!parsed.assignedTo) { toast('Invalid assignee', 'error'); return; }
+
+    try {
+        const updates = {
+            [`tickets/${ticketKey}/assignedTo`]: parsed.assignedTo,
+            [`tickets/${ticketKey}/assigneeType`]: parsed.assigneeType,
+            [`tickets/${ticketKey}/status`]: 'assigned',
+            [`tickets/${ticketKey}/updatedAt`]: firebase.database.ServerValue.TIMESTAMP
+        };
+
+        const actSnap = await db.ref(`tickets/${ticketKey}/activity`).once('value');
+        const activity = actSnap.val() || [];
+        activity.push({
+            action: 'assignment_change',
+            by: currentUser.name,
+            byEmail: currentUser.email,
+            timestamp: Date.now(),
+            assignedTo: parsed.assignedTo,
+            assigneeType: parsed.assigneeType,
+            note: 'Assigned from unassigned queue'
+        });
+        updates[`tickets/${ticketKey}/activity`] = activity;
+
+        await db.ref().update(updates);
+        toast('Ticket assigned', 'success');
+
+        if (!document.getElementById('allTicketsScreen').classList.contains('hidden')) filterAllTickets();
+        if (currentMapView === 'list') renderStoreListView();
+        loadAdminSummary();
+    } catch (err) {
+        console.error('Quick assign failed', err);
+        toast('Assignment failed', 'error');
     }
 }
 
@@ -5726,7 +5749,7 @@ function filterAllTickets() {
     
     // Status filter
     if (status === 'unassigned') {
-        filtered = filtered.filter(t => t.status && t.status !== 'closed' && t.status !== 'resolved');
+        filtered = filtered.filter(t => normalizeTicketStatus(t.status) === 'unassigned');
     } else if (status !== 'all') {
         filtered = filtered.filter(t => normalizeTicketStatus(t.status) === status);
     }
@@ -5746,29 +5769,8 @@ function filterAllTickets() {
         const d = allTicketsDrilldown;
         if (d.ticketId) filtered = filtered.filter(t => t.id === d.ticketId);
         if (d.assignedTo) filtered = filtered.filter(t => t.assignedTo === d.assignedTo);
-        if (d.scope === 'sla') {
-            filtered = filtered.filter(t => {
-                if (!isActiveTicketStatus(t.status)) return false;
-                const ratio = getTicketAgeHours(t) / getSlaHoursForPriority(t.priority || 'routine');
-                return ratio >= 0.8;
-            });
-        }
         if (d.scope === 'unassigned-critical') {
             filtered = filtered.filter(t => isActiveTicketStatus(t.status) && (t.priority === 'urgent' || t.priority === 'emergency') && !String(t.assignedTo || '').trim());
-        }
-        if (d.scope === 'vendor-followup') {
-            filtered = filtered.filter(t => t.status === 'waiting' && (t.assigneeType === 'vendor' || /vendor/i.test(String(t.assignedTo || ''))));
-        }
-        if (d.scope === 'aging' && d.agingKey) {
-            filtered = filtered.filter(t => {
-                if (!isActiveTicketStatus(t.status)) return false;
-                const age = getTicketAgeHours(t);
-                if (d.agingKey === 'age-0-4h') return age >= 0 && age < 4;
-                if (d.agingKey === 'age-4-24h') return age >= 4 && age < 24;
-                if (d.agingKey === 'age-1-3d') return age >= 24 && age < 72;
-                if (d.agingKey === 'age-3d-plus') return age >= 72;
-                return true;
-            });
         }
     }
 
@@ -5776,11 +5778,9 @@ function filterAllTickets() {
     if (banner) {
         if (allTicketsDrilldown) {
             const d = allTicketsDrilldown;
-            const label = d.scope === 'sla' ? 'SLA at-risk queue' :
-                d.scope === 'aging' ? 'Aging bucket' :
-                d.scope === 'unassigned-critical' ? 'Unassigned urgent/emergency' :
+            const label = d.scope === 'unassigned-critical' ? 'Unassigned urgent/emergency' :
                 d.scope === 'tech-workload' ? 'Tech workload' :
-                d.scope === 'vendor-followup' ? 'Vendor follow-ups' : 'Drilldown';
+                'Drilldown';
             banner.style.display = '';
             banner.innerHTML = `<strong>${label}</strong> active. <button class="quick-chip" onclick="allTicketsDrilldown=null;filterAllTickets()" style="margin-left:8px">Clear</button>`;
         } else {
@@ -5823,6 +5823,7 @@ function filterAllTickets() {
                 ${photoCount ? '<span>📷 ' + photoCount + '</span>' : ''}
                 ${staleInProgress ? '<span class="priority-badge p-urgent">⏱️ In Progress 24h+</span>' : ''}
             </div>
+            ${renderInlineAssignControls(t, 'all')}
         </div>`;
     }).join('');
 }
