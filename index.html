@@ -48,7 +48,7 @@
     --radius-lg: 14px;
 
     /* Status colors */
-    --status-open: #dc2626;
+    --status-unassigned: #dc2626;
     --status-assigned: #7c3aed;
     --status-inprogress: #2563eb;
     --status-waiting: #d97706;
@@ -77,7 +77,7 @@
     --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
     --shadow: 0 1px 3px rgba(0,0,0,0.3);
     --shadow-lg: 0 10px 25px rgba(0,0,0,0.3);
-    --status-open: #f87171;
+    --status-unassigned: #f87171;
     --status-assigned: #a78bfa;
     --status-inprogress: #5b9cf6;
     --status-waiting: #f0b429;
@@ -111,6 +111,7 @@
 [data-theme="dark"] .user-row-role.areacoach { background: rgba(139,92,246,0.15); }
 [data-theme="dark"] .user-row-role.manager { background: rgba(5,150,105,0.15); }
 [data-theme="dark"] .user-row-role.technician { background: rgba(217,119,6,0.15); }
+[data-theme="dark"] .user-row-role.director { background: rgba(236,72,153,0.2); }
 
 /* Admin sections */
 [data-theme="dark"] .admin-section { border-color: var(--border); }
@@ -152,7 +153,7 @@
 [data-theme="dark"] .ticket-top-row { color: var(--text); }
 
 /* Ticket status badges - dark bg variants */
-[data-theme="dark"] .status-open { background: rgba(239,68,68,0.15); }
+[data-theme="dark"] .status-unassigned { background: rgba(239,68,68,0.15); }
 [data-theme="dark"] .status-assigned { background: rgba(139,92,246,0.15); }
 [data-theme="dark"] .status-inprogress { background: rgba(59,130,246,0.15); }
 [data-theme="dark"] .status-waiting { background: rgba(240,180,41,0.15); }
@@ -635,8 +636,17 @@ body {
 .slv-ticket:last-child { border-bottom: none; }
 .slv-ticket .slv-desc { flex: 1; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .slv-ticket .slv-assignee { font-size: 11px; color: var(--text-muted); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inline-assign-row { display: flex; gap: 6px; align-items: center; margin-left: 8px; }
+.inline-assign-select { min-width: 180px; max-width: 260px; font-size: 12px; padding: 5px 8px; }
 [data-theme="dark"] .slv-store-name { background: #1a1f2e; }
 [data-theme="dark"] .slv-ticket:hover { background: rgba(91,156,246,0.1); }
+
+@media (max-width: 900px) {
+    .slv-ticket { flex-wrap: wrap; align-items: flex-start; }
+    .slv-ticket .slv-desc { white-space: normal; min-width: 100%; }
+    .inline-assign-row { width: 100%; margin-left: 0; margin-top: 6px; }
+    .inline-assign-select { flex: 1; min-width: 0; max-width: none; }
+}
 
 /* Vendor management */
 .vendor-row {
@@ -1247,7 +1257,7 @@ body {
     white-space: nowrap;
 }
 
-.status-open { background: #fef2f2; color: var(--status-open); }
+.status-unassigned { background: #fef2f2; color: var(--status-unassigned); }
 .status-assigned { background: #f5f3ff; color: var(--status-assigned); }
 .status-inprogress { background: #eff4ff; color: var(--status-inprogress); }
 .status-waiting { background: #fef9ee; color: var(--status-waiting); }
@@ -1456,6 +1466,15 @@ body {
 
 .status-option:hover { border-color: var(--text-muted); }
 .status-option.active { border-color: var(--primary); background: var(--primary-light); }
+
+/* Save bars for ticket updates (shown only when dirty) */
+.ticket-save-row {
+    display: none;
+    margin-top: 10px;
+}
+.ticket-save-row.visible { display: flex; }
+.ticket-save-row.top { margin-top: 0; margin-bottom: 10px; position: sticky; top: 0; z-index: 3; }
+.ticket-save-row .btn { width: 100%; }
 
 /* Activity log */
 .activity-log {
@@ -2073,6 +2092,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
 .user-row-role.areacoach { background: #f5f3ff; color: #8b5cf6; }
 .user-row-role.manager { background: #ecfdf5; color: #059669; }
 .user-row-role.technician { background: #fef3c7; color: #d97706; }
+.user-row-role.director { background: #fce7f3; color: #be185d; }
 .user-row-actions { display: flex; gap: 4px; flex-shrink: 0; }
 .user-row-actions button {
     background: none;
@@ -2629,7 +2649,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                     <div class="action-card" onclick="showExistingIssuesScreen()">
                         <div class="action-icon">📋</div>
                         <div class="action-title" data-i18n="view_tickets">Existing Tickets</div>
-                        <div class="action-desc" data-i18n="view_tickets_desc">View and track open issues</div>
+                        <div class="action-desc" data-i18n="view_tickets_desc">View and track unassigned issues</div>
                     </div>
                 </div>
             </div>
@@ -2643,7 +2663,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                 </div>
                 <div class="landing-actions" id="coachStoreGrid"></div>
                 <div style="text-align:center;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
-                    <button class="btn btn-primary" onclick="showAllTickets('open')" style="padding:14px 32px;font-size:15px;border-radius:12px;font-weight:600" data-i18n="view_all_tickets">🔍 View All Open Tickets</button>
+                    <button class="btn btn-primary" onclick="showAllTickets('unassigned')" style="padding:14px 32px;font-size:15px;border-radius:12px;font-weight:600" data-i18n="view_all_tickets">🔍 View All Unassigned Tickets</button>
                 </div>
             </div>
         </div>
@@ -2662,7 +2682,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                     <div class="action-card" onclick="showExistingIssuesScreen()">
                         <div class="action-icon">📋</div>
                         <div class="action-title" data-i18n="view_tickets">Existing Tickets</div>
-                        <div class="action-desc" data-i18n="view_tickets_desc">View and track open issues</div>
+                        <div class="action-desc" data-i18n="view_tickets_desc">View and track unassigned issues</div>
                     </div>
                 </div>
             </div>
@@ -2724,7 +2744,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                     <div class="action-card" onclick="showExistingIssuesScreen()">
                         <div class="action-icon">📋</div>
                         <div class="action-title" data-i18n="view_tickets">Existing Tickets</div>
-                        <div class="action-desc" data-i18n="view_tickets_desc">View and track open issues</div>
+                        <div class="action-desc" data-i18n="view_tickets_desc">View and track unassigned issues</div>
                     </div>
                 </div>
 
@@ -2848,29 +2868,18 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                         </div>
                     </div>
 
-                    <!-- Assignment (visible to coaches/admins) -->
-                    <div id="assignmentFields" class="hidden">
-                        <div class="assign-row">
-                            <div class="form-group">
-                                <label class="form-label">Assign To</label>
-                                <select class="form-select" id="assignTo">
-                                    <option value="">Unassigned</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Requested Date</label>
-                                <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-                                    <select class="form-select" id="reqDateType" onchange="toggleDateFields()" style="max-width:140px">
-                                        <option value="">No date</option>
-                                        <option value="specific">Specific date</option>
-                                        <option value="before">Before date</option>
-                                        <option value="range">Date range</option>
-                                    </select>
-                                    <input type="date" class="form-input" id="reqDate1" style="display:none;max-width:160px">
-                                    <span id="reqDateRangeSep" style="display:none;font-size:12px;color:var(--text-muted)">to</span>
-                                    <input type="date" class="form-input" id="reqDate2" style="display:none;max-width:160px">
-                                </div>
-                            </div>
+                    <div class="form-group">
+                        <label class="form-label">Requested Date</label>
+                        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                            <select class="form-select" id="reqDateType" onchange="toggleDateFields()" style="max-width:140px">
+                                <option value="">No date</option>
+                                <option value="specific">Specific date</option>
+                                <option value="before">Before date</option>
+                                <option value="range">Date range</option>
+                            </select>
+                            <input type="date" class="form-input" id="reqDate1" style="display:none;max-width:160px">
+                            <span id="reqDateRangeSep" style="display:none;font-size:12px;color:var(--text-muted)">to</span>
+                            <input type="date" class="form-input" id="reqDate2" style="display:none;max-width:160px">
                         </div>
                     </div>
 
@@ -2985,7 +2994,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
 
             <div class="ticket-filters" id="ticketFilters">
                 <button class="filter-chip active" data-filter="all" onclick="filterTickets('all', this)" data-i18n="filter_all">All</button>
-                <button class="filter-chip" data-filter="open" onclick="filterTickets('open', this)" data-i18n="filter_open">Open</button>
+                <button class="filter-chip" data-filter="unassigned" onclick="filterTickets('unassigned', this)" data-i18n="filter_open">Unassigned</button>
                 <button class="filter-chip" data-filter="assigned" onclick="filterTickets('assigned', this)" data-i18n="filter_assigned">Assigned</button>
                 <button class="filter-chip" data-filter="inprogress" onclick="filterTickets('inprogress', this)" data-i18n="filter_inprogress">In Progress</button>
                 <button class="filter-chip" data-filter="waiting" onclick="filterTickets('waiting', this)" data-i18n="filter_waiting">Waiting</button>
@@ -3009,7 +3018,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                     </div>
                     <div class="ticket-filters" id="compactTicketFilters">
                         <button class="filter-chip active" data-filter="all" onclick="filterTickets('all', this)">All</button>
-                        <button class="filter-chip" data-filter="open" onclick="filterTickets('open', this)">Open</button>
+                        <button class="filter-chip" data-filter="unassigned" onclick="filterTickets('unassigned', this)">Unassigned</button>
                         <button class="filter-chip" data-filter="assigned" onclick="filterTickets('assigned', this)">Assigned</button>
                         <button class="filter-chip" data-filter="inprogress" onclick="filterTickets('inprogress', this)">In Progress</button>
                         <button class="filter-chip" data-filter="waiting" onclick="filterTickets('waiting', this)">Waiting</button>
@@ -3031,7 +3040,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
             <div id="allTicketsDrilldownBanner" class="desktop-insight-empty" style="display:none;margin-bottom:10px"></div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
                 <select class="form-select" id="atFilterStatus" onchange="filterAllTickets()" style="width:auto;min-width:130px;font-size:13px;padding:6px 10px">
-                    <option value="open">Open Tickets</option>
+                    <option value="unassigned">Unassigned Tickets</option>
                     <option value="all">All Statuses</option>
                     <option value="assigned">Assigned</option>
                     <option value="inprogress">In Progress</option>
@@ -3318,9 +3327,9 @@ const stores = [
 const USER_DIRECTORY = {
     // ADMINS
     "itsupport@dossaniparadise.com": { name: "IT Support", role: "Admin", stores: "all" },
-    "armaan@dossaniparadise.com": { name: "Armaan Dossani", role: "Admin", stores: "all" },
-    "karim@dossaniparadise.com": { name: "Karim Dossani", role: "Admin", stores: "all" },
-    "sam@dossaniparadise.com": { name: "Sam Merchant", role: "Admin", stores: "all" },
+    "armaan@dossaniparadise.com": { name: "Armaan Dossani", role: "Director", title: "VP", stores: "all" },
+    "karim@dossaniparadise.com": { name: "Karim Dossani", role: "Director", title: "Dev", stores: "all" },
+    "sam@dossaniparadise.com": { name: "Sam Merchant", role: "Director", title: "VP", stores: "all" },
 
     // REPAIR TECHNICIANS
     "rmtech1@dossaniparadise.com": { name: "Ronny Gossett", role: "Technician", stores: "all" },
@@ -3328,8 +3337,8 @@ const USER_DIRECTORY = {
     "rmtech3@dossaniparadise.com": { name: "Zamir Rios", role: "Technician", stores: "all" },
 
     // AREA COACHES
-    "rick@dossaniparadise.com": { name: "Rick Tharani", role: "Area Coach", stores: ["PQS05","PQS06","PQS07","PQS08","PQS09","PQS10","PQS11","PQS12","PQS13","PQS15","PQS16","NASH01"] },
-    "paul@dossaniparadise.com": { name: "Paul Fernandez", role: "Area Coach", stores: ["BK22027","BK27082","BK27083","BK28626","BK28514","BK27084","BK26183","BK03675","BK27028","BK26924","BK28313","BK04851","BK09723","BK13192","BK06460","BK28174","BK24875","BK27958","BK25198","BK20671","BK28312","BK28683","BK27415","BK23086","BK11460","BK02390","BK24008","BK10358","BK26015","SUB22"] },
+    "rick@dossaniparadise.com": { name: "Rick Tharani", role: "Director", title: "Director", stores: ["PQS05","PQS06","PQS07","PQS08","PQS09","PQS10","PQS11","PQS12","PQS13","PQS15","PQS16","NASH01"] },
+    "paul@dossaniparadise.com": { name: "Paul Fernandez", role: "Director", title: "Director", stores: ["BK22027","BK27082","BK27083","BK28626","BK28514","BK27084","BK26183","BK03675","BK27028","BK26924","BK28313","BK04851","BK09723","BK13192","BK06460","BK28174","BK24875","BK27958","BK25198","BK20671","BK28312","BK28683","BK27415","BK23086","BK11460","BK02390","BK24008","BK10358","BK26015","SUB22"] },
     "vishal@dossaniparadise.com": { name: "Vishal Chhetri", role: "Area Coach", stores: ["7EL01","PQS01","PQS02","PQS03","PQS04","PQS14","CW001","CW002"] },
     "jennifer@dossaniparadise.com": { name: "Jennifer Sanders", role: "Area Coach", stores: ["PQS05","PQS06","PQS07","PQS08","PQS09","PQS10","PQS11","PQS13","PQS15","PQS16"] },
     "dane@dossaniparadise.com": { name: "Dane Martin", role: "Area Coach", stores: ["BK23086","BK11460","BK26015","BK10358","BK24008","BK02390","SUB22"] },
@@ -3398,6 +3407,16 @@ const USER_DIRECTORY = {
     "ScarboroughCW@dossaniparadise.com": { name: "Car Wash Manager", role: "Manager", stores: "CW001" },
     "ScarboroughTS@dossaniparadise.com": { name: "Travel Stop Manager", role: "Manager", stores: "CW002" }
 };
+
+function getDirectoryProfileByEmail(email) {
+    if (!email) return null;
+    return USER_DIRECTORY[String(email).toLowerCase()] || null;
+}
+
+function getDirectoryTitleByEmail(email, fallback = '') {
+    const profile = getDirectoryProfileByEmail(email);
+    return (profile && profile.title) ? profile.title : fallback;
+}
 
 </script>
 <script>
@@ -3471,6 +3490,15 @@ let activeTicketListener = null;
 let vendorList = [];
 let desktopStoreData = [];
 let dslShowAll = false;
+
+const STATUS_ORDER = ['unassigned', 'assigned', 'waiting', 'inprogress', 'resolved', 'closed'];
+const PRIORITY_ORDER = { emergency: 0, urgent: 1, routine: 2 };
+const WAITING_REASONS = {
+    parts: 'Waiting on Parts',
+    vendor: 'Waiting on Vendor',
+    approval: 'Waiting on Approval',
+    other: 'Waiting on Other'
+};
 
 // ============================================================
 // AUTH
@@ -3563,6 +3591,7 @@ async function loadUserData(user) {
                     name: preData.name,
                     email: user.email,
                     role: preData.role,
+                    title: preData.title || preData.role,
                     stores: preData.stores,
                     status: 'active',
                     activatedAt: firebase.database.ServerValue.TIMESTAMP
@@ -3587,12 +3616,14 @@ async function loadUserData(user) {
             }
         }
 
+        const fallbackTitle = getDirectoryTitleByEmail(user.email, '');
         currentUser = {
             uid: user.uid,
             email: user.email,
             name: data.name || user.email.split('@')[0],
             role: normalizeRole(data.role),
-            stores: data.stores || []
+            stores: data.stores || [],
+            title: data.title || fallbackTitle || data.role || normalizeRole(data.role)
         };
 
         showAppScreen();
@@ -3637,7 +3668,9 @@ function getViewportHints() {
 }
 
 function isAdminDesktopExperience() {
-    return !!currentUser && getExperienceProfile(currentUser.role) === 'admin-desktop';
+    if (!currentUser) return false;
+    const profile = getExperienceProfile(currentUser.role);
+    return profile === 'admin-desktop' || profile === 'director-desktop';
 }
 
 function applyExperienceClass(role, viewport = getViewportHints()) {
@@ -3694,10 +3727,10 @@ function routeToProfileLanding() {
         return;
     }
 
-    // ADMIN: summary cards + map (list default off, map default on)
+    // DIRECTOR / ADMIN: summary cards + map (mobile portrait defaults to list flow)
     showScreen('storeSelection');
     loadAdminSummary();
-    if (window.innerWidth >= 1100) {
+    if (window.innerWidth >= 1100 || window.innerWidth > window.innerHeight) {
         setTimeout(() => selectBrand('all'), 100);
     }
 }
@@ -3723,7 +3756,7 @@ function initCoachLanding() {
                     '<div class="csb-name">' + escHtml(shortName) + '</div>' +
                     '<div class="csb-brand">' + (brandLabels[s.type] || s.type) + '</div>' +
                     (hasIssues
-                        ? '<div class="csb-tickets has-issues">' + tc.open + ' open</div>'
+                        ? '<div class="csb-tickets has-issues">' + tc.open + ' unassigned</div>'
                         : '<div class="csb-tickets no-issues">✓ No issues</div>') +
                 '</div>';
             }).join('');
@@ -3737,7 +3770,6 @@ function coachSelectStore(storeId) {
     selectedStore = store;
     document.getElementById('coachSelectedStoreName').textContent = store.name;
     showScreen('coachStoreView');
-    populateAssignDropdown();
 }
 
 function showAppScreen() {
@@ -3750,22 +3782,22 @@ function showAppScreen() {
     const initials = currentUser.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
     document.getElementById('userAvatar').textContent = initials || '?';
     document.getElementById('userName').textContent = currentUser.name;
-    document.getElementById('userRole').textContent = currentUser.role;
+    document.getElementById('userRole').textContent = getRoleTitle(currentUser);
 
     // Show admin button for admins (case-insensitive check)
-    if (currentUser.role && currentUser.role.toLowerCase() === 'admin') {
+    if (canAccessAdminPanel(currentUser)) {
         document.getElementById('adminBtn').classList.remove('hidden');
         watchPendingUsers();
     }
 
     // Show "All Locations" pill for admins
-    if (currentUser.role === 'Admin' || currentUser.role === 'Technician' || currentUser.stores === 'all') {
+    if (currentUser.role === 'Admin' || currentUser.role === 'Director' || currentUser.role === 'Technician' || currentUser.stores === 'all') {
         document.getElementById('brandPill-all').classList.remove('hidden');
         document.querySelectorAll('.admin-only-opt').forEach(el => el.classList.remove('hidden'));
     }
 
     // Show "View As" only for itsupport
-    if (currentUser.email === 'itsupport@dossaniparadise.com') {
+    if (isItsupportUser(currentUser)) {
         document.getElementById('viewAsBtn').classList.remove('hidden');
     }
 
@@ -3776,12 +3808,6 @@ function showAppScreen() {
     });
 
     // Manager/Coach store selection handled by routeToProfileLanding
-
-    // Show assignment fields for coaches/admins
-    if (currentUser.role === 'Admin' || currentUser.role === 'Area Coach') {
-        document.getElementById('assignmentFields').classList.remove('hidden');
-        populateAssignDropdown();
-    }
 
     // Desktop: auto-select brand if user only has one store type
     // Desktop: auto-select brand for multi-store users (admins, coaches, techs)
@@ -3817,7 +3843,7 @@ function showScreen(screenId) {
         document.getElementById(id).classList.toggle('hidden', id !== screenId);
     });
     // Admin summary shows alongside storeSelection for admins
-    if (screenId === 'storeSelection' && currentUser && currentUser.role === 'Admin') {
+    if (screenId === 'storeSelection' && currentUser && (currentUser.role === 'Admin' || currentUser.role === 'Director')) {
         document.getElementById('adminSummary').classList.remove('hidden');
     }
 }
@@ -3855,7 +3881,7 @@ function filterStores() {
         const ti = TECH_INFO.find(t => t.email === currentUser.email);
         if (ti && ti.zone === 'west') filtered = filtered.filter(s => !RAVAY_ONLY_STORES.includes(s.code));
         else if (ti && ti.zone === 'east') filtered = filtered.filter(s => RAVAY_ONLY_STORES.includes(s.code));
-    } else if (currentUser.role !== 'Admin' && currentUser.stores !== 'all') {
+    } else if (currentUser.role !== 'Admin' && currentUser.role !== 'Director' && currentUser.stores !== 'all') {
         const userStores = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
         filtered = filtered.filter(s => userStores.includes(s.code));
     }
@@ -3894,7 +3920,7 @@ let desktopTicketInsights = {
 };
 
 function isMultiStoreUser() {
-    return currentUser && (currentUser.role === 'Admin' || currentUser.role === 'Area Coach' || currentUser.role === 'Technician');
+    return currentUser && (currentUser.role === 'Admin' || currentUser.role === 'Director' || currentUser.role === 'Area Coach' || currentUser.role === 'Technician');
 }
 
 // Brand pill click → set dropdown + trigger map
@@ -3936,7 +3962,7 @@ filterStores = function() {
             const ti = TECH_INFO.find(t => t.email === currentUser.email);
             if (ti && ti.zone === 'west') allStores = allStores.filter(s => !RAVAY_ONLY_STORES.includes(s.code));
             else if (ti && ti.zone === 'east') allStores = allStores.filter(s => RAVAY_ONLY_STORES.includes(s.code));
-        } else if (currentUser.role !== 'Admin' && currentUser.stores !== 'all') {
+        } else if (currentUser.role !== 'Admin' && currentUser.role !== 'Director' && currentUser.stores !== 'all') {
             const us = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
             allStores = allStores.filter(s => us.includes(s.code));
         }
@@ -3953,7 +3979,7 @@ function loadMapOverview(type) {
         const ti = TECH_INFO.find(t => t.email === currentUser.email);
         if (ti && ti.zone === 'west') filtered = filtered.filter(s => !RAVAY_ONLY_STORES.includes(s.code));
         else if (ti && ti.zone === 'east') filtered = filtered.filter(s => RAVAY_ONLY_STORES.includes(s.code));
-    } else if (currentUser.role !== 'Admin' && currentUser.stores !== 'all') {
+    } else if (currentUser.role !== 'Admin' && currentUser.role !== 'Director' && currentUser.stores !== 'all') {
         const us = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
         filtered = filtered.filter(s => us.includes(s.code));
     }
@@ -4005,7 +4031,7 @@ function loadMapOverview(type) {
                 <div class="mp-name">${shortName}</div>
                 <div class="mp-addr" onclick="window.open('${mapsUrl}','_blank')">${s.address}</div>
                 <div class="mp-stats">
-                    <div class="mp-stat"><strong style="color:${counts.open > 0 ? '#f87171' : '#34d399'}">${counts.open}</strong>open</div>
+                    <div class="mp-stat"><strong style="color:${counts.open > 0 ? '#f87171' : '#34d399'}">${counts.open}</strong>unassigned</div>
                     <div class="mp-stat"><strong>${counts.total}</strong>total</div>
                 </div>
                 <div class="mp-btns">
@@ -4032,10 +4058,8 @@ function loadMapOverview(type) {
         });
         document.getElementById('mapStatsBar').innerHTML = 
             '<div class="mstat"><strong>' + filtered.length + '</strong>stores</div>' +
-            '<div class="mstat" style="cursor:pointer" onclick="showAllTickets(\'open\')"><strong style="color:' + (totalOpen > 0 ? '#dc2626' : '#059669') + '">' + totalOpen + '</strong>open tickets</div>' +
-            '<div class="mstat" style="cursor:pointer" onclick="showAllTickets(\'open\')"><strong>' + storesWithIssues + '</strong>need attention</div>' +
-            '<div class="mstat" style="cursor:pointer" onclick="desktopDrilldown({status:\'open\',scope:\'sla\'})"><strong>' + desktopTicketInsights.slaRisk.length + '</strong>SLA risk</div>' +
-            '<div class="mstat" style="cursor:pointer" onclick="desktopDrilldown({status:\'waiting\',scope:\'vendor-followup\'})"><strong>' + desktopTicketInsights.vendorFollowups.length + '</strong>vendor follow-ups</div>' +
+            '<div class="mstat" style="cursor:pointer" onclick="showAllTickets(\'unassigned\')"><strong style="color:' + (totalOpen > 0 ? '#dc2626' : '#059669') + '">' + totalOpen + '</strong>unassigned tickets</div>' +
+            '<div class="mstat" style="cursor:pointer" onclick="showAllTickets(\'unassigned\')"><strong>' + storesWithIssues + '</strong>need assignment</div>' +
             '<div class="mstat" style="cursor:pointer" onclick="showAllTickets(\'all\')"><strong>' + totalAll + '</strong>total tickets</div>';
 
         // Desktop store list sidebar with toggle
@@ -4106,145 +4130,35 @@ function getSlaHoursForPriority(priority) {
 }
 
 function isActiveTicketStatus(status) {
-    return !!status && status !== 'closed' && status !== 'resolved';
+    const normalized = normalizeTicketStatus(status);
+    return !!normalized && normalized !== 'closed' && normalized !== 'resolved';
 }
 
 function buildDesktopInsights(ticketList, allowedStoreCodes = null) {
-    const active = ticketList.filter(t => isActiveTicketStatus(t.status));
-    const inScope = allowedStoreCodes && allowedStoreCodes.length
-        ? active.filter(t => allowedStoreCodes.includes(t.storeCode))
-        : active;
-
-    const slaRisk = [];
-    const agingBuckets = [
-        { key: 'age-0-4h', label: '0-4h', min: 0, max: 4, count: 0 },
-        { key: 'age-4-24h', label: '4-24h', min: 4, max: 24, count: 0 },
-        { key: 'age-1-3d', label: '1-3d', min: 24, max: 72, count: 0 },
-        { key: 'age-3d-plus', label: '>3d', min: 72, max: Infinity, count: 0 }
-    ];
-    const unassignedCritical = [];
-    const techWorkloadMap = {};
-    const vendorFollowups = [];
-
-    inScope.forEach(t => {
-        const ageH = getTicketAgeHours(t);
-        const slaH = getSlaHoursForPriority(t.priority || 'routine');
-        const ratio = slaH > 0 ? ageH / slaH : 0;
-
-        if (ratio >= 0.8) {
-            slaRisk.push({
-                key: t._key || t.id,
-                ticket: t,
-                ratio,
-                over: ratio >= 1
-            });
-        }
-
-        const bucket = agingBuckets.find(b => ageH >= b.min && ageH < b.max);
-        if (bucket) bucket.count++;
-
-        if ((t.priority === 'urgent' || t.priority === 'emergency') && !String(t.assignedTo || '').trim()) {
-            unassignedCritical.push(t);
-        }
-
-        if (String(t.assignedTo || '').trim() && t.assigneeType !== 'vendor') {
-            techWorkloadMap[t.assignedTo] = (techWorkloadMap[t.assignedTo] || 0) + 1;
-        }
-
-        if (t.status === 'waiting' && (t.assigneeType === 'vendor' || /vendor/i.test(String(t.assignedTo || '')))) {
-            vendorFollowups.push(t);
-        }
-    });
-
-    const techWorkload = Object.entries(techWorkloadMap)
-        .map(([name, count]) => ({ name, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 6);
-
-    slaRisk.sort((a, b) => b.ratio - a.ratio);
-    unassignedCritical.sort((a, b) => {
-        const p = { emergency: 0, urgent: 1, routine: 2 };
-        return (p[a.priority] || 2) - (p[b.priority] || 2);
-    });
-
+    // NOTE: legacy SLA/aging insight pipeline intentionally simplified.
+    // We keep a stable return shape for compatibility, but avoid heavy
+    // derived analytics that are no longer part of the core operations flow.
     return {
-        slaRisk: slaRisk.slice(0, 8),
-        agingBuckets,
-        unassignedCritical: unassignedCritical.slice(0, 8),
-        techWorkload,
+        slaRisk: [],
+        agingBuckets: [],
+        unassignedCritical: [],
+        techWorkload: [],
         pendingApprovals: Object.values(pendingUsers || {}).filter(u => u).slice(0, 8),
-        vendorFollowups: vendorFollowups.slice(0, 8)
+        vendorFollowups: []
     };
 }
 
 function desktopDrilldown(filter) {
     if (window.innerWidth < 1100 || !isAdminDesktopExperience()) return;
     allTicketsDrilldown = filter;
-    const defaultStatus = filter && filter.status ? filter.status : 'open';
+    const defaultStatus = filter && filter.status ? filter.status : 'unassigned';
     showAllTickets(defaultStatus);
 }
 
 function renderDesktopInsightsCards(containerId, insights) {
     const el = document.getElementById(containerId);
     if (!el || window.innerWidth < 1100 || !isAdminDesktopExperience()) return;
-
-    const makeItems = (items, emptyLabel) => {
-        if (!items.length) return `<div class="desktop-insight-empty">${emptyLabel}</div>`;
-        return `<div class="desktop-insight-list">${items.join('')}</div>`;
-    };
-
-    const slaItems = insights.slaRisk.map(entry => {
-        const t = entry.ticket;
-        const icon = entry.over ? '🔴' : '🟠';
-        const label = `${icon} ${escHtml(t.id || '')} ${entry.over ? 'Over SLA' : 'Near SLA'}`;
-        return `<button class="desktop-insight-item" onclick='desktopDrilldown(${JSON.stringify({ status: 'open', ticketId: t.id, scope: 'sla' })})'><span class="di-label">${label}</span><span class="di-count">${Math.round(entry.ratio * 100)}%</span></button>`;
-    });
-
-    const ageItems = insights.agingBuckets.map(b =>
-        `<button class="desktop-insight-item" onclick='desktopDrilldown(${JSON.stringify({ status: 'open', agingKey: b.key, scope: 'aging' })})'><span class="di-label">${b.label}</span><span class="di-count">${b.count}</span></button>`
-    );
-
-    const unassignedItems = insights.unassignedCritical.map(t =>
-        `<button class="desktop-insight-item" onclick='desktopDrilldown(${JSON.stringify({ status: 'open', ticketId: t.id, scope: 'unassigned-critical' })})'><span class="di-label">${escHtml(t.id || '')} · ${capitalize(t.priority || 'urgent')}</span><span class="di-count">Unassigned</span></button>`
-    );
-
-    const workloadItems = insights.techWorkload.map(row =>
-        `<button class="desktop-insight-item" onclick='desktopDrilldown(${JSON.stringify({ status: 'open', assignedTo: row.name, scope: 'tech-workload' })})'><span class="di-label">${escHtml(row.name)}</span><span class="di-count">${row.count}</span></button>`
-    );
-
-    const approvalItems = insights.pendingApprovals.map(u =>
-        `<button class="desktop-insight-item" onclick="showAdminPanel()"><span class="di-label">${escHtml(u.name || u.email || 'Pending user')}</span><span class="di-count">Pending</span></button>`
-    );
-
-    const vendorItems = insights.vendorFollowups.map(t =>
-        `<button class="desktop-insight-item" onclick='desktopDrilldown(${JSON.stringify({ status: 'waiting', ticketId: t.id, scope: 'vendor-followup' })})'><span class="di-label">${escHtml(t.id || '')} · ${escHtml(t.assignedTo || 'Vendor')}</span><span class="di-count">Waiting</span></button>`
-    );
-
-    el.innerHTML = `
-        <div class="desktop-insight-card">
-            <div class="desktop-insight-title">SLA At-Risk Queue</div>
-            ${makeItems(slaItems, 'No tickets near SLA breach')}
-        </div>
-        <div class="desktop-insight-card">
-            <div class="desktop-insight-title">Aging Buckets</div>
-            ${makeItems(ageItems, 'No active tickets')}
-        </div>
-        <div class="desktop-insight-card">
-            <div class="desktop-insight-title">Unassigned Urgent / Emergency</div>
-            ${makeItems(unassignedItems, 'No unassigned urgent tickets')}
-        </div>
-        <div class="desktop-insight-card">
-            <div class="desktop-insight-title">Tech Workload Balance</div>
-            ${makeItems(workloadItems, 'No assigned tech workload')}
-        </div>
-        <div class="desktop-insight-card">
-            <div class="desktop-insight-title">Pending Approvals</div>
-            ${makeItems(approvalItems, 'No pending user approvals')}
-        </div>
-        <div class="desktop-insight-card">
-            <div class="desktop-insight-title">Vendor Follow-ups</div>
-            ${makeItems(vendorItems, 'No unresolved vendor follow-ups')}
-        </div>`;
+    el.innerHTML = '';
 }
 
 function mapSelectStore(storeId, action) {
@@ -4271,24 +4185,16 @@ function renderDesktopStoreList() {
     const withIssues = desktopStoreData.filter(s => s.counts.open > 0);
     const displayList = dslShowAll ? desktopStoreData : withIssues;
     
-    const showDesktopOpsWidgets = isAdminDesktopExperience();
-    const overSlaCount = desktopTicketInsights.slaRisk.filter(x => x.over).length;
-    const unassignedCount = desktopTicketInsights.unassignedCritical.length;
-
     let html = `<div class="dsl-header">
         <span>${displayList.length} store${displayList.length !== 1 ? 's' : ''}</span>
         <div class="dsl-toggle">
             <button class="${dslShowAll ? '' : 'active'}" onclick="dslShowAll=false;renderDesktopStoreList()">With Issues</button>
             <button class="${dslShowAll ? 'active' : ''}" onclick="dslShowAll=true;renderDesktopStoreList()">All</button>
         </div>
-    </div>
-    ${showDesktopOpsWidgets ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px 2px">
-        <button class="quick-chip" onclick='desktopDrilldown(${JSON.stringify({ status: 'open', scope: 'sla' })})'>SLA Risk ${overSlaCount ? '(' + overSlaCount + ')' : ''}</button>
-        <button class="quick-chip" onclick='desktopDrilldown(${JSON.stringify({ status: 'open', scope: 'unassigned-critical' })})'>Unassigned Critical ${unassignedCount ? '(' + unassignedCount + ')' : ''}</button>
-    </div>` : ''}`;
+    </div>`;
     
     if (displayList.length === 0) {
-        html += '<div style="padding:12px;text-align:center;font-size:13px;color:var(--text-muted)">🎉 No open issues!</div>';
+        html += '<div style="padding:12px;text-align:center;font-size:13px;color:var(--text-muted)">🎉 No unassigned issues!</div>';
     } else {
         displayList.forEach(s => {
             const shortName = s.name.replace(/^Burger King /, 'BK ').replace(/^Paradise QS /, 'PQS ');
@@ -4296,7 +4202,7 @@ function renderDesktopStoreList() {
             const isSelected = selectedStore && selectedStore.code === s.code;
             html += `<div class="store-list-item ${isSelected ? 'active' : ''}" onclick="desktopSelectStore('${s.id}')">
                 <span class="sli-name">${shortName}</span>
-                <span class="sli-badge ${badgeCls}">${s.counts.open} open</span>
+                <span class="sli-badge ${badgeCls}">${s.counts.open} unassigned</span>
             </div>`;
         });
     }
@@ -4358,15 +4264,15 @@ function renderStoreListView() {
         const allT = [];
         snap.forEach(child => { allT.push({ _key: child.key, ...child.val() }); });
         
-        const statusLabel = { open:'Open', assigned:'Assigned', inprogress:'In Progress', waiting:'Waiting', resolved:'Resolved', closed:'Closed' };
+        const statusLabel = { unassigned:'Unassigned', assigned:'Assigned', inprogress:'In Progress', waiting:'Waiting', resolved:'Resolved', closed:'Closed' };
         
-        // Only show stores that have open tickets
+        // Only show stores that have unassigned tickets
         const storesWithTickets = lastFilteredStores.filter(s => {
             return allT.some(t => t.storeCode === s.code && t.status !== 'closed' && t.status !== 'resolved');
         });
 
         if (storesWithTickets.length === 0) {
-            listEl.innerHTML = '<div style="padding:40px;text-align:center;font-size:15px;color:var(--text-muted)">🎉 No open tickets across these stores!</div>';
+            listEl.innerHTML = '<div style="padding:40px;text-align:center;font-size:15px;color:var(--text-muted)">🎉 No unassigned tickets across these stores!</div>';
             return;
         }
         
@@ -4377,15 +4283,16 @@ function renderStoreListView() {
             storeTickets.sort((a,b) => { const p = {emergency:0,urgent:1,routine:2}; return (p[a.priority]||2) - (p[b.priority]||2); });
             
             html += `<div class="slv-store">
-                <div class="slv-store-name">${shortName} <span style="font-size:12px;font-weight:400;color:var(--text-muted)">(${storeTickets.length} open)</span></div>`;
+                <div class="slv-store-name">${shortName} <span style="font-size:12px;font-weight:400;color:var(--text-muted)">(${storeTickets.length} unassigned)</span></div>`;
             storeTickets.forEach(t => {
                 const assignee = t.assignedTo ? t.assignedTo : '';
                 const prBadge = {routine:'<span class="priority-word p-routine">Routine</span>',urgent:'<span class="priority-word p-urgent">Urgent</span>',emergency:'<span class="priority-word p-emergency">Emergency</span>'}[t.priority] || '';
                 html += `<div class="slv-ticket" onclick="listViewOpenTicket('${t._key}')">
                     ${prBadge}
                     <span class="slv-desc">${escHtml(t.description || '').substring(0,80)}</span>
-                    <span class="ticket-status-badge status-${t.status}" style="font-size:11px;padding:2px 8px">${statusLabel[t.status] || t.status}</span>
+                    <span class="ticket-status-badge status-${normalizeTicketStatus(t.status)}" style="font-size:11px;padding:2px 8px">${statusLabel[normalizeTicketStatus(t.status)] || t.status}</span>
                     ${assignee ? '<span class="slv-assignee">' + escHtml(assignee) + '</span>' : ''}
+                    ${renderInlineAssignControls(t, 'slv')}
                 </div>`;
             });
             html += '</div>';
@@ -4446,6 +4353,7 @@ function watchPendingUsers() {
 }
 
 function showAdminPanel() {
+    if (!canAccessAdminPanel()) { showToast('Only IT Support can access user controls', 'error'); return; }
     showScreen('adminScreen');
     renderPendingUsers();
     loadActiveUsers();
@@ -4454,7 +4362,7 @@ function showAdminPanel() {
 }
 
 function goBackFromAdmin() {
-    showScreen('storeSelection');
+    routeToProfileLanding();
 }
 
 function renderPendingUsers() {
@@ -4492,6 +4400,7 @@ function renderPendingUsers() {
                 <select class="form-select" id="prole-${uid}">
                     <option value="Manager" ${guessedRole === 'Manager' ? 'selected' : ''}>Manager</option>
                     <option value="Area Coach" ${guessedRole === 'Area Coach' ? 'selected' : ''}>Area Coach</option>
+                    <option value="Director" ${guessedRole === 'Director' ? 'selected' : ''}>Director</option>
                     <option value="Admin" ${guessedRole === 'Admin' ? 'selected' : ''}>Admin</option>
                     <option value="Technician" ${guessedRole === 'Technician' ? 'selected' : ''}>Technician</option>
                 </select>
@@ -4578,7 +4487,7 @@ async function loadActiveUsers() {
 
         container.innerHTML = entries.map(([uid, u]) => {
             const initials = (u.name || '?').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-            const roleClass = u.role === 'Admin' ? 'admin' : u.role === 'Area Coach' ? 'areacoach' : u.role === 'Technician' ? 'technician' : 'manager';
+            const roleClass = u.role === 'Admin' ? 'admin' : u.role === 'Director' ? 'director' : u.role === 'Area Coach' ? 'areacoach' : u.role === 'Technician' ? 'technician' : 'manager';
             const storeStr = u.stores === 'all' ? 'All stores' :
                 Array.isArray(u.stores) ? u.stores.length + ' stores' :
                 u.stores || 'None';
@@ -4632,6 +4541,7 @@ function editUser(uid) {
                 <select class="form-select" id="editRole">
                     <option value="Manager" ${u.role === 'Manager' ? 'selected' : ''}>Manager</option>
                     <option value="Area Coach" ${u.role === 'Area Coach' ? 'selected' : ''}>Area Coach</option>
+                    <option value="Director" ${u.role === 'Director' ? 'selected' : ''}>Director</option>
                     <option value="Admin" ${u.role === 'Admin' ? 'selected' : ''}>Admin</option>
                     <option value="Technician" ${u.role === 'Technician' ? 'selected' : ''}>Technician</option>
                 </select>
@@ -5007,6 +4917,167 @@ function populateAssignDropdown() {
     }
 }
 
+function getAssignmentOptionsHtml(storeCode) {
+    const availTechs = getAvailableTechs(storeCode || '');
+    let html = '<option value="">Assign to...</option>';
+
+    if (availTechs.length) {
+        html += '<optgroup label="Repair Technicians">';
+        availTechs.forEach(t => {
+            html += `<option value="tech:${t.email}">🔧 ${escHtml(t.name)}</option>`;
+        });
+        html += '</optgroup>';
+    }
+
+    if (vendorList.length) {
+        html += '<optgroup label="Approved Vendors">';
+        vendorList.forEach(v => {
+            html += `<option value="vendor:${escHtml(v.name)}">🏢 ${escHtml(v.name)}</option>`;
+        });
+        html += '</optgroup>';
+    }
+
+    return html;
+}
+
+function renderInlineAssignControls(ticket, contextPrefix = 'inline') {
+    if (!canAssignTickets() || normalizeTicketStatus(ticket.status) !== 'unassigned') return '';
+    const safeKey = String(ticket._key || ticket.id || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const selectId = `${contextPrefix}Assign_${safeKey}`;
+
+    const ticketKey = ticket._key || ticket.id || '';
+    return `<div class="inline-assign-row" onclick="event.stopPropagation()">
+        <select class="form-select inline-assign-select" id="${selectId}">${getAssignmentOptionsHtml(ticket.storeCode)}</select>
+        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();quickAssignTicket('${ticketKey}', '${selectId}')">Assign</button>
+    </div>`;
+}
+
+// ------------------------------------------------------------
+// Assignment reminder + email helper (for parties outside app)
+// ------------------------------------------------------------
+function buildAssignEmailDraft(ticket, partyLabel) {
+    const lines = [
+        `Hello ${partyLabel},`,
+        '',
+        `Please find details below for a job we need done at ${ticket.storeName || ticket.storeCode || 'the location'}.`,
+        '',
+        'Details from ticket below:',
+        `- Ticket ID: ${ticket.id || ticket._key || ''}`,
+        `- Location: ${ticket.storeName || ticket.storeCode || ''}`,
+        `- Status: ${getStatusLabel(ticket.status)}`,
+        `- Priority: ${capitalize(ticket.priority || 'routine')}`,
+        `- Category: ${capitalize(ticket.category || '')}${ticket.location ? ' / ' + capitalize(ticket.location) : ''}`,
+        `- Description: ${ticket.description || ''}`,
+        ticket.contactName ? `- Contact: ${ticket.contactName}${ticket.contactPhone ? ' (' + ticket.contactPhone + ')' : ''}` : '',
+        '',
+        'Attach picture below:',
+        ...(Array.isArray(ticket.photos) && ticket.photos.length
+            ? ticket.photos.map((url, i) => `- Photo ${i + 1}: ${url}`)
+            : ['- No photo attached in ticket']),
+        '',
+        'Thank you.'
+    ].filter(Boolean);
+
+    return lines.join('\n');
+}
+
+function openAssignEmailComposer(ticket, partyLabel) {
+    const overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    const draft = buildAssignEmailDraft(ticket, partyLabel);
+    overlay.innerHTML = `<div class="confirm-box" style="max-width:700px;width:min(92vw,700px)">
+        <h4>✉️ Email Draft</h4>
+        <p style="text-align:left">You can edit this text before copying into your email.</p>
+        <textarea id="assignEmailDraft" class="form-textarea" style="min-height:280px">${escHtml(draft)}</textarea>
+        <div class="confirm-btns" style="margin-top:10px">
+            <button class="btn btn-secondary" id="assignEmailClose">Close</button>
+            <button class="btn btn-primary" id="assignEmailCopy">Copy</button>
+        </div>
+    </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector('#assignEmailClose').onclick = () => overlay.remove();
+    overlay.querySelector('#assignEmailCopy').onclick = async () => {
+        const txt = overlay.querySelector('#assignEmailDraft').value;
+        try {
+            await navigator.clipboard.writeText(txt);
+            toast('Email draft copied', 'success');
+        } catch {
+            toast('Could not copy automatically. Please copy manually.', 'error');
+        }
+    };
+}
+
+function showAssignReminder(ticket, partyLabel) {
+    const overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    overlay.innerHTML = `<div class="confirm-box" style="max-width:520px">
+        <h4>📣 Assignment sent</h4>
+        <p>Don’t forget to let <strong>${escHtml(partyLabel)}</strong> know about this job — they don’t have access to this site.</p>
+        <div class="confirm-btns">
+            <button class="btn btn-secondary" id="assignCancel">Cancel</button>
+            <button class="btn btn-primary" id="assignOkay">Okay</button>
+            <button class="btn btn-accent" id="assignEmail">Write me an email</button>
+        </div>
+    </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector('#assignCancel').onclick = () => overlay.remove();
+    overlay.querySelector('#assignOkay').onclick = () => overlay.remove();
+    overlay.querySelector('#assignEmail').onclick = () => {
+        overlay.remove();
+        openAssignEmailComposer(ticket, partyLabel);
+    };
+}
+
+async function quickAssignTicket(ticketKey, selectId) {
+    if (!ticketKey) { toast('Ticket key is missing. Please refresh and try again.', 'error'); return; }
+    const select = document.getElementById(selectId);
+    if (!select) return;
+    const value = select.value;
+
+    if (!value) { toast('Select a technician or vendor', 'error'); return; }
+    if (!canAssignTickets()) { toast('You do not have assignment permissions', 'error'); return; }
+
+    const parsed = parseAssignmentValue(value);
+    if (!parsed.assignedTo) { toast('Invalid assignee', 'error'); return; }
+
+    try {
+        const ticketSnap = await db.ref(`tickets/${ticketKey}`).once('value');
+        const ticket = ticketSnap.val();
+        if (!ticket) { toast('Ticket not found. Please refresh.', 'error'); return; }
+
+        const updates = {
+            [`tickets/${ticketKey}/assignedTo`]: parsed.assignedTo,
+            [`tickets/${ticketKey}/assigneeType`]: parsed.assigneeType,
+            [`tickets/${ticketKey}/status`]: 'assigned',
+            [`tickets/${ticketKey}/updatedAt`]: firebase.database.ServerValue.TIMESTAMP
+        };
+
+        const actSnap = await db.ref(`tickets/${ticketKey}/activity`).once('value');
+        const activity = actSnap.val() || [];
+        activity.push({
+            action: 'assignment_change',
+            by: currentUser.name,
+            byEmail: currentUser.email,
+            timestamp: Date.now(),
+            assignedTo: parsed.assignedTo,
+            assigneeType: parsed.assigneeType,
+            note: 'Assigned from unassigned queue'
+        });
+        updates[`tickets/${ticketKey}/activity`] = activity;
+
+        await db.ref().update(updates);
+        toast('Ticket assigned', 'success');
+        showAssignReminder({ ...ticket, _key: ticketKey, status: 'assigned' }, parsed.assignedTo);
+
+        if (!document.getElementById('allTicketsScreen').classList.contains('hidden')) filterAllTickets();
+        if (currentMapView === 'list') renderStoreListView();
+        loadAdminSummary();
+    } catch (err) {
+        console.error('Quick assign failed', err);
+        toast('Assignment failed', 'error');
+    }
+}
+
 function toggleDateFields() {
     const type = document.getElementById('reqDateType').value;
     const d1 = document.getElementById('reqDate1');
@@ -5072,7 +5143,7 @@ function loadTechJobs() {
 }
 
 function getExecutionModeState(status = 'inprogress') {
-    if (status === 'assigned' || status === 'open') return { key: 'travel', label: '🚗 Start Travel', nextStatus: 'inprogress', note: 'Travel started to site' };
+    if (status === 'assigned' || status === 'unassigned' || status === 'open') return { key: 'travel', label: '🚗 Start Travel', nextStatus: 'inprogress', note: 'Travel started to site' };
     if (status === 'inprogress') return { key: 'arrived', label: '📍 Arrived', nextStatus: 'inprogress', note: 'Arrived onsite and began diagnosis' };
     if (status === 'waiting') return { key: 'waiting', label: '📦 Waiting Parts', nextStatus: 'waiting', note: 'Waiting on parts / vendor support' };
     return { key: 'complete', label: '✅ Complete', nextStatus: 'resolved', note: 'Work completed, ready to close out' };
@@ -5090,7 +5161,7 @@ function renderTechDetailPane(key) {
         pane.innerHTML = '<div class="tech-detail-empty">Select a job to view full details.</div>';
         return;
     }
-    const statusLabel = { open:'Open', assigned:'Assigned', inprogress:'In Progress', waiting:'Waiting', resolved:'Resolved', closed:'Closed' };
+    const statusLabel = { unassigned:'Unassigned', assigned:'Assigned', inprogress:'In Progress', waiting:'Waiting', resolved:'Resolved', closed:'Closed' };
     const catIcons = { plumbing:'🚿', equipment:'⚙️', it:'💻', structural:'🧱', safety:'🛡️', other:'📎' };
     const notes = [
         'On site — troubleshooting now',
@@ -5104,7 +5175,7 @@ function renderTechDetailPane(key) {
                 <div style="font-weight:700">${escHtml(t.id || t._key)}</div>
                 <div style="font-size:12px;color:var(--text-muted)">${escHtml((stores.find(s => s.code === t.storeCode) || {}).name || t.storeCode || '')}</div>
             </div>
-            <span class="ticket-status-badge status-${t.status}" style="font-size:11px">${statusLabel[t.status] || t.status}</span>
+            <span class="ticket-status-badge status-${normalizeTicketStatus(t.status)}" style="font-size:11px">${statusLabel[normalizeTicketStatus(t.status)] || t.status}</span>
         </div>
         <div style="font-size:13px;line-height:1.4;margin-bottom:8px">${catIcons[t.category] || '📎'} ${escHtml(t.description || '')}</div>
         <div class="tjc-fast-actions" style="margin-bottom:10px">
@@ -5181,7 +5252,7 @@ function renderTechDashboard() {
         return;
     }
 
-    const statusLabel = { open:'Open', assigned:'Assigned', inprogress:'In Progress', waiting:'Waiting', resolved:'Resolved', closed:'Closed' };
+    const statusLabel = { unassigned:'Unassigned', assigned:'Assigned', inprogress:'In Progress', waiting:'Waiting', resolved:'Resolved', closed:'Closed' };
     const catIcons = { plumbing:'🚿', equipment:'⚙️', it:'💻', structural:'🧱', safety:'🛡️', other:'📎' };
     const isClocked = activeClockIn !== null;
 
@@ -5212,7 +5283,7 @@ function renderTechDashboard() {
                 </div>
                 <div class="tjc-desc">${catIcons[t.category] || ''} ${escHtml(desc)}</div>
                 <div class="tjc-meta">
-                    <span class="ticket-status-badge status-${t.status}" style="font-size:11px;padding:2px 8px">${statusLabel[t.status] || t.status}</span>
+                    <span class="ticket-status-badge status-${normalizeTicketStatus(t.status)}" style="font-size:11px;padding:2px 8px">${statusLabel[normalizeTicketStatus(t.status)] || t.status}</span>
                     <span style="color:var(--text-muted)">${time}</span>
                     <span style="color:#059669;font-weight:600">Assigned to you</span>
                 </div>
@@ -5353,7 +5424,7 @@ function showClockOutPrompt() {
         <div style="font-size:13px;color:var(--text-muted)">Execution mode active • time on job: ${mins} minute${mins !== 1 ? 's' : ''}</div>`;
 
     const statusOptions = ['inprogress', 'waiting', 'resolved'];
-    const statusLabels = { inprogress: 'Continue Working', waiting: 'Waiting on Parts', resolved: 'Resolved / Completed' };
+    const statusLabels = { inprogress: 'Continue Working', waiting: 'Waiting', resolved: 'Resolved / Completed' };
     document.getElementById('clockOutStatusGrid').innerHTML = statusOptions.map(s =>
         `<button class="status-option ${s === clockOutStatus ? 'active' : ''}" onclick="clockOutStatus='${s}';this.parentElement.querySelectorAll('.status-option').forEach(b=>b.classList.remove('active'));this.classList.add('active')">${statusLabels[s]}</button>`
     ).join('');
@@ -5444,16 +5515,16 @@ function loadAdminSummary() {
         const tickets = [];
         snap.forEach(child => { tickets.push({ _key: child.key, ...child.val() }); });
 
-        const statusCounts = { open: 0, assigned: 0, inprogress: 0, waiting: 0, resolved: 0, closed: 0 };
+        const statusCounts = { unassigned: 0, assigned: 0, inprogress: 0, waiting: 0, resolved: 0, closed: 0 };
         tickets.forEach(t => {
-            const key = (t.status || '').toLowerCase();
+            const key = normalizeTicketStatus(t.status || '');
             if (Object.prototype.hasOwnProperty.call(statusCounts, key)) statusCounts[key]++;
         });
 
         document.getElementById('adminSummaryGrid').innerHTML = `
-            <div class="admin-sum-card" onclick="selectBrand('all');setTimeout(()=>showAllTickets('open'),200)">
-                <div class="asc-num red">${statusCounts.open}</div>
-                <div class="asc-label" data-i18n="status_open">Open</div>
+            <div class="admin-sum-card" onclick="selectBrand('all');setTimeout(()=>showAllTickets('unassigned'),200)">
+                <div class="asc-num red">${statusCounts.unassigned}</div>
+                <div class="asc-label" data-i18n="status_unassigned">Unassigned</div>
             </div>
             <div class="admin-sum-card" onclick="selectBrand('all');setTimeout(()=>showAllTickets('assigned'),200)">
                 <div class="asc-num purple">${statusCounts.assigned}</div>
@@ -5560,11 +5631,12 @@ function initNotificationCenter() {
             }
         });
 
-        // Sort: emergency first, then urgent, then routine, then by newest
-        const priOrder = { emergency: 0, urgent: 1, routine: 2 };
-        notifyTickets.sort((a, b) => 
-            (priOrder[a.priority] || 2) - (priOrder[b.priority] || 2) || 
-            (b.createdAt || 0) - (a.createdAt || 0)
+        // Sort: urgency, then status, then newest
+        const statusOrder = { unassigned: 0, assigned: 1, waiting: 2, inprogress: 3, resolved: 4, closed: 5 };
+        notifyTickets.sort((a, b) =>
+            (PRIORITY_ORDER[a.priority] ?? 2) - (PRIORITY_ORDER[b.priority] ?? 2) ||
+            (statusOrder[normalizeTicketStatus(a.status)] ?? 9) - (statusOrder[normalizeTicketStatus(b.status)] ?? 9) ||
+            (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0)
         );
 
         console.log('[Notifications] Found', notifyTickets.length, 'tickets for', currentUser.name);
@@ -5607,7 +5679,7 @@ function toggleNotifyPanel() {
 function renderNotifyPanel() {
     const body = document.getElementById('notifyPanelBody');
     if (notifyTickets.length === 0) {
-        const lang = currentLang === 'es' ? 'No hay tickets abiertos' : 'No open tickets';
+        const lang = currentLang === 'es' ? 'No hay tickets abiertos' : 'No unassigned tickets';
         body.innerHTML = '<div class="notify-empty">' + lang + '</div>';
         return;
     }
@@ -5662,7 +5734,7 @@ let allTicketsDrilldown = null;
 function showAllTickets(defaultStatus) {
     showScreen('allTicketsScreen');
     const statusSel = document.getElementById('atFilterStatus');
-    statusSel.value = defaultStatus || 'open';
+    statusSel.value = defaultStatus || 'unassigned';
     if (!allTicketsDrilldown) {
         const banner = document.getElementById('allTicketsDrilldownBanner');
         if (banner) banner.style.display = 'none';
@@ -5680,7 +5752,7 @@ function showAllTickets(defaultStatus) {
     db.ref('tickets').once('value', snap => {
         allTicketsData = [];
         snap.forEach(child => {
-            allTicketsData.push(child.val());
+            allTicketsData.push({ _key: child.key, ...child.val() });
         });
         // Sort newest first
         allTicketsData.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
@@ -5695,7 +5767,7 @@ function populateAllTicketsStoreFilter() {
     let filtered = stores;
     if (type) filtered = stores.filter(s => s.type === type);
     // Permission filter
-    if (currentUser.role !== 'Admin' && currentUser.stores !== 'all') {
+    if (currentUser.role !== 'Admin' && currentUser.role !== 'Director' && currentUser.stores !== 'all') {
         const userStores = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
         filtered = filtered.filter(s => userStores.includes(s.code));
     }
@@ -5717,16 +5789,16 @@ function filterAllTickets() {
     let filtered = allTicketsData;
     
     // Permission filter
-    if (currentUser.role !== 'Admin' && currentUser.stores !== 'all') {
+    if (currentUser.role !== 'Admin' && currentUser.role !== 'Director' && currentUser.stores !== 'all') {
         const userStores = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
         filtered = filtered.filter(t => userStores.includes(t.storeCode));
     }
     
     // Status filter
-    if (status === 'open') {
-        filtered = filtered.filter(t => t.status && t.status !== 'closed' && t.status !== 'resolved');
+    if (status === 'unassigned') {
+        filtered = filtered.filter(t => normalizeTicketStatus(t.status) === 'unassigned');
     } else if (status !== 'all') {
-        filtered = filtered.filter(t => (t.status || '').toLowerCase().replace(/\s+/g, '') === status);
+        filtered = filtered.filter(t => normalizeTicketStatus(t.status) === status);
     }
     
     // Type filter
@@ -5744,29 +5816,8 @@ function filterAllTickets() {
         const d = allTicketsDrilldown;
         if (d.ticketId) filtered = filtered.filter(t => t.id === d.ticketId);
         if (d.assignedTo) filtered = filtered.filter(t => t.assignedTo === d.assignedTo);
-        if (d.scope === 'sla') {
-            filtered = filtered.filter(t => {
-                if (!isActiveTicketStatus(t.status)) return false;
-                const ratio = getTicketAgeHours(t) / getSlaHoursForPriority(t.priority || 'routine');
-                return ratio >= 0.8;
-            });
-        }
         if (d.scope === 'unassigned-critical') {
             filtered = filtered.filter(t => isActiveTicketStatus(t.status) && (t.priority === 'urgent' || t.priority === 'emergency') && !String(t.assignedTo || '').trim());
-        }
-        if (d.scope === 'vendor-followup') {
-            filtered = filtered.filter(t => t.status === 'waiting' && (t.assigneeType === 'vendor' || /vendor/i.test(String(t.assignedTo || ''))));
-        }
-        if (d.scope === 'aging' && d.agingKey) {
-            filtered = filtered.filter(t => {
-                if (!isActiveTicketStatus(t.status)) return false;
-                const age = getTicketAgeHours(t);
-                if (d.agingKey === 'age-0-4h') return age >= 0 && age < 4;
-                if (d.agingKey === 'age-4-24h') return age >= 4 && age < 24;
-                if (d.agingKey === 'age-1-3d') return age >= 24 && age < 72;
-                if (d.agingKey === 'age-3d-plus') return age >= 72;
-                return true;
-            });
         }
     }
 
@@ -5774,11 +5825,9 @@ function filterAllTickets() {
     if (banner) {
         if (allTicketsDrilldown) {
             const d = allTicketsDrilldown;
-            const label = d.scope === 'sla' ? 'SLA at-risk queue' :
-                d.scope === 'aging' ? 'Aging bucket' :
-                d.scope === 'unassigned-critical' ? 'Unassigned urgent/emergency' :
+            const label = d.scope === 'unassigned-critical' ? 'Unassigned urgent/emergency' :
                 d.scope === 'tech-workload' ? 'Tech workload' :
-                d.scope === 'vendor-followup' ? 'Vendor follow-ups' : 'Drilldown';
+                'Drilldown';
             banner.style.display = '';
             banner.innerHTML = `<strong>${label}</strong> active. <button class="quick-chip" onclick="allTicketsDrilldown=null;filterAllTickets()" style="margin-left:8px">Clear</button>`;
         } else {
@@ -5787,7 +5836,7 @@ function filterAllTickets() {
     }
     
     const title = document.getElementById('allTicketsTitle');
-    title.textContent = status === 'all' ? `All Tickets (${filtered.length})` : `${status === 'open' ? 'Open' : capitalize(status)} Tickets (${filtered.length})`;
+    title.textContent = status === 'all' ? `All Tickets (${filtered.length})` : `${status === 'unassigned' ? 'Unassigned' : capitalize(status)} Tickets (${filtered.length})`;
     
     const listEl = document.getElementById('allTicketsList');
     if (filtered.length === 0) {
@@ -5800,13 +5849,14 @@ function filterAllTickets() {
         const timeAgo = getTimeAgo(t.createdAt);
         const photoCount = t.photos ? t.photos.length : 0;
         const shortDesc = (t.description || '').substring(0, 80) + ((t.description || '').length > 80 ? '...' : '');
-        const statusClass = (t.status || 'open').toLowerCase().replace(/\s+/g, '');
+        const statusClass = (normalizeTicketStatus(t.status) || 'unassigned').toLowerCase().replace(/\s+/g, '');
         const prColor = t.priority === 'emergency' ? '#dc2626' : t.priority === 'urgent' ? '#d97706' : '#059669';
+        const staleInProgress = normalizeTicketStatus(t.status) === 'inprogress' && ((Date.now() - (t.updatedAt || t.createdAt || 0)) >= 24 * 60 * 60 * 1000);
         
-        return `<div class="ticket-card" onclick="openTicketFromAll('${esc(t.id)}')">
+        return `<div class="ticket-card" onclick="openTicketFromAllByKey('${esc(t._key || t.id)}')">
             <div class="ticket-card-top">
                 <span class="ticket-id">${esc(t.id)}</span>
-                <span class="ticket-status s-${statusClass}">${(t.status || 'open').toUpperCase()}</span>
+                <span class="ticket-status s-${statusClass}">${getStatusLabel(normalizeTicketStatus(t.status))}</span>
             </div>
             <div class="ticket-card-desc">
                 <span class="cat-emoji">${getCategoryEmoji(t.category)}</span> ${esc(shortDesc)}
@@ -5818,21 +5868,27 @@ function filterAllTickets() {
                 <span>${timeAgo}</span>
                 <span style="color:var(--text-muted)">${esc(t.storeName || t.storeCode)}</span>
                 ${photoCount ? '<span>📷 ' + photoCount + '</span>' : ''}
+                ${staleInProgress ? '<span class="priority-badge p-urgent">⏱️ In Progress 24h+</span>' : ''}
             </div>
+            ${renderInlineAssignControls(t, 'all')}
         </div>`;
     }).join('');
 }
 
-function openTicketFromAll(ticketId) {
-    const t = allTicketsData.find(x => x.id === ticketId);
+function openTicketFromAllByKey(ticketKey) {
+    const t = allTicketsData.find(x => x._key === ticketKey || x.id === ticketKey);
     if (!t) return;
     const store = stores.find(s => s.code === t.storeCode);
     if (store) selectedStore = store;
-    // Inject into currentTickets so openTicketDetail can find it
-    if (!t._key) t._key = ticketId;
-    const existing = currentTickets.find(x => x._key === ticketId);
+    if (!t._key) t._key = ticketKey;
+    const existing = currentTickets.find(x => x._key === t._key);
     if (!existing) currentTickets.push(t);
-    openTicketDetail(ticketId);
+    openTicketDetail(t._key);
+}
+
+function openTicketFromAll(ticketId) {
+    // Legacy wrapper retained for compatibility.
+    openTicketFromAllByKey(ticketId);
 }
 
 // ============================================================
@@ -5858,7 +5914,7 @@ function showViewAsModal() {
                 <select class="form-select" id="viewAsSelect" style="font-size:14px">
                     <option value="">Choose a user...</option>
                     ${entries.sort((a,b) => (a[1].name||'').localeCompare(b[1].name||'')).map(([uid, u]) =>
-                        `<option value="${uid}">${esc(u.name || 'Unknown')} — ${esc(u.role || 'Manager')} (${esc(u.email || uid)})</option>`
+                        `<option value="${uid}">${esc(u.name || 'Unknown')} — ${esc(u.title || getDirectoryTitleByEmail(u.email, '') || u.role || 'Manager')} (${esc(u.email || uid)})</option>`
                     ).join('')}
                 </select>
             </div>
@@ -5884,12 +5940,14 @@ function doViewAs() {
         if (!realUser) realUser = { ...currentUser };
 
         // Impersonate
+        const fallbackTitle = getDirectoryTitleByEmail(data.email || '', '');
         currentUser = {
             uid: realUser.uid,
             email: data.email || '',
             name: data.name || 'Unknown',
             role: normalizeRole(data.role),
             stores: data.stores || [],
+            title: data.title || fallbackTitle || data.role || normalizeRole(data.role),
             _impersonating: data.name || data.email
         };
 
@@ -5904,14 +5962,6 @@ function doViewAs() {
         document.getElementById('mapOverview').classList.add('hidden');
         document.getElementById('adminSummary').classList.add('hidden');
 
-        // Reset assignment fields based on role
-        const af = document.getElementById('assignmentFields');
-        if (currentUser.role === 'Admin' || currentUser.role === 'Area Coach') {
-            af.classList.remove('hidden');
-        } else {
-            af.classList.add('hidden');
-        }
-
         // Clear tech dashboard state
         if (clockTimerInterval) { clearInterval(clockTimerInterval); clockTimerInterval = null; }
         activeClockIn = null;
@@ -5921,7 +5971,7 @@ function doViewAs() {
         const initials = currentUser.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
         document.getElementById('userAvatar').textContent = initials || '?';
         document.getElementById('userName').textContent = currentUser.name;
-        document.getElementById('userRole').innerHTML = currentUser.role + ' <span style="font-size:10px;color:var(--accent);font-weight:700">(viewing as)</span>';
+        document.getElementById('userRole').innerHTML = getRoleTitle(currentUser) + ' <span style="font-size:10px;color:var(--accent);font-weight:700">(viewing as)</span>';
 
         // Keep admin + viewAs buttons visible (real user is admin)
         document.getElementById('adminBtn').classList.remove('hidden');
@@ -5930,7 +5980,7 @@ function doViewAs() {
         // Show/hide admin-only UI
         const allPill = document.getElementById('brandPill-all');
         const allOpt = document.querySelector('.admin-only-opt');
-        if (currentUser.role === 'Admin') {
+        if (currentUser.role === 'Admin' || currentUser.role === 'Director') {
             if (allPill) allPill.classList.remove('hidden');
             if (allOpt) allOpt.classList.remove('hidden');
         } else {
@@ -5971,13 +6021,12 @@ function exitViewAs() {
     const initials = currentUser.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
     document.getElementById('userAvatar').textContent = initials || '?';
     document.getElementById('userName').textContent = currentUser.name;
-    document.getElementById('userRole').textContent = currentUser.role;
+    document.getElementById('userRole').textContent = getRoleTitle(currentUser);
 
     // Restore admin experience
     applyExperienceClass(currentUser.role);
     document.getElementById('brandPill-all')?.classList.remove('hidden');
     document.querySelector('.admin-only-opt')?.classList.remove('hidden');
-    document.getElementById('assignmentFields')?.classList.remove('hidden');
     routeToProfileLanding();
 
     initNotificationCenter();
@@ -5994,7 +6043,7 @@ const wizardTotalSteps = 6;
 
 function getAccessibleStores() {
     if (!currentUser) return [];
-    if (currentUser.role === 'Admin' || currentUser.stores === 'all') return [...stores];
+    if (currentUser.role === 'Admin' || currentUser.role === 'Director' || currentUser.stores === 'all') return [...stores];
     const allowed = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
     return stores.filter(s => allowed.includes(s.code));
 }
@@ -6006,7 +6055,6 @@ function showNewIssueScreen() {
     const screen = document.getElementById('newIssueScreen');
     screen.classList.toggle('wizard-mode', wizardModeEnabled);
     document.getElementById('newIssueStoreName').textContent = selectedStore.name;
-    populateAssignDropdown(); // refresh based on selected store geography
     initWizardMode();
     restoreNewIssueDraft();
     showScreen('newIssueScreen');
@@ -6199,8 +6247,6 @@ function resetNewIssueForm() {
     const wizardGrid = document.getElementById('wizardPhotoPreviewGrid');
     if (wizardGrid) wizardGrid.innerHTML = '';
     document.getElementById('photoUploadArea').classList.remove('has-photos');
-    const assignTo = document.getElementById('assignTo');
-    if (assignTo) assignTo.value = '';
     const reqDateType = document.getElementById('reqDateType');
     if (reqDateType) { reqDateType.value = ''; toggleDateFields(); }
     const btn = document.getElementById('submitBtn');
@@ -6343,16 +6389,6 @@ async function submitTicket() {
     if (!desc) { toast('Add a description', 'error'); return; }
     if (desc.length < 10) { toast('Description too short', 'error'); return; }
 
-    // Soft prompt for assignment (coaches/admins only)
-    const assignEl = document.getElementById('assignTo');
-    if (assignEl && assignEl.offsetParent !== null && !assignEl.value) {
-        if (!window._skipAssignPrompt) {
-            const doAssign = await showAssignPrompt();
-            if (!doAssign) { window._skipAssignPrompt = false; return; }
-        }
-    }
-    window._skipAssignPrompt = false;
-
     const btn = document.getElementById('submitBtn');
     btn.innerHTML = '<span class="spinner"></span> Submitting...';
     btn.disabled = true;
@@ -6377,17 +6413,8 @@ async function submitTicket() {
         const num = String(counterSnap.snapshot.val()).padStart(4, '0');
         const ticketId = `${selectedStore.code}-${catPrefix}-${num}`;
 
-        // Get assignment data
-        const assignVal = document.getElementById('assignTo')?.value || '';
-        let assignedTo = '';
-        let assigneeType = 'unassigned';
-        if (assignVal.startsWith('tech:')) {
-            assignedTo = assignVal.replace('tech:', '');
-            assigneeType = 'tech';
-        } else if (assignVal.startsWith('vendor:')) {
-            assignedTo = assignVal.replace('vendor:', '');
-            assigneeType = 'vendor';
-        }
+        const assignedTo = '';
+        const assigneeType = 'unassigned';
 
         // Get requested date
         let requestedDate = null;
@@ -6412,7 +6439,7 @@ async function submitTicket() {
             priority: selectedPriority,
             description: desc,
             photos: photoUrls,
-            status: assignedTo ? 'assigned' : 'open',
+            status: 'unassigned',
             assignedTo: assignedTo || '',
             assigneeType: assigneeType,
             requestedDate: requestedDate,
@@ -6499,7 +6526,7 @@ function renderTickets() {
     let tickets = currentTickets;
 
     if (currentFilter !== 'all') {
-        tickets = tickets.filter(t => t.status === currentFilter);
+        tickets = tickets.filter(t => normalizeTicketStatus(t.status) === currentFilter);
     }
 
     if (tickets.length === 0) {
@@ -6514,22 +6541,23 @@ function renderTickets() {
 
     listEl.innerHTML = tickets.map(t => {
         const statusLabel = {
-            open: 'Open', assigned: 'Assigned', inprogress: 'In Progress',
-            waiting: 'Waiting on Parts', resolved: 'Resolved', closed: 'Closed'
-        }[t.status] || t.status;
+            unassigned: 'Unassigned', assigned: 'Assigned', inprogress: 'In Progress',
+            waiting: 'Waiting', resolved: 'Resolved', closed: 'Closed'
+        }[normalizeTicketStatus(t.status)] || t.status;
 
         const catIcons = { plumbing:'🚿', equipment:'⚙️', it:'💻', structural:'🧱', safety:'🛡️', other:'📎' };
         const timeAgo = getTimeAgo(t.createdAt);
         const brandLogo = t.brand && BRAND_LOGOS[t.brand] ? `<img src="${BRAND_LOGOS[t.brand]}" alt="" style="width:16px;height:16px;object-fit:contain;border-radius:3px;opacity:.7;vertical-align:middle">` : '';
+        const staleInProgress = normalizeTicketStatus(t.status) === 'inprogress' && ((Date.now() - (t.updatedAt || t.createdAt || 0)) >= 24 * 60 * 60 * 1000);
 
         return `
         <div class="ticket-card" onclick="openTicketDetail('${t._key}')">
             <div class="ticket-card-inner">
-                <div class="ticket-status-bar" style="background: var(--status-${t.status})"></div>
+                <div class="ticket-status-bar" style="background: var(--status-${normalizeTicketStatus(t.status)})"></div>
                 <div class="ticket-body">
                     <div class="ticket-top-row">
                         <span class="ticket-id">${t.id || t._key}</span>
-                        <span class="ticket-status-badge status-${t.status}">${statusLabel}</span>
+                        <span class="ticket-status-badge status-${normalizeTicketStatus(t.status)}">${statusLabel}</span>
                     </div>
                     <div class="ticket-title">${catIcons[t.category] || '📎'} ${escHtml(t.description.substring(0, 80))}${t.description.length > 80 ? '...' : ''}</div>
                     <div class="ticket-meta">
@@ -6538,6 +6566,7 @@ function renderTickets() {
                         <span>${brandLogo} ${timeAgo}</span>
                         ${t.photos && t.photos.length ? '<span>📷 ' + t.photos.length + '</span>' : ''}
                         ${t.contactPhone ? '<span>📞</span>' : ''}
+                        ${staleInProgress ? '<span class="priority-badge p-urgent">⏱️ In Progress 24h+</span>' : ''}
                     </div>
                 </div>
             </div>
@@ -6556,16 +6585,17 @@ function openTicketDetail(key, forceModal = true) {
 
     const catIcons = { plumbing:'🚿', equipment:'⚙️', it:'💻', structural:'🧱', safety:'🛡️', other:'📎' };
     const statusLabel = {
-        open: 'Open', assigned: 'Assigned', inprogress: 'In Progress',
-        waiting: 'Waiting on Parts', resolved: 'Resolved', closed: 'Closed'
+        unassigned: 'Unassigned', assigned: 'Assigned', inprogress: 'In Progress',
+        waiting: 'Waiting', resolved: 'Resolved', closed: 'Closed'
     };
 
-    const canUpdateStatus = currentUser.role === 'Admin' || currentUser.role === 'Area Coach' || currentUser.role === 'Technician';
+    const canUpdateStatus = currentUser.role === 'Admin' || currentUser.role === 'Director' || currentUser.role === 'Area Coach' || currentUser.role === 'Technician';
+    const canEditTicketMeta = canUpdateStatus || canEditUrgency();
 
     let html = `
         <div class="detail-section">
-            <span class="ticket-status-badge status-${t.status}" style="font-size: 13px; padding: 5px 14px;">
-                ${statusLabel[t.status] || t.status}
+            <span class="ticket-status-badge status-${normalizeTicketStatus(t.status)}" style="font-size: 13px; padding: 5px 14px;">
+                ${statusLabel[normalizeTicketStatus(t.status)] || t.status}
             </span>
             <span style="margin-left: 10px; font-size: 13px;">
                 <span class="priority-dot ${t.priority}"></span> ${capitalize(t.priority)} Priority
@@ -6599,19 +6629,24 @@ function openTicketDetail(key, forceModal = true) {
             <div class="detail-label">Reported By</div>
             <div class="detail-value">${escHtml(t.createdByName || t.createdBy)} &middot; ${formatDate(t.createdAt)}</div>
         </div>`;
-
-    // Status update for admins/coaches
-    if (canUpdateStatus) {
-        const statuses = ['open', 'assigned', 'inprogress', 'waiting', 'resolved', 'closed'];
+    // Status update
+    if (canEditTicketMeta) {
+        const normalizedStatus = normalizeTicketStatus(t.status);
+        const statuses = STATUS_ORDER.filter(s => canTransitionStatus(normalizedStatus, s, t));
         html += `
         <div class="status-update-section">
             <h4>Update Status</h4>
+            <div class="ticket-save-row top" id="saveRowTop">
+                <button class="btn btn-primary btn-sm" onclick="saveStatusUpdate('${key}')" id="saveStatusBtnTop">Save Update</button>
+            </div>
             <div class="status-select-grid">
                 ${statuses.map(s => `
-                    <button class="status-option ${t.status === s ? 'active' : ''}" onclick="updateTicketStatus('${key}', '${s}', this)">
+                    <button class="status-option ${normalizedStatus === s ? 'active' : ''}" onclick="updateTicketStatus('${key}', '${s}', this)">
                         ${statusLabel[s]}
                     </button>`).join('')}
             </div>
+            ${canAssignTickets() ? `<div style="margin-top:8px"><label class="form-label" style="font-size:12px">Assign / Reassign</label><select class="form-select" id="reassignTo" style="font-size:12px"><option value="">${t.assignedTo ? 'Keep current' : 'Unassigned'}</option></select></div>` : ''}
+            ${canEditUrgency() ? `<div style="margin-top:8px"><label class="form-label" style="font-size:12px">Urgency</label><select class="form-select" id="priorityUpdate" style="font-size:12px"><option value="routine" ${t.priority === 'routine' ? 'selected' : ''}>Routine</option><option value="urgent" ${t.priority === 'urgent' ? 'selected' : ''}>Urgent</option><option value="emergency" ${t.priority === 'emergency' ? 'selected' : ''}>Emergency</option></select><textarea class="form-textarea" id="priorityReason" placeholder="Reason for urgency change (required if changed)" style="min-height:56px;font-size:12px;margin-top:6px"></textarea></div>` : ''}
             <div style="margin-top: 8px;">
                 <textarea class="form-textarea" id="statusNote" placeholder="Add a note (optional)..." style="min-height: 60px; font-size: 13px;"></textarea>
             </div>
@@ -6622,10 +6657,9 @@ function openTicketDetail(key, forceModal = true) {
                 </label>
                 <div id="statusPhotoPreview" style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap"></div>
             </div>
-            ${canUpdateStatus && t.assignedTo ? '<div style="margin-top:8px"><label class="form-label" style="font-size:12px">Reassign</label><select class="form-select" id="reassignTo" style="font-size:12px"><option value="">Keep current</option></select></div>' : ''}
-            <button class="btn btn-primary btn-sm" style="margin-top: 10px;" onclick="saveStatusUpdate(\'${key}\')" id="saveStatusBtn">
-                Save Update
-            </button>
+            <div class="ticket-save-row" id="saveRowBottom">
+                <button class="btn btn-primary btn-sm" onclick="saveStatusUpdate('${key}')" id="saveStatusBtnBottom">Save Update</button>
+            </div>
         </div>`;
     }
 
@@ -6636,7 +6670,7 @@ function openTicketDetail(key, forceModal = true) {
             <h4>Activity</h4>
             ${t.activity.slice().reverse().map(a => `
                 <div class="activity-item">
-                    <div class="activity-dot" style="background: var(--status-${a.action === 'created' ? 'open' : (a.newStatus || 'open')})"></div>
+                    <div class="activity-dot" style="background: var(--status-${a.action === 'created' ? 'unassigned' : (normalizeTicketStatus(a.newStatus) || 'unassigned')})"></div>
                     <div>
                         <div class="activity-text"><strong>${escHtml(a.by)}</strong> ${getActivityText(a)}</div>
                         ${a.photos && a.photos.length ? '<div style="display:flex;gap:4px;margin-top:4px">' + a.photos.map(url => '<img src="' + url + '" style="width:48px;height:48px;border-radius:6px;object-fit:cover;cursor:pointer;border:1px solid var(--border)" onclick="openLightbox(\'' + url + '\')">').join('') + '</div>' : ''}
@@ -6654,11 +6688,147 @@ function openTicketDetail(key, forceModal = true) {
     }
 
     document.getElementById('modalBody').innerHTML = html;
+    const reassignSel = document.getElementById('reassignTo');
+    if (reassignSel && canAssignTickets()) {
+        reassignSel.innerHTML = '<option value="">' + (t.assignedTo ? 'Keep current' : 'Unassigned') + '</option>';
+        const availTechs = getAvailableTechs(t.storeCode || (selectedStore && selectedStore.code) || '');
+        if (availTechs.length) {
+            reassignSel.innerHTML += '<optgroup label="Repair Technicians">' + availTechs.map(te => `<option value="tech:${te.email}">🔧 ${escHtml(te.name)}</option>`).join('') + '</optgroup>';
+        }
+        if (vendorList.length) {
+            reassignSel.innerHTML += '<optgroup label="Third-Party Vendors">' + vendorList.map(v => `<option value="vendor:${escHtml(v.name)}">🏢 ${escHtml(v.name)}</option>`).join('') + '</optgroup>';
+        }
+    }
+
+    // Wire change tracking so save buttons appear only when edits are made
+    captureTicketEditBaseline(t);
+    wireModalChangeTracking(t);
+    setModalSaveVisibility();
+
     document.getElementById('ticketModal').classList.add('open');
 }
 
 let pendingStatusUpdate = null;
+let pendingWaitingReason = null;
 let statusPhotos = [];
+let ticketEditBaseline = null;
+
+// ------------------------------------------------------------
+// Ticket detail modal change tracking (for save button visibility)
+// ------------------------------------------------------------
+function captureTicketEditBaseline(ticket) {
+    ticketEditBaseline = {
+        status: normalizeTicketStatus(ticket.status),
+        priority: ticket.priority || 'routine',
+        assignedTo: ticket.assignedTo || '',
+        assigneeType: ticket.assigneeType || 'unassigned',
+        note: '',
+        priorityReason: '',
+        waitingReason: ticket.waitingReason || '',
+        waitingReasonNote: ticket.waitingReasonNote || ''
+    };
+}
+
+function hasTicketEditChanges() {
+    if (!ticketEditBaseline) return false;
+    const nextStatus = pendingStatusUpdate ? pendingStatusUpdate.status : ticketEditBaseline.status;
+    const priority = document.getElementById('priorityUpdate')?.value || ticketEditBaseline.priority;
+    const reassign = document.getElementById('reassignTo')?.value || '';
+    const note = (document.getElementById('statusNote')?.value || '').trim();
+    const priorityReason = (document.getElementById('priorityReason')?.value || '').trim();
+
+    return (
+        nextStatus !== ticketEditBaseline.status ||
+        priority !== ticketEditBaseline.priority ||
+        reassign !== '' ||
+        note.length > 0 ||
+        priorityReason.length > 0 ||
+        statusPhotos.length > 0 ||
+        !!pendingWaitingReason
+    );
+}
+
+function setModalSaveVisibility() {
+    const visible = hasTicketEditChanges();
+    ['saveRowTop', 'saveRowBottom'].forEach(id => {
+        const row = document.getElementById(id);
+        if (row) row.classList.toggle('visible', visible);
+    });
+}
+
+function setModalSaveBusy(isBusy) {
+    ['saveStatusBtnTop', 'saveStatusBtnBottom'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+        btn.disabled = isBusy;
+        btn.innerHTML = isBusy ? '<span class="spinner"></span>' : 'Save Update';
+    });
+}
+
+function wireModalChangeTracking() {
+    ['statusNote', 'priorityUpdate', 'priorityReason', 'reassignTo'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('input', setModalSaveVisibility);
+        el.addEventListener('change', setModalSaveVisibility);
+    });
+}
+
+function parseAssignmentValue(value) {
+    if (!value) return { assignedTo: '', assigneeType: 'unassigned' };
+    if (value.startsWith('tech:')) return { assignedTo: value.replace('tech:', ''), assigneeType: 'tech' };
+    if (value.startsWith('vendor:')) return { assignedTo: value.replace('vendor:', ''), assigneeType: 'vendor' };
+    return { assignedTo: '', assigneeType: 'unassigned' };
+}
+
+function promptWaitingReason(existingReason = '', existingNote = '') {
+    return new Promise(resolve => {
+        const overlay = document.createElement('div');
+        overlay.className = 'confirm-overlay';
+        overlay.innerHTML = `<div class="confirm-box" style="max-width:460px">
+            <h4>⏳ What are we waiting on?</h4>
+            <div style="display:grid;grid-template-columns:repeat(2,minmax(140px,1fr));gap:8px;margin:12px 0">
+                <button class="btn btn-secondary waiting-btn" data-reason="parts">Waiting on Parts</button>
+                <button class="btn btn-secondary waiting-btn" data-reason="vendor">Waiting on Vendor</button>
+                <button class="btn btn-secondary waiting-btn" data-reason="approval">Waiting on Approval</button>
+                <button class="btn btn-secondary waiting-btn" data-reason="other">Waiting on Other</button>
+            </div>
+            <textarea id="waitingOtherReason" class="form-textarea" placeholder="Explain what we are waiting on (required for 'Other')" style="min-height:72px;display:${existingReason === 'other' ? '' : 'none'}">${escHtml(existingNote || '')}</textarea>
+            <div class="confirm-btns" style="margin-top:10px">
+                <button class="btn btn-ghost" id="waitingCancel">Cancel</button>
+                <button class="btn btn-primary" id="waitingSave">Save Waiting Reason</button>
+            </div>
+        </div>`;
+        document.body.appendChild(overlay);
+
+        let selectedReason = existingReason || '';
+        const setSelected = () => {
+            overlay.querySelectorAll('.waiting-btn').forEach(btn => {
+                btn.classList.toggle('btn-primary', btn.dataset.reason === selectedReason);
+                btn.classList.toggle('btn-secondary', btn.dataset.reason !== selectedReason);
+            });
+            const otherBox = overlay.querySelector('#waitingOtherReason');
+            if (otherBox) otherBox.style.display = selectedReason === 'other' ? '' : 'none';
+        };
+
+        overlay.querySelectorAll('.waiting-btn').forEach(btn => {
+            btn.onclick = (e) => { e.preventDefault(); selectedReason = btn.dataset.reason; setSelected(); };
+        });
+        setSelected();
+
+        overlay.querySelector('#waitingCancel').onclick = () => { overlay.remove(); resolve(null); };
+        overlay.querySelector('#waitingSave').onclick = () => {
+            if (!selectedReason) { toast('Please select a waiting reason', 'error'); return; }
+            const otherText = (overlay.querySelector('#waitingOtherReason')?.value || '').trim();
+            if (selectedReason === 'other' && otherText.length < 10) {
+                toast('Waiting on Other requires at least 10 characters', 'error');
+                return;
+            }
+            overlay.remove();
+            resolve({ reason: selectedReason, note: selectedReason === 'other' ? otherText : '' });
+        };
+    });
+}
 
 function handleStatusPhotos(input) {
     const files = Array.from(input.files).slice(0, 3 - statusPhotos.length);
@@ -6671,79 +6841,231 @@ function handleStatusPhotos(input) {
         preview.innerHTML = statusPhotos.map((f,i) => `<div style="position:relative;width:48px;height:48px;border-radius:6px;overflow:hidden;border:1px solid var(--border)"><img src="${URL.createObjectURL(f)}" style="width:100%;height:100%;object-fit:cover"><button onclick="statusPhotos.splice(${i},1);handleStatusPhotos({files:[]})" style="position:absolute;top:-2px;right:-2px;background:var(--danger);color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:10px;cursor:pointer;line-height:1">✕</button></div>`).join('');
     }
     input.value = '';
+    setModalSaveVisibility();
 }
 
-function updateTicketStatus(key, status, el) {
+async function updateTicketStatus(key, status, el) {
+    const t = currentTickets.find(x => x._key === key);
+    if (!t) return;
+    const currentStatus = normalizeTicketStatus(t.status);
+    if (!canTransitionStatus(currentStatus, status, t)) {
+        toast('You do not have permission for this status change', 'error');
+        return;
+    }
+
+    if (status === 'waiting') {
+        const picked = await promptWaitingReason(t.waitingReason || '', t.waitingReasonNote || '');
+        if (!picked) return;
+        pendingWaitingReason = picked;
+    } else {
+        pendingWaitingReason = null;
+    }
+
     document.querySelectorAll('.status-option').forEach(b => b.classList.remove('active'));
     el.classList.add('active');
     pendingStatusUpdate = { key, status };
+    setModalSaveVisibility();
+}
+
+// ------------------------------------------------------------
+// Keep list/map views in sync after ticket updates
+// ------------------------------------------------------------
+function patchTicketLocally(ticketKey, patch) {
+    const applyPatch = (arr) => {
+        const idx = arr.findIndex(x => x._key === ticketKey || x.id === ticketKey);
+        if (idx >= 0) arr[idx] = { ...arr[idx], ...patch };
+    };
+    applyPatch(currentTickets);
+    applyPatch(allTicketsData);
+    applyPatch(notifyTickets);
+}
+
+function refreshViewsAfterTicketUpdate() {
+    if (!document.getElementById('allTicketsScreen').classList.contains('hidden')) {
+        filterAllTickets();
+    }
+    if (!document.getElementById('existingIssuesScreen').classList.contains('hidden')) {
+        renderTickets();
+    }
+    if (!document.getElementById('storeSelection').classList.contains('hidden') && currentMapView === 'list') {
+        renderStoreListView();
+    }
+    loadAdminSummary();
 }
 
 async function saveStatusUpdate(key) {
     const t = currentTickets.find(x => x._key === key);
     if (!t) return;
 
-    const newStatus = pendingStatusUpdate ? pendingStatusUpdate.status : t.status;
+    const currentStatus = normalizeTicketStatus(t.status);
+    const newStatus = pendingStatusUpdate ? pendingStatusUpdate.status : currentStatus;
     const note = document.getElementById('statusNote')?.value?.trim() || '';
+    const nextPriority = document.getElementById('priorityUpdate')?.value || t.priority;
+    const priorityChanged = nextPriority !== (t.priority || 'routine');
+    const priorityReason = (document.getElementById('priorityReason')?.value || '').trim();
+    const reassignVal = document.getElementById('reassignTo')?.value || '';
+    const assignmentChanged = canAssignTickets() && reassignVal !== '';
 
-    if (newStatus === t.status && !note) {
+    if (!canTransitionStatus(currentStatus, newStatus, t)) {
+        toast('You do not have permission for this status change', 'error');
+        return;
+    }
+
+    if (newStatus === 'waiting' && !pendingWaitingReason) {
+        pendingWaitingReason = await promptWaitingReason(t.waitingReason || '', t.waitingReasonNote || '');
+        if (!pendingWaitingReason) return;
+    }
+
+    if (priorityChanged && !canEditUrgency()) {
+        toast('Only managers, coaches, directors, and admins can edit urgency', 'error');
+        return;
+    }
+
+    if (priorityChanged && priorityReason.length < 10) {
+        toast('Urgency change reason must be at least 10 characters', 'error');
+        return;
+    }
+
+    if (newStatus === currentStatus && !note && !priorityChanged && !assignmentChanged && statusPhotos.length === 0) {
         toast('No changes to save', 'error');
         return;
     }
 
-    const btn = document.getElementById('saveStatusBtn');
-    btn.innerHTML = '<span class="spinner"></span>';
-    btn.disabled = true;
+    setModalSaveBusy(true);
 
     try {
         const updates = {};
         updates[`tickets/${key}/updatedAt`] = firebase.database.ServerValue.TIMESTAMP;
 
-        if (newStatus !== t.status) {
+        if (newStatus !== currentStatus) {
             updates[`tickets/${key}/status`] = newStatus;
         }
 
-        // Convert status photos to base64
+        if (priorityChanged) {
+            updates[`tickets/${key}/priority`] = nextPriority;
+        }
+
+        if (newStatus === 'waiting' && pendingWaitingReason) {
+            updates[`tickets/${key}/waitingReason`] = pendingWaitingReason.reason;
+            updates[`tickets/${key}/waitingReasonNote`] = pendingWaitingReason.note || '';
+        } else if (newStatus === 'inprogress') {
+            updates[`tickets/${key}/waitingReason`] = '';
+            updates[`tickets/${key}/waitingReasonNote`] = '';
+        }
+
+        if (assignmentChanged) {
+            const parsed = parseAssignmentValue(reassignVal);
+            updates[`tickets/${key}/assignedTo`] = parsed.assignedTo;
+            updates[`tickets/${key}/assigneeType`] = parsed.assigneeType;
+            if (newStatus === 'unassigned' && parsed.assignedTo) {
+                updates[`tickets/${key}/status`] = 'assigned';
+            }
+        }
+
         const statusPhotoUrls = [];
         for (const f of statusPhotos) {
             const dataUrl = await fileToBase64(f);
             statusPhotoUrls.push(dataUrl);
         }
 
-        // Append activity
-        const activityItem = {
-            action: newStatus !== t.status ? 'status_change' : 'note',
-            by: currentUser.name,
-            byEmail: currentUser.email,
-            timestamp: Date.now(),
-            ...(newStatus !== t.status && { oldStatus: t.status, newStatus }),
-            ...(note && { note }),
-            ...(statusPhotoUrls.length && { photos: statusPhotoUrls })
-        };
-
-        // Get current activity array length and push
         const actSnap = await db.ref(`tickets/${key}/activity`).once('value');
         const currentActivity = actSnap.val() || [];
-        currentActivity.push(activityItem);
-        updates[`tickets/${key}/activity`] = currentActivity;
 
+        if (newStatus !== currentStatus) {
+            currentActivity.push({
+                action: 'status_change',
+                by: currentUser.name,
+                byEmail: currentUser.email,
+                timestamp: Date.now(),
+                oldStatus: currentStatus,
+                newStatus,
+                ...(pendingWaitingReason && newStatus === 'waiting' ? { waitingReason: pendingWaitingReason.reason, waitingReasonNote: pendingWaitingReason.note || '' } : {}),
+                ...(note ? { note } : {}),
+                ...(statusPhotoUrls.length ? { photos: statusPhotoUrls } : {})
+            });
+        } else if (note || statusPhotoUrls.length) {
+            currentActivity.push({
+                action: 'note',
+                by: currentUser.name,
+                byEmail: currentUser.email,
+                timestamp: Date.now(),
+                note: note || 'Update added',
+                ...(statusPhotoUrls.length ? { photos: statusPhotoUrls } : {})
+            });
+        }
+
+        if (priorityChanged) {
+            currentActivity.push({
+                action: 'priority_change',
+                by: currentUser.name,
+                byEmail: currentUser.email,
+                timestamp: Date.now(),
+                oldPriority: t.priority || 'routine',
+                newPriority: nextPriority,
+                note: priorityReason
+            });
+        }
+
+        if (assignmentChanged) {
+            const parsed = parseAssignmentValue(reassignVal);
+            currentActivity.push({
+                action: 'assignment_change',
+                by: currentUser.name,
+                byEmail: currentUser.email,
+                timestamp: Date.now(),
+                assignedTo: parsed.assignedTo,
+                assigneeType: parsed.assigneeType
+            });
+
+            // Prompt the assigner to notify the assignee outside the app.
+            const mergedTicketForReminder = {
+                ...t,
+                _key: key,
+                status: newStatus,
+                assignedTo: parsed.assignedTo,
+                assigneeType: parsed.assigneeType
+            };
+            setTimeout(() => showAssignReminder(mergedTicketForReminder, parsed.assignedTo), 80);
+        }
+
+        updates[`tickets/${key}/activity`] = currentActivity;
         await db.ref().update(updates);
 
+        const mergedPatch = {
+            ...(newStatus !== currentStatus ? { status: newStatus } : {}),
+            ...(priorityChanged ? { priority: nextPriority } : {}),
+            ...(newStatus === 'waiting' && pendingWaitingReason ? {
+                waitingReason: pendingWaitingReason.reason,
+                waitingReasonNote: pendingWaitingReason.note || ''
+            } : {}),
+            ...(assignmentChanged ? (() => {
+                const parsed = parseAssignmentValue(reassignVal);
+                return { assignedTo: parsed.assignedTo, assigneeType: parsed.assigneeType, status: (newStatus === 'unassigned' ? 'assigned' : newStatus) };
+            })() : {}),
+            updatedAt: Date.now(),
+            activity: currentActivity
+        };
+        patchTicketLocally(key, mergedPatch);
+        refreshViewsAfterTicketUpdate();
+
         statusPhotos = [];
+        pendingWaitingReason = null;
         toast('Ticket updated!', 'success');
         closeModal();
     } catch (err) {
         console.error('Update error:', err);
         toast('Update failed', 'error');
     } finally {
-        btn.innerHTML = 'Save Update';
-        btn.disabled = false;
+        setModalSaveBusy(false);
     }
 }
 
 function closeModal() {
     document.getElementById('ticketModal').classList.remove('open');
     pendingStatusUpdate = null;
+    pendingWaitingReason = null;
+    ticketEditBaseline = null;
+    statusPhotos = [];
 }
 
 // ============================================================
@@ -6781,9 +7103,71 @@ function normalizeRole(r) {
     if (!r) return 'Manager';
     const lower = r.toLowerCase().trim();
     if (lower === 'admin') return 'Admin';
+    if (lower === 'director' || lower === 'vp' || lower === 'dev') return 'Director';
     if (lower === 'areacoach' || lower === 'area coach') return 'Area Coach';
     if (lower === 'technician') return 'Technician';
     return 'Manager';
+}
+
+function getRoleTitle(user = currentUser) {
+    if (!user) return '';
+    return user.title || user.role;
+}
+
+function isItsupportUser(user = currentUser) {
+    return !!user && String(user.email || '').toLowerCase() === 'itsupport@dossaniparadise.com';
+}
+
+function canAccessAdminPanel(user = currentUser) {
+    return isItsupportUser(user);
+}
+
+function canAssignTickets(user = currentUser) {
+    return !!user && (user.role === 'Admin' || user.role === 'Director');
+}
+
+function canEditUrgency(user = currentUser) {
+    return !!user && user.role !== 'Technician';
+}
+
+function normalizeTicketStatus(status) {
+    const val = String(status || '').toLowerCase().trim();
+    return val === 'open' ? 'unassigned' : val;
+}
+
+function getStatusLabel(status) {
+    const key = normalizeTicketStatus(status);
+    return {
+        unassigned: 'Unassigned',
+        assigned: 'Assigned',
+        inprogress: 'In Progress',
+        waiting: 'Waiting',
+        resolved: 'Resolved',
+        closed: 'Closed'
+    }[key] || capitalize(key || '');
+}
+
+function canTransitionStatus(oldStatus, newStatus, ticket) {
+    const from = normalizeTicketStatus(oldStatus);
+    const to = normalizeTicketStatus(newStatus);
+    if (from === to) return true;
+
+    const role = currentUser?.role;
+    if (!role) return false;
+
+    if (role === 'Admin' || role === 'Director') return true;
+
+    if (role === 'Area Coach') {
+        return (from === 'waiting' && to === 'inprogress') || (from === 'inprogress' && to === 'resolved');
+    }
+
+    if (role === 'Technician') {
+        if (from === 'unassigned' && to === 'assigned') return false;
+        if (to === 'assigned') return false;
+        return true;
+    }
+
+    return false;
 }
 
 function goHome() {
@@ -6893,7 +7277,8 @@ const TRANSLATIONS = {
         tech_no_active: 'No hay trabajos asignados',
         tech_no_completed: 'No hay trabajos completados',
         // Admin summary
-        status_open: 'Abiertos',
+        status_open: 'Sin Asignar',
+        status_unassigned: 'Sin Asignar',
         status_assigned: 'Asignados',
         status_inprogress: 'En Progreso',
         status_waiting: 'En Espera',
@@ -6919,7 +7304,7 @@ const TRANSLATIONS = {
         // Tickets / Filters
         tickets_title: 'Tickets',
         filter_all: 'Todos',
-        filter_open: 'Abiertos',
+        filter_open: 'Sin Asignar',
         filter_assigned: 'Asignados',
         filter_inprogress: 'En Progreso',
         filter_waiting: 'En Espera',
@@ -6937,7 +7322,7 @@ const TRANSLATIONS = {
         admin_db_cleanup: 'Limpieza de Base de Datos',
         // Misc
         with_issues: 'Con Problemas',
-        no_open_tickets: 'No hay tickets abiertos',
+        no_open_tickets: 'No hay tickets sin asignar',
         view_as: 'Ver Como',
         admin_panel: 'Panel de Admin',
         sign_out: 'Cerrar Sesión',
@@ -7045,10 +7430,22 @@ function formatDate(ts) {
 function getActivityText(a) {
     if (a.action === 'created') return 'created this ticket';
     if (a.action === 'status_change') {
-        const labels = { open:'Open', assigned:'Assigned', inprogress:'In Progress', waiting:'Waiting on Parts', resolved:'Resolved', closed:'Closed' };
-        let text = `changed status to <strong>${labels[a.newStatus] || a.newStatus}</strong>`;
+        const next = getStatusLabel(a.newStatus);
+        let text = `changed status to <strong>${next}</strong>`;
+        if (a.waitingReason) {
+            text += ` (${WAITING_REASONS[a.waitingReason] || a.waitingReason}`;
+            if (a.waitingReason === 'other' && a.waitingReasonNote) text += `: ${escHtml(a.waitingReasonNote)}`;
+            text += ')';
+        }
         if (a.note) text += ` — "${escHtml(a.note)}"`;
         return text;
+    }
+    if (a.action === 'priority_change') {
+        return `changed urgency from <strong>${capitalize(a.oldPriority || 'routine')}</strong> to <strong>${capitalize(a.newPriority || 'routine')}</strong> — "${escHtml(a.note || '')}"`;
+    }
+    if (a.action === 'assignment_change') {
+        const who = a.assignedTo ? escHtml(a.assignedTo) : 'Unassigned';
+        return `updated assignment to <strong>${who}</strong>`;
     }
     if (a.action === 'note') return `added a note: "${escHtml(a.note)}"`;
     return a.action;
