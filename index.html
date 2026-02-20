@@ -790,6 +790,33 @@ body {
     justify-content: center;
 }
 
+.selected-store-summary {
+    margin-top: 16px;
+    border-radius: var(--radius-lg);
+    border: 2px solid #1d4ed8;
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    padding: 16px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.selected-store-summary.hidden { display: none; }
+
+.selected-store-summary-name {
+    font-size: 21px;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
+.selected-store-summary-address {
+    margin-top: 6px;
+    font-size: 14px;
+    color: #1e3a8a;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
 .action-card {
     background: var(--card);
     border: 2px solid var(--border);
@@ -1751,6 +1778,12 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
 [data-theme="dark"] .coach-store-btn { background: var(--card); border-color: var(--border); }
 [data-theme="dark"] .coach-store-btn:hover { border-color: var(--primary); }
 [data-theme="dark"] .landing-store-name { background: var(--card); border-color: var(--border); }
+[data-theme="dark"] .selected-store-summary {
+    background: linear-gradient(135deg, #1e293b 0%, #172554 100%);
+    border-color: #60a5fa;
+}
+[data-theme="dark"] .selected-store-summary-name { color: #f8fafc; }
+[data-theme="dark"] .selected-store-summary-address { color: #bfdbfe; }
 
 /* Mobile */
 @media (max-width: 600px) {
@@ -1769,6 +1802,9 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
     .form-label { font-size: 11px; }
     .form-select, .form-input { font-size: 13px; padding: 8px 10px; }
     .action-grid { gap: 10px; }
+    .selected-store-summary { padding: 14px; }
+    .selected-store-summary-name { font-size: 18px; }
+    .selected-store-summary-address { font-size: 13px; }
     .action-card { padding: 16px 12px; min-width: 110px; max-width: 48%; }
     .action-icon { font-size: 24px; }
     .action-title { font-size: 13px; }
@@ -2756,6 +2792,11 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                             <option value="">Choose store...</option>
                         </select>
                     </div>
+                </div>
+
+                <div id="selectedStoreSummary" class="selected-store-summary hidden" aria-live="polite">
+                    <div id="selectedStoreSummaryName" class="selected-store-summary-name"></div>
+                    <div id="selectedStoreSummaryAddress" class="selected-store-summary-address"></div>
                 </div>
 
                 <div id="actionButtons" class="action-grid hidden">
@@ -3917,6 +3958,7 @@ function showScreen(screenId) {
     if (screenId === 'storeSelection' && currentUser && (currentUser.role === 'Admin' || currentUser.role === 'Director')) {
         document.getElementById('adminSummary').classList.remove('hidden');
     }
+    if (screenId === 'storeSelection') renderSelectedStoreSummary();
 }
 
 function goBack() {
@@ -3935,12 +3977,31 @@ function goBack() {
 // ============================================================
 // STORE SELECTION
 // ============================================================
+function renderSelectedStoreSummary() {
+    const summaryCard = document.getElementById('selectedStoreSummary');
+    const summaryName = document.getElementById('selectedStoreSummaryName');
+    const summaryAddress = document.getElementById('selectedStoreSummaryAddress');
+    if (!summaryCard || !summaryName || !summaryAddress) return;
+
+    if (!selectedStore) {
+        summaryCard.classList.add('hidden');
+        summaryName.textContent = '';
+        summaryAddress.textContent = '';
+        return;
+    }
+
+    summaryName.textContent = selectedStore.name || selectedStore.code || 'Selected Store';
+    summaryAddress.textContent = selectedStore.address || 'Address unavailable';
+    summaryCard.classList.remove('hidden');
+}
+
 function filterStores() {
     const type = document.getElementById('storeType').value;
     const sel = document.getElementById('storeSelect');
     sel.innerHTML = '<option value="">Choose store...</option>';
     document.getElementById('actionButtons').classList.add('hidden');
     selectedStore = null;
+    renderSelectedStoreSummary();
 
     if (!type) return;
 
@@ -3968,9 +4029,15 @@ function filterStores() {
 
 function selectStore() {
     const id = document.getElementById('storeSelect').value;
-    if (!id) { document.getElementById('actionButtons').classList.add('hidden'); selectedStore = null; return; }
+    if (!id) {
+        document.getElementById('actionButtons').classList.add('hidden');
+        selectedStore = null;
+        renderSelectedStoreSummary();
+        return;
+    }
     selectedStore = stores.find(s => s.id === id);
     document.getElementById('actionButtons').classList.remove('hidden');
+    renderSelectedStoreSummary();
 }
 
 
@@ -4223,6 +4290,7 @@ function mapSelectStore(storeId, action) {
     selectedStore = store;
     document.getElementById('storeSelect').value = storeId;
     document.getElementById('actionButtons').classList.remove('hidden');
+    renderSelectedStoreSummary();
     // Close any open popup
     if (overviewMap) overviewMap.closePopup();
     // Navigate
@@ -4270,6 +4338,7 @@ function desktopSelectStore(storeId) {
     selectedStore = store;
     document.getElementById('storeSelect').value = storeId;
     document.getElementById('actionButtons').classList.remove('hidden');
+    renderSelectedStoreSummary();
     document.querySelectorAll('.store-list-item').forEach(el => el.classList.remove('active'));
     if (event && event.currentTarget) event.currentTarget.classList.add('active');
     if (overviewMap && store.lat && store.lng) {
@@ -6172,6 +6241,7 @@ function resetPostImpersonationUI() {
     document.querySelectorAll('.brand-pill').forEach(b => b.classList.remove('active'));
     document.getElementById('storeSelect').innerHTML = '<option value="">Choose store...</option>';
     document.getElementById('actionButtons').classList.add('hidden');
+    renderSelectedStoreSummary();
     document.getElementById('mapOverview').classList.add('hidden');
     document.getElementById('adminSummary').classList.add('hidden');
 
