@@ -649,6 +649,8 @@ body {
 }
 
 /* Vendor management */
+.vendor-manage-option { color: var(--accent); font-weight: 700; }
+
 .vendor-row {
     display: flex;
     align-items: center;
@@ -2488,7 +2490,6 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
 }
 
 /* admin mobile handled in main responsive section */
-
     </style>
 </head>
 <body class="exp-manager-mobile">
@@ -3298,7 +3299,6 @@ const stores = [
     {id:"CW001",name:"Scarborough Car Wash",code:"CW001",type:"carwash",brand:"cw",lat:32.3741146,lng:-96.8662758,address:"1448 FM 66, Waxahachie, TX 75167"},
     {id:"CW002",name:"Scarborough Travel Stop",code:"CW002",type:"cstore",brand:"pqs",lat:32.3782774,lng:-96.7708138,address:"3298 S Interstate Hwy 35 E, Waxahachie, TX 75165"},
 ];
-
 </script>
 <script>
 // ============================================================
@@ -3909,15 +3909,6 @@ function selectStore() {
 let overviewMap = null;
 let mapMarkers = [];
 let allTicketCounts = {}; // { storeCode: { open: N, total: N } }
-let desktopTicketInsights = {
-    slaRisk: [],
-    agingBuckets: [],
-    unassignedCritical: [],
-    techWorkload: [],
-    pendingApprovals: [],
-    vendorFollowups: []
-};
-
 function isMultiStoreUser() {
     return currentUser && (currentUser.role === 'Admin' || currentUser.role === 'Director' || currentUser.role === 'Area Coach' || currentUser.role === 'Technician');
 }
@@ -4103,13 +4094,6 @@ function fetchTicketCounts(codes, callback) {
                 }
             }
         });
-
-        if (isAdminDesktopExperience()) {
-            desktopTicketInsights = buildDesktopInsights(scopedTickets, codes);
-            renderDesktopInsightsCards('mapDesktopInsights', desktopTicketInsights);
-        }
-        const mapInsights = document.getElementById('mapDesktopInsights');
-        if (mapInsights) mapInsights.style.display = (window.innerWidth >= 1100 && isAdminDesktopExperience()) ? '' : 'none';
 
         callback();
     });
@@ -4807,6 +4791,7 @@ async function loadVendors() {
     renderVendorRows();
     populateAssignDropdown();
     renderVendorCatCheckboxes();
+    renderVendorManagerRows();
 }
 
 function renderVendorRows() {
@@ -4827,7 +4812,7 @@ function renderVendorRows() {
 function renderVendorCatCheckboxes() {
     const container = document.getElementById('newVendorCats');
     if (!container) return;
-    const cats = ['plumbing','equipment','it','structural','safety','other'];
+    const cats = ['all','plumbing','equipment','it','structural','safety','other'];
     container.innerHTML = cats.map(c => `<label class="store-cb" style="border:1px solid var(--border);border-radius:6px;padding:2px 6px"><input type="checkbox" class="vendor-cat-cb" value="${c}"> ${capitalize(c)}</label>`).join('');
 }
 
@@ -4866,8 +4851,83 @@ async function removeVendor(id) {
     }
 }
 
+function showVendorManager() {
+    if (!canManageVendors()) { showToast('Only admin/director/IT support can manage vendors', 'error'); return; }
+    document.getElementById('vendorManagerModal')?.remove();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'admin-modal';
+    overlay.id = 'vendorManagerModal';
+    overlay.style.zIndex = '220';
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+    overlay.innerHTML = `<div class="modal-card" style="max-width:760px">
+        <h3>🏢 Approved Vendors</h3>
+        <p style="font-size:13px;color:var(--text-mid);margin-bottom:10px">Add or remove vendors used in assignment dropdowns.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+            <input class="form-input" id="vmName" placeholder="Vendor name">
+            <input class="form-input" id="vmAreas" placeholder="Areas served (optional)">
+        </div>
+        <div id="vmCats" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:10px">
+            <button class="btn btn-primary" onclick="addVendorFromManager()">Add Vendor</button>
+        </div>
+        <div id="vmRows" style="max-height:300px;overflow:auto;border:1px solid var(--border);border-radius:8px;padding:8px"></div>
+        <div class="modal-actions" style="margin-top:10px">
+            <button class="btn btn-secondary" onclick="document.getElementById('vendorManagerModal')?.remove()">Close</button>
+        </div>
+    </div>`;
+    document.body.appendChild(overlay);
+    renderVendorManagerCatCheckboxes();
+    renderVendorManagerRows();
+}
+
+function renderVendorManagerCatCheckboxes() {
+    const container = document.getElementById('vmCats');
+    if (!container) return;
+    const cats = ['all','plumbing','equipment','it','structural','safety','other'];
+    container.innerHTML = cats.map(c => `<label class="store-cb" style="border:1px solid var(--border);border-radius:6px;padding:2px 6px"><input type="checkbox" class="vm-cat-cb" value="${c}"> ${capitalize(c)}</label>`).join('');
+}
+
+function renderVendorManagerRows() {
+    const container = document.getElementById('vmRows');
+    if (!container) return;
+    if (!vendorList.length) {
+        container.innerHTML = '<div class="empty-state" style="font-size:13px">No approved vendors yet</div>';
+        return;
+    }
+    container.innerHTML = vendorList.map(v => `<div class="vendor-row">
+        <span class="vendor-name">${escHtml(v.name)}</span>
+        <span class="vendor-meta">${escHtml(v.areas || '')}${(v.categories || []).length ? ' · ' + (v.categories || []).map(capitalize).join(', ') : ''}</span>
+        <button class="btn btn-ghost" style="font-size:11px;color:var(--danger)" onclick="removeVendorFromManager('${v.id}')">Delete</button>
+    </div>`).join('');
+}
+
+async function addVendorFromManager() {
+    const name = (document.getElementById('vmName')?.value || '').trim();
+    const areas = (document.getElementById('vmAreas')?.value || '').trim();
+    const cats = [...document.querySelectorAll('.vm-cat-cb:checked')].map(c => c.value);
+    if (!name) { showToast('Enter vendor name', 'error'); return; }
+    const canEdit = await checkVendorEditPermission();
+    if (!canEdit) { showToast('No permission', 'error'); return; }
+    try {
+        await db.ref('config/vendors').push({ name, areas, categories: cats });
+        showToast('Vendor added', 'success');
+        document.getElementById('vmName').value = '';
+        document.getElementById('vmAreas').value = '';
+        document.querySelectorAll('.vm-cat-cb').forEach(c => c.checked = false);
+        await loadVendors();
+    } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+    }
+}
+
+async function removeVendorFromManager(id) {
+    if (!confirm('Delete this vendor from approved list?')) return;
+    await removeVendor(id);
+}
+
 async function checkVendorEditPermission() {
-    if (currentUser.role === 'Admin') return true;
+    if (canManageVendors(currentUser)) return true;
     const snap = await db.ref('config/vendorEditors').once('value');
     const editors = snap.val() || [];
     return editors.includes(currentUser.email);
@@ -4913,6 +4973,197 @@ function populateAssignDropdown() {
             sel.innerHTML += `<option value="vendor:${v.name}">🏢 ${v.name}</option>`;
         });
         sel.innerHTML += '</optgroup>';
+    }
+
+    if (canManageVendors()) {
+        sel.innerHTML += '<optgroup label="Vendor Tools"><option value="__edit_vendors__" class="vendor-manage-option">🛠 Edit Vendors</option></optgroup>';
+    }
+    sel.onchange = () => handleVendorManagerSelection(sel);
+}
+
+function getAssignmentOptionsHtml(storeCode) {
+    const availTechs = getAvailableTechs(storeCode || '');
+    let html = '<option value="">Assign to...</option>';
+
+    if (availTechs.length) {
+        html += '<optgroup label="Repair Technicians">';
+        availTechs.forEach(t => {
+            html += `<option value="tech:${t.email}">🔧 ${escHtml(t.name)}</option>`;
+        });
+        html += '</optgroup>';
+    }
+
+    if (vendorList.length) {
+        html += '<optgroup label="Approved Vendors">';
+        vendorList.forEach(v => {
+            html += `<option value="vendor:${escHtml(v.name)}">🏢 ${escHtml(v.name)}</option>`;
+        });
+        html += '</optgroup>';
+    }
+
+    if (canManageVendors()) {
+        html += '<optgroup label="Vendor Tools"><option value="__edit_vendors__" class="vendor-manage-option">🛠 Edit Vendors</option></optgroup>';
+    }
+
+    return html;
+}
+
+function handleVendorManagerSelection(selectEl) {
+    if (!selectEl || selectEl.value !== '__edit_vendors__') return false;
+    if (!canManageVendors()) {
+        toast('Only admin/director/IT support can manage vendors', 'error');
+        selectEl.value = '';
+        return true;
+    }
+    showVendorManager();
+    setTimeout(() => { selectEl.value = ''; }, 0);
+    return true;
+}
+
+function renderInlineAssignControls(ticket, contextPrefix = 'inline') {
+    if (!canAssignTickets()) return '';
+    const status = normalizeTicketStatus(ticket.status);
+    if (status === 'closed') return '';
+
+    const safeKey = String(ticket._key || ticket.id || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const selectId = `${contextPrefix}Assign_${safeKey}`;
+    const actionLabel = status === 'unassigned' ? 'Assign' : 'Reassign';
+
+    const ticketKey = ticket._key || ticket.id || '';
+    return `<div class="inline-assign-row" onclick="event.stopPropagation()">
+        <select class="form-select inline-assign-select" id="${selectId}">${getAssignmentOptionsHtml(ticket.storeCode)}</select>
+        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();quickAssignTicket('${ticketKey}', '${selectId}')">${actionLabel}</button>
+    </div>`;
+}
+
+// ------------------------------------------------------------
+// Assignment reminder + email helper (for parties outside app)
+// ------------------------------------------------------------
+function buildAssignEmailDraft(ticket, partyLabel) {
+    const lines = [
+        `Hello ${partyLabel},`,
+        '',
+        `Please find details below for a job we need done at ${ticket.storeName || ticket.storeCode || 'the location'}.`,
+        '',
+        'Details from ticket below:',
+        `- Ticket ID: ${ticket.id || ticket._key || ''}`,
+        `- Location: ${ticket.storeName || ticket.storeCode || ''}`,
+        `- Status: ${getStatusLabel(ticket.status)}`,
+        `- Priority: ${capitalize(ticket.priority || 'routine')}`,
+        `- Category: ${capitalize(ticket.category || '')}${ticket.location ? ' / ' + capitalize(ticket.location) : ''}`,
+        `- Description: ${ticket.description || ''}`,
+        ticket.contactName ? `- Contact: ${ticket.contactName}${ticket.contactPhone ? ' (' + ticket.contactPhone + ')' : ''}` : '',
+        '',
+        'Attach picture below:',
+        ...(Array.isArray(ticket.photos) && ticket.photos.length
+            ? ticket.photos.map((url, i) => `- Photo ${i + 1}: ${url}`)
+            : ['- No photo attached in ticket']),
+        '',
+        'Thank you.'
+    ].filter(Boolean);
+
+    return lines.join('\n');
+}
+
+function openAssignEmailComposer(ticket, partyLabel) {
+    const overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    const draft = buildAssignEmailDraft(ticket, partyLabel);
+    overlay.innerHTML = `<div class="confirm-box" style="max-width:700px;width:min(92vw,700px)">
+        <h4>✉️ Email Draft</h4>
+        <p style="text-align:left">You can edit this text before copying into your email.</p>
+        <textarea id="assignEmailDraft" class="form-textarea" style="min-height:280px">${escHtml(draft)}</textarea>
+        <div class="confirm-btns" style="margin-top:10px">
+            <button class="btn btn-secondary" id="assignEmailClose">Close</button>
+            <button class="btn btn-primary" id="assignEmailCopy">Copy</button>
+        </div>
+    </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector('#assignEmailClose').onclick = () => overlay.remove();
+    overlay.querySelector('#assignEmailCopy').onclick = async () => {
+        const txt = overlay.querySelector('#assignEmailDraft').value;
+        try {
+            await navigator.clipboard.writeText(txt);
+            toast('Email draft copied', 'success');
+        } catch {
+            toast('Could not copy automatically. Please copy manually.', 'error');
+        }
+    };
+}
+
+function showAssignReminder(ticket, partyLabel) {
+    return new Promise(resolve => {
+        const overlay = document.createElement('div');
+        overlay.className = 'confirm-overlay';
+        overlay.innerHTML = `<div class="confirm-box" style="max-width:520px">
+            <h4>📣 Assignment sent</h4>
+            <p>Don’t forget to let <strong>${escHtml(partyLabel)}</strong> know about this job — they don’t have access to this site.</p>
+            <div class="confirm-btns">
+                <button class="btn btn-secondary" id="assignCancel">Cancel</button>
+                <button class="btn btn-primary" id="assignOkay">Okay</button>
+                <button class="btn btn-accent" id="assignEmail">Write me an email</button>
+            </div>
+        </div>`;
+        document.body.appendChild(overlay);
+
+        overlay.querySelector('#assignCancel').onclick = () => { overlay.remove(); resolve('cancel'); };
+        overlay.querySelector('#assignOkay').onclick = () => { overlay.remove(); resolve('okay'); };
+        overlay.querySelector('#assignEmail').onclick = () => {
+            overlay.remove();
+            openAssignEmailComposer(ticket, partyLabel);
+            resolve('email');
+        };
+    });
+}
+
+async function quickAssignTicket(ticketKey, selectId) {
+    if (!ticketKey) { toast('Ticket key is missing. Please refresh and try again.', 'error'); return; }
+    const select = document.getElementById(selectId);
+    if (!select) return;
+    const value = select.value;
+
+    if (handleVendorManagerSelection(select)) return;
+    if (!value) { toast('Select a technician or vendor', 'error'); return; }
+    if (!canAssignTickets()) { toast('You do not have assignment permissions', 'error'); return; }
+
+    const parsed = parseAssignmentValue(value);
+    if (!parsed.assignedTo) { toast('Invalid assignee', 'error'); return; }
+
+    try {
+        const ticketSnap = await db.ref(`tickets/${ticketKey}`).once('value');
+        const ticket = ticketSnap.val();
+        if (!ticket) { toast('Ticket not found. Please refresh.', 'error'); return; }
+
+        const updates = {
+            [`tickets/${ticketKey}/assignedTo`]: parsed.assignedTo,
+            [`tickets/${ticketKey}/assigneeType`]: parsed.assigneeType,
+            [`tickets/${ticketKey}/status`]: 'assigned',
+            [`tickets/${ticketKey}/updatedAt`]: firebase.database.ServerValue.TIMESTAMP
+        };
+
+        const actSnap = await db.ref(`tickets/${ticketKey}/activity`).once('value');
+        const activity = actSnap.val() || [];
+        activity.push({
+            action: 'assignment_change',
+            by: currentUser.name,
+            byEmail: currentUser.email,
+            timestamp: Date.now(),
+            assignedTo: parsed.assignedTo,
+            assigneeType: parsed.assigneeType,
+            note: 'Assigned from unassigned queue'
+        });
+        updates[`tickets/${ticketKey}/activity`] = activity;
+
+        await db.ref().update(updates);
+        toast('Ticket assigned', 'success');
+        showAssignReminder({ ...ticket, _key: ticketKey, status: 'assigned' }, parsed.assignedTo);
+
+        if (!document.getElementById('allTicketsScreen').classList.contains('hidden')) filterAllTickets();
+        if (currentMapView === 'list') renderStoreListView();
+        loadAdminSummary();
+    } catch (err) {
+        console.error('Quick assign failed', err);
+        toast('Assignment failed', 'error');
     }
 }
 
@@ -5463,11 +5714,6 @@ function loadAdminSummary() {
                 <div class="asc-label" data-i18n="status_closed">Closed</div>
             </div>`;
 
-        if (isAdminDesktopExperience()) {
-            desktopTicketInsights = buildDesktopInsights(tickets);
-            renderDesktopInsightsCards('adminDesktopInsights', desktopTicketInsights);
-        }
-
         document.getElementById('adminSummary').classList.remove('hidden');
     });
 }
@@ -5889,9 +6135,10 @@ function doViewAs() {
         document.getElementById('userName').textContent = currentUser.name;
         document.getElementById('userRole').innerHTML = getRoleTitle(currentUser) + ' <span style="font-size:10px;color:var(--accent);font-weight:700">(viewing as)</span>';
 
-        // Keep admin + viewAs buttons visible (real user is admin)
-        document.getElementById('adminBtn').classList.remove('hidden');
-        document.getElementById('viewAsBtn').classList.remove('hidden');
+        // Mirror impersonated user's controls exactly.
+        document.getElementById('adminBtn').classList.toggle('hidden', !canAccessAdminPanel(currentUser));
+        document.getElementById('vendorBtn').classList.toggle('hidden', !canManageVendors(currentUser));
+        document.getElementById('viewAsBtn').classList.toggle('hidden', true);
 
         // Show/hide admin-only UI
         const allPill = document.getElementById('brandPill-all');
@@ -5940,6 +6187,7 @@ function exitViewAs() {
     document.getElementById('userRole').textContent = getRoleTitle(currentUser);
 
     // Restore admin experience
+    document.getElementById('vendorBtn')?.classList.toggle('hidden', !canManageVendors(currentUser));
     applyExperienceClass(currentUser.role);
     document.getElementById('brandPill-all')?.classList.remove('hidden');
     document.querySelector('.admin-only-opt')?.classList.remove('hidden');
@@ -7424,7 +7672,6 @@ document.addEventListener('keydown', (e) => {
         closeModal();
     }
 });
-
 </script>
 
 
