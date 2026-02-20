@@ -59,6 +59,7 @@
     /* Status colors */
     --status-unassigned: #dc2626;
     --status-assigned: #7c3aed;
+    --status-dispatched: #0ea5e9;
     --status-inprogress: #2563eb;
     --status-waiting: #d97706;
     --status-resolved: #059669;
@@ -97,6 +98,7 @@
     --shadow-lg: 0 10px 25px rgba(0,0,0,0.3);
     --status-unassigned: #f87171;
     --status-assigned: #a78bfa;
+    --status-dispatched: #38bdf8;
     --status-inprogress: #5b9cf6;
     --status-waiting: #f0b429;
     --status-resolved: #34d399;
@@ -172,6 +174,7 @@
 /* Ticket status badges - dark bg variants */
 [data-theme="dark"] .status-unassigned { background: rgba(239,68,68,0.15); }
 [data-theme="dark"] .status-assigned { background: rgba(139,92,246,0.15); }
+[data-theme="dark"] .status-dispatched { background: rgba(56,189,248,0.15); }
 [data-theme="dark"] .status-inprogress { background: rgba(59,130,246,0.15); }
 [data-theme="dark"] .status-waiting { background: rgba(240,180,41,0.15); }
 [data-theme="dark"] .status-resolved { background: rgba(52,211,153,0.15); }
@@ -1405,6 +1408,7 @@ body {
 
 .status-unassigned { background: #fef2f2; color: var(--status-unassigned); }
 .status-assigned { background: #f5f3ff; color: var(--status-assigned); }
+.status-dispatched { background: #e0f2fe; color: var(--status-dispatched); }
 .status-inprogress { background: #eff4ff; color: var(--status-inprogress); }
 .status-waiting { background: #fef9ee; color: var(--status-waiting); }
 .status-resolved { background: #ecfdf5; color: var(--status-resolved); }
@@ -2630,27 +2634,91 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
     margin-bottom: 16px;
     justify-content: center;
 }
-.admin-sum-card {
+
+.admin-sum-card{
+    --tile: var(--primary);
+    --tileOn: #ffffff;
+
     background: var(--card);
-    border-radius: var(--radius);
-    padding: 16px;
+    border-radius: 12px;
+    padding: 14px 12px;
     text-align: center;
-    border: 1px solid var(--border);
+    border: 2px solid var(--border);
     cursor: pointer;
-    transition: all 0.15s;
-    flex: 1 1 100px;
-    max-width: 150px;
-    min-width: 85px;
+    transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s, background 0.15s;
+    flex: 1 1 120px;
+    max-width: 180px;
+    min-width: 96px;
+
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: center;
+    justify-content: center;
+    min-height: 78px;
 }
-.admin-sum-card:hover { border-color: var(--primary); transform: translateY(-1px); }
-.admin-sum-card .asc-num { font-size: 28px; font-weight: 700; }
-.admin-sum-card .asc-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.3px; margin-top: 2px; }
-.asc-num.red { color: #dc2626; }
-.asc-num.orange { color: #d97706; }
-.asc-num.blue { color: #2563eb; }
-.asc-num.green { color: #059669; }
-.asc-num.purple { color: #7c3aed; }
-.asc-num.gray { color: #6b7280; }
+
+.admin-sum-card:hover{
+    border-color: var(--tile);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow);
+}
+
+.admin-sum-card.active{
+    background: var(--tile);
+    border-color: var(--tile);
+    box-shadow: var(--shadow-lg);
+}
+
+.admin-sum-card .asc-title{
+    font-size: clamp(12px, 1.3vw, 15px);
+    font-weight: 900;
+    letter-spacing: 0.35px;
+    text-transform: uppercase;
+    color: var(--tile);
+    line-height: 1.1;
+}
+
+.admin-sum-card.active .asc-title{ color: var(--tileOn); }
+
+.admin-sum-card .asc-num{
+    font-size: 26px;
+    font-weight: 900;
+    line-height: 1;
+    color: var(--tile);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.admin-sum-card.active .asc-num{ color: var(--tileOn); }
+
+.admin-sum-card .asc-desc{
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    line-height: 1.25;
+    max-width: 170px;
+    overflow-wrap: anywhere;
+}
+
+.admin-sum-card.active .asc-desc{
+    color: rgba(255,255,255,0.92);
+}
+
+@media (max-width: 768px){
+    .admin-summary-grid{ gap: 8px; }
+    .admin-sum-card{ padding: 12px 10px; min-height: 70px; max-width: none; }
+    .admin-sum-card .asc-desc{ display: none; } /* mobile: hide descriptors */
+}
+
+/* Unique status colors */
+.admin-sum-card[data-status="unassigned"]{ --tile: var(--status-unassigned); }
+.admin-sum-card[data-status="assigned"]{ --tile: var(--status-assigned); }
+.admin-sum-card[data-status="dispatched"]{ --tile: var(--status-dispatched); }
+.admin-sum-card[data-status="waiting"]{ --tile: var(--status-waiting); }
+.admin-sum-card[data-status="inprogress"]{ --tile: var(--status-inprogress); }
+.admin-sum-card[data-status="resolved"]{ --tile: var(--status-resolved); }
+.admin-sum-card[data-status="closed"]{ --tile: var(--status-closed); }
+
 
 /* Keep director/admin status numbers visible as a header */
 #adminSummary {
@@ -3364,7 +3432,8 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                     <option value="unassigned">Unassigned Tickets</option>
                     <option value="all">All Statuses</option>
                     <option value="assigned">Assigned</option>
-                    <option value="inprogress">In Progress</option>
+                    <option value="dispatched">Dispatched</option>
+                    <option value="inprogress">In Progress</option>In Progress</option>
                     <option value="waiting">Waiting</option>
                     <option value="resolved">Resolved</option>
                     <option value="closed">Closed</option>
@@ -3871,7 +3940,7 @@ const SUMMARY_LAYOUT_RULES = {
 const TICKET_STATUS_CONFIG = {
     unassigned: { order: 0, label: 'Unassigned', isActive: true, colorClass: 'unassigned', allowedTransitions: ['assigned', 'dispatched', 'inprogress', 'waiting', 'resolved', 'closed'] },
     assigned: { order: 1, label: 'Assigned', isActive: true, colorClass: 'assigned', allowedTransitions: ['dispatched', 'inprogress', 'waiting', 'resolved', 'closed'] },
-    dispatched: { order: 2, label: 'Dispatched', isActive: true, colorClass: 'assigned', allowedTransitions: ['inprogress', 'waiting', 'resolved', 'closed'] },
+    dispatched: { order: 2, label: 'Dispatched', isActive: true, colorClass: 'dispatched', allowedTransitions: ['inprogress', 'waiting', 'resolved', 'closed'] },
     waiting: { order: 3, label: 'Waiting', isActive: true, colorClass: 'waiting', allowedTransitions: ['inprogress', 'resolved', 'closed'] },
     inprogress: { order: 4, label: 'In Progress', isActive: true, colorClass: 'inprogress', allowedTransitions: ['waiting', 'resolved', 'closed'] },
     resolved: { order: 5, label: 'Resolved', isActive: false, colorClass: 'resolved', allowedTransitions: ['closed'] },
@@ -6310,26 +6379,39 @@ function renderAdminSummaryFromTickets(tickets) {
         if (Object.prototype.hasOwnProperty.call(statusCounts, key)) statusCounts[key]++;
     });
 
-    const numberClassByColor = {
-        unassigned: 'red',
-        assigned: 'purple',
-        inprogress: 'blue',
-        waiting: 'orange',
-        resolved: 'green',
-        closed: 'gray'
-    };
+    document.getElementById('adminSummaryGrid').innerHTML = STATUS_ORDER.map(status => {
+        const title = getStatusLabel(status);
+        const desc = getStatusDescriptor(status);
+        const count = statusCounts[status] || 0;
+        return `
+        <div class="admin-sum-card" data-status="${status}" onclick="handleAdminSummaryClick('${status}')">
+            <div class="asc-title">${title}</div>
+            <div class="asc-num">${count}</div>
+            <div class="asc-desc">${desc}</div>
+        </div>`;
+    }).join('');
 
-    document.getElementById('adminSummaryGrid').innerHTML = STATUS_ORDER.map(status => `
-        <div class="admin-sum-card" onclick="handleAdminSummaryClick('${status}')">
-            <div class="asc-num ${numberClassByColor[getStatusColorClass(status)] || 'blue'}">${statusCounts[status] || 0}</div>
-            <div class="asc-label">${getStatusLabel(status)}</div>
-        </div>`).join('');
-
+    updateAdminSummaryActive(adminSummaryActiveStatus);
     updateLayoutVisibility();
+}
+
+let adminSummaryActiveStatus = 'unassigned';
+
+function updateAdminSummaryActive(status) {
+    const next = normalizeTicketStatus(status || adminSummaryActiveStatus || 'unassigned') || 'unassigned';
+    adminSummaryActiveStatus = next;
+
+    const grid = document.getElementById('adminSummaryGrid');
+    if (!grid) return;
+
+    grid.querySelectorAll('.admin-sum-card').forEach(card => {
+        card.classList.toggle('active', card.dataset.status === adminSummaryActiveStatus);
+    });
 }
 
 
 function handleAdminSummaryClick(status) {
+    updateAdminSummaryActive(status);
     // If we're already in the All Tickets list, just switch the filter (no need to go back to overview).
     if (currentScreenId === 'allTicketsScreen') {
         const sel = document.getElementById('atFilterStatus');
@@ -6618,6 +6700,7 @@ function populateAllTicketsStoreFilter() {
 function filterAllTickets() {
     populateAllTicketsStoreFilter();
     const status = document.getElementById('atFilterStatus').value;
+    updateAdminSummaryActive(status);
     const type = document.getElementById('atFilterType').value;
     const storeCode = document.getElementById('atFilterStore').value;
     
@@ -8036,7 +8119,40 @@ function getNextStatusesByRole(status, user = currentUser, ticket = null) {
 
 function getStatusLabel(status) {
     const key = normalizeTicketStatus(status);
+
+    // Prefer Spanish translations when enabled
+    if (currentLang === 'es') {
+        const k = `status_${key}`;
+        if (TRANSLATIONS?.es?.[k]) return TRANSLATIONS.es[k];
+    }
+
     return getStatusMeta(key)?.label || capitalize(key || '');
+}
+
+function getStatusDescriptor(status) {
+    const key = normalizeTicketStatus(status);
+
+    const EN = {
+        unassigned: "You submitted a ticket for the issue",
+        assigned: "We've decided who will take care of this",
+        dispatched: "The issue has been communicated",
+        waiting: "Various reasons",
+        inprogress: "The technician is currently working",
+        resolved: "Your issue has been solved",
+        closed: "This ticket requires no more follow up"
+    };
+
+    const ES = {
+        unassigned: "Enviaste un ticket por el problema",
+        assigned: "Ya decidimos quién lo atenderá",
+        dispatched: "El problema ya fue comunicado",
+        waiting: "Por varias razones",
+        inprogress: "El técnico está trabajando",
+        resolved: "Tu problema fue resuelto",
+        closed: "Este ticket no requiere más seguimiento"
+    };
+
+    return (currentLang === 'es' ? ES[key] : EN[key]) || '';
 }
 
 function canTransitionStatus(oldStatus, newStatus, ticket) {
@@ -8156,6 +8272,7 @@ const TRANSLATIONS = {
         status_open: 'Sin Asignar',
         status_unassigned: 'Sin Asignar',
         status_assigned: 'Asignados',
+        status_dispatched: 'Despachados',
         status_inprogress: 'En Progreso',
         status_waiting: 'En Espera',
         status_resolved: 'Resueltos',
@@ -8341,7 +8458,7 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v5.9.0</span>
+    <span>R&M Tracker v6.0.1</span>
 </div>
 
 </body>
