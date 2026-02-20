@@ -3412,9 +3412,46 @@ function getDirectoryProfileByEmail(email) {
     return USER_DIRECTORY[String(email).toLowerCase()] || null;
 }
 
+function getDirectoryProfileByName(name) {
+    if (!name) return null;
+    const target = String(name).trim().toLowerCase();
+    if (!target) return null;
+    return Object.values(USER_DIRECTORY).find(profile => String(profile?.name || '').trim().toLowerCase() === target) || null;
+}
+
 function getDirectoryTitleByEmail(email, fallback = '') {
     const profile = getDirectoryProfileByEmail(email);
     return (profile && profile.title) ? profile.title : fallback;
+}
+
+function resolveRuntimeProfile(authUser, dbUser = {}, opts = {}) {
+    const email = String(dbUser?.email || authUser?.email || '').toLowerCase();
+    const name = dbUser?.name || authUser?.displayName || (email ? email.split('@')[0] : 'Unknown');
+    const byEmail = getDirectoryProfileByEmail(email);
+    const byName = !byEmail ? getDirectoryProfileByName(name) : null;
+    const source = byEmail ? 'directory-email' : (byName ? 'directory-name' : 'firebase-fallback');
+    const profile = byEmail || byName || dbUser || {};
+
+    const resolved = {
+        uid: authUser?.uid || dbUser?.uid || '',
+        email,
+        name,
+        role: normalizeRole(profile.role),
+        stores: Array.isArray(profile.stores)
+            ? profile.stores
+            : (typeof profile.stores === 'string' ? profile.stores.split(',').map(s => s.trim()).filter(Boolean) : []),
+        title: profile.title || profile.role || normalizeRole(profile.role),
+        _profileSource: source
+    };
+
+    if (opts.debug && source !== 'directory-email') {
+        const msg = source === 'directory-name'
+            ? `[ViewAs] Directory email miss; name fallback hit for "${name}" (${email || 'no-email'})`
+            : `[ViewAs] Directory fallback miss; using Firebase profile for "${name}" (${email || 'no-email'})`;
+        console.warn(msg, { source, email, name, dbUser });
+    }
+
+    return resolved;
 }
 
 </script>
@@ -3615,15 +3652,7 @@ async function loadUserData(user) {
             }
         }
 
-        const fallbackTitle = getDirectoryTitleByEmail(user.email, '');
-        currentUser = {
-            uid: user.uid,
-            email: user.email,
-            name: data.name || user.email.split('@')[0],
-            role: normalizeRole(data.role),
-            stores: data.stores || [],
-            title: data.title || data.role || normalizeRole(data.role)
-        };
+        currentUser = resolveRuntimeProfile(user, data);
 
         showAppScreen();
     } catch (err) {
@@ -6107,17 +6136,19 @@ function doViewAs() {
         // Stash real user if not already impersonating
         if (!realUser) realUser = { ...currentUser };
 
-        // Impersonate
-        const fallbackTitle = getDirectoryTitleByEmail(data.email || '', '');
+        // Impersonate using runtime profile resolution (directory-first with explicit fallback).
+        const resolved = resolveRuntimeProfile({ uid, email: data.email || '', displayName: data.name || '' }, data, { debug: true });
         currentUser = {
+            ...resolved,
             uid: realUser.uid,
-            email: data.email || '',
-            name: data.name || 'Unknown',
-            role: normalizeRole(data.role),
-            stores: data.stores || [],
-            title: data.title || data.role || normalizeRole(data.role),
-            _impersonating: data.name || data.email
+            _impersonating: resolved.name || resolved.email
         };
+
+        if (resolved._profileSource === 'directory-name') {
+            showToast('View As debug: directory email miss, name fallback hit.', 'warning');
+        } else if (resolved._profileSource === 'firebase-fallback') {
+            showToast('View As debug: no directory match; using Firebase profile fallback.', 'warning');
+        }
 
         document.getElementById('viewAsModal').remove();
 
@@ -7336,16 +7367,26 @@ function isItsupportUser(user = currentUser) {
     return !!user && String(user.email || '').toLowerCase() === 'itsupport@dossaniparadise.com';
 }
 
+function getEffectiveUserRole(user = currentUser) {
+    return normalizeRole(user?.role);
+}
+
 function canAccessAdminPanel(user = currentUser) {
     return isItsupportUser(user);
 }
 
 function canAssignTickets(user = currentUser) {
-    return !!user && (user.role === 'Admin' || user.role === 'Director');
+    const role = getEffectiveUserRole(user);
+    return role === 'Admin' || role === 'Director';
+}
+
+function canManageVendors(user = currentUser) {
+    const role = getEffectiveUserRole(user);
+    return isItsupportUser(user) || role === 'Admin' || role === 'Director';
 }
 
 function canEditUrgency(user = currentUser) {
-    return !!user && user.role !== 'Technician';
+    return getEffectiveUserRole(user) !== 'Technician';
 }
 
 function normalizeTicketStatus(status) {
