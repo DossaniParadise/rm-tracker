@@ -5506,13 +5506,6 @@ async function quickAssignTicket(ticketKey, selectId) {
         const ticket = ticketSnap.val();
         if (!ticket) { toast('Ticket not found. Please refresh.', 'error'); return; }
 
-        const updates = {
-            [`tickets/${ticketKey}/assignedTo`]: parsed.assignedTo,
-            [`tickets/${ticketKey}/assigneeType`]: parsed.assigneeType,
-            [`tickets/${ticketKey}/status`]: 'assigned',
-            [`tickets/${ticketKey}/updatedAt`]: firebase.database.ServerValue.TIMESTAMP
-        };
-
         const actSnap = await db.ref(`tickets/${ticketKey}/activity`).once('value');
         const activity = actSnap.val() || [];
         activity.push({
@@ -5524,15 +5517,25 @@ async function quickAssignTicket(ticketKey, selectId) {
             assigneeType: parsed.assigneeType,
             note: 'Assigned from unassigned queue'
         });
-        updates[`tickets/${ticketKey}/activity`] = activity;
 
-        await db.ref().update(updates);
+        await db.ref().update({
+            [`tickets/${ticketKey}/assignedTo`]: parsed.assignedTo,
+            [`tickets/${ticketKey}/assigneeType`]: parsed.assigneeType,
+            [`tickets/${ticketKey}/status`]: 'assigned',
+            [`tickets/${ticketKey}/updatedAt`]: firebase.database.ServerValue.TIMESTAMP,
+            [`tickets/${ticketKey}/activity`]: activity
+        });
+
+        syncAfterTicketMutation(ticketKey, {
+            assignedTo: parsed.assignedTo,
+            assigneeType: parsed.assigneeType,
+            status: 'assigned',
+            updatedAt: Date.now(),
+            activity
+        });
+
         toast('Ticket assigned', 'success');
         showAssignReminder({ ...ticket, _key: ticketKey, status: 'assigned' }, parsed.assignedTo);
-
-        if (!document.getElementById('allTicketsScreen').classList.contains('hidden')) filterAllTickets();
-        if (currentMapView === 'list') renderStoreListView();
-        loadAdminSummary();
     } catch (err) {
         console.error('Quick assign failed', err);
         toast('Assignment failed', 'error');
@@ -5571,50 +5574,6 @@ function renderInlineAssignControls(ticket, contextPrefix = 'inline') {
         <select class="form-select inline-assign-select" id="${selectId}">${getAssignmentOptionsHtml(ticket.storeCode)}</select>
         <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();quickAssignTicket('${ticket._key}', '${selectId}')">Assign</button>
     </div>`;
-}
-
-async function quickAssignTicket(ticketKey, selectId) {
-    const select = document.getElementById(selectId);
-    if (!select) return;
-    const value = select.value;
-
-    if (!value) { toast('Select a technician or vendor', 'error'); return; }
-    if (!canAssignTickets()) { toast('You do not have assignment permissions', 'error'); return; }
-
-    const parsed = parseAssignmentValue(value);
-    if (!parsed.assignedTo) { toast('Invalid assignee', 'error'); return; }
-
-    try {
-        const updates = {
-            [`tickets/${ticketKey}/assignedTo`]: parsed.assignedTo,
-            [`tickets/${ticketKey}/assigneeType`]: parsed.assigneeType,
-            [`tickets/${ticketKey}/status`]: 'assigned',
-            [`tickets/${ticketKey}/updatedAt`]: firebase.database.ServerValue.TIMESTAMP
-        };
-
-        const actSnap = await db.ref(`tickets/${ticketKey}/activity`).once('value');
-        const activity = actSnap.val() || [];
-        activity.push({
-            action: 'assignment_change',
-            by: currentUser.name,
-            byEmail: currentUser.email,
-            timestamp: Date.now(),
-            assignedTo: parsed.assignedTo,
-            assigneeType: parsed.assigneeType,
-            note: 'Assigned from unassigned queue'
-        });
-        updates[`tickets/${ticketKey}/activity`] = activity;
-
-        await db.ref().update(updates);
-        toast('Ticket assigned', 'success');
-
-        if (!document.getElementById('allTicketsScreen').classList.contains('hidden')) filterAllTickets();
-        if (currentMapView === 'list') renderStoreListView();
-        loadAdminSummary();
-    } catch (err) {
-        console.error('Quick assign failed', err);
-        toast('Assignment failed', 'error');
-    }
 }
 
 function toggleDateFields() {
@@ -7429,19 +7388,18 @@ async function updateTicketStatus(key, status, el) {
 }
 
 // ------------------------------------------------------------
-// Keep list/map views in sync after ticket updates
+// Keep ticket collections and active views in sync after updates
 // ------------------------------------------------------------
-function patchTicketLocally(ticketKey, patch) {
+function syncAfterTicketMutation(ticketKey, patch) {
     const applyPatch = (arr) => {
         const idx = arr.findIndex(x => x._key === ticketKey || x.id === ticketKey);
         if (idx >= 0) arr[idx] = { ...arr[idx], ...patch };
     };
+
     applyPatch(currentTickets);
     applyPatch(allTicketsData);
     applyPatch(notifyTickets);
-}
 
-function refreshViewsAfterTicketUpdate() {
     if (!document.getElementById('allTicketsScreen').classList.contains('hidden')) {
         filterAllTickets();
     }
@@ -7451,6 +7409,13 @@ function refreshViewsAfterTicketUpdate() {
     if (!document.getElementById('storeSelection').classList.contains('hidden') && currentMapView === 'list') {
         renderStoreListView();
     }
+
+    updateNotifyBadge();
+    const panel = document.getElementById('notifyPanel');
+    if (panel && panel.classList.contains('open')) {
+        renderNotifyPanel();
+    }
+
     loadAdminSummary();
 }
 
@@ -7596,8 +7561,7 @@ async function saveStatusUpdate(key) {
             updatedAt: Date.now(),
             activity: currentActivity
         };
-        patchTicketLocally(key, mergedPatch);
-        refreshViewsAfterTicketUpdate();
+        syncAfterTicketMutation(key, mergedPatch);
 
         statusPhotos = [];
         pendingWaitingReason = null;
