@@ -3771,6 +3771,21 @@ function coachSelectStore(storeId) {
     showScreen('coachStoreView');
 }
 
+
+function applyHeaderControlVisibility(user, { impersonating = false } = {}) {
+    const adminBtn = document.getElementById('adminBtn');
+    const vendorBtn = document.getElementById('vendorBtn');
+    const viewAsBtn = document.getElementById('viewAsBtn');
+
+    const canAccessAdmin = !!(user && canAccessAdminPanel(user));
+    const canAccessVendors = !!(user && canManageVendors(user));
+    const canUseViewAs = !!(user && isItsupportUser(user) && !impersonating);
+
+    adminBtn?.classList.toggle('hidden', !canAccessAdmin);
+    vendorBtn?.classList.toggle('hidden', !canAccessVendors);
+    viewAsBtn?.classList.toggle('hidden', !canUseViewAs);
+}
+
 function showAppScreen() {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('appContainer').style.display = 'flex';
@@ -3783,23 +3798,14 @@ function showAppScreen() {
     document.getElementById('userName').textContent = currentUser.name;
     document.getElementById('userRole').textContent = getRoleTitle(currentUser);
 
-    // Show admin button for admins (case-insensitive check)
-    if (canAccessAdminPanel(currentUser)) {
-        document.getElementById('adminBtn').classList.remove('hidden');
-        watchPendingUsers();
-    }
+    applyHeaderControlVisibility(currentUser, { impersonating: !!realUser });
+    if (canAccessAdminPanel(currentUser)) watchPendingUsers();
 
     // Show "All Locations" pill for admins
     if (currentUser.role === 'Admin' || currentUser.role === 'Director' || currentUser.role === 'Technician' || currentUser.stores === 'all') {
         document.getElementById('brandPill-all').classList.remove('hidden');
         document.querySelectorAll('.admin-only-opt').forEach(el => el.classList.remove('hidden'));
     }
-
-    // Show "View As" only for itsupport
-    if (isItsupportUser(currentUser)) {
-        document.getElementById('viewAsBtn').classList.remove('hidden');
-    }
-
     // Load notification routing config
     db.ref('config/notifyRouting').once('value', snap => {
         notifyRouting = snap.val() || {};
@@ -6136,9 +6142,7 @@ function doViewAs() {
         document.getElementById('userRole').innerHTML = getRoleTitle(currentUser) + ' <span style="font-size:10px;color:var(--accent);font-weight:700">(viewing as)</span>';
 
         // Mirror impersonated user's controls exactly.
-        document.getElementById('adminBtn').classList.toggle('hidden', !canAccessAdminPanel(currentUser));
-        document.getElementById('vendorBtn').classList.toggle('hidden', !canManageVendors(currentUser));
-        document.getElementById('viewAsBtn').classList.toggle('hidden', true);
+        applyHeaderControlVisibility(currentUser, { impersonating: true });
 
         // Show/hide admin-only UI
         const allPill = document.getElementById('brandPill-all');
@@ -6187,7 +6191,7 @@ function exitViewAs() {
     document.getElementById('userRole').textContent = getRoleTitle(currentUser);
 
     // Restore admin experience
-    document.getElementById('vendorBtn')?.classList.toggle('hidden', !canManageVendors(currentUser));
+    applyHeaderControlVisibility(currentUser, { impersonating: false });
     applyExperienceClass(currentUser.role);
     document.getElementById('brandPill-all')?.classList.remove('hidden');
     document.querySelector('.admin-only-opt')?.classList.remove('hidden');
