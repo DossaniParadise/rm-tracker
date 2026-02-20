@@ -2790,7 +2790,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
             <button class="admin-btn hidden" id="vendorBtn" onclick="showVendorManager()" title="Manage approved vendors">🏢⚙️</button>
             <button class="admin-btn hidden" id="notifyBtn" onclick="toggleNotifyPanel()" style="position:relative">🔔 <span class="badge hidden" id="notifyBadge" style="background:#dc2626">0</span></button>
             <button class="admin-btn hidden" id="viewAsBtn" onclick="showViewAsModal()">👁 View As</button>
-            <button class="admin-btn hidden" id="returnViewAsBtn" onclick="exitViewAs()">↩ Return to IT</button>
+            <button class="admin-btn hidden" id="returnViewAsBtn" onclick="exitViewAs()">↩ Back to my profile</button>
             <button class="btn-logout" onclick="logout()" data-i18n="sign_out">Sign Out</button>
         </div>
     </div>
@@ -4082,7 +4082,7 @@ function coachSelectStore(storeId) {
 }
 
 
-function applyHeaderControlVisibility(user, { impersonating = false } = {}) {
+function applyRoleScopedControls(user, { impersonating = false } = {}) {
     const adminBtn = document.getElementById('adminBtn');
     const vendorBtn = document.getElementById('vendorBtn');
     const viewAsBtn = document.getElementById('viewAsBtn');
@@ -4092,14 +4092,15 @@ function applyHeaderControlVisibility(user, { impersonating = false } = {}) {
     const canAccessVendors = !!(user && canManageVendors(user));
     const isImpersonating = !!(impersonating || realUser);
     const canUseViewAs = !!(user && isItsupportUser(user) && !isImpersonating);
+    const canReturnToProfile = !!realUser;
 
     adminBtn?.classList.toggle('hidden', !canAccessAdmin);
     vendorBtn?.classList.toggle('hidden', !canAccessVendors);
     viewAsBtn?.classList.toggle('hidden', !canUseViewAs);
-    returnViewAsBtn?.classList.toggle('hidden', !isImpersonating);
+    returnViewAsBtn?.classList.toggle('hidden', !canReturnToProfile);
 }
 
-function updateHeaderIdentity(user, { impersonating = false } = {}) {
+function applyHeaderIdentity(user, { impersonating = false } = {}) {
     const isImpersonating = !!(impersonating || realUser);
     const initials = (user?.name || '').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
     document.getElementById('userAvatar').textContent = initials || '?';
@@ -4110,6 +4111,14 @@ function updateHeaderIdentity(user, { impersonating = false } = {}) {
     } else {
         document.getElementById('userRole').textContent = getRoleTitle(user);
     }
+}
+
+function applyHeaderControlVisibility(user, opts = {}) {
+    applyRoleScopedControls(user, opts);
+}
+
+function updateHeaderIdentity(user, opts = {}) {
+    applyHeaderIdentity(user, opts);
 }
 
 function updateAllLocationsVisibility(user) {
@@ -4125,9 +4134,9 @@ function showAppScreen() {
     applyExperienceClass(currentUser.role);
 
     // Populate header
-    updateHeaderIdentity(currentUser, { impersonating: !!realUser });
+    applyHeaderIdentity(currentUser, { impersonating: !!realUser });
 
-    applyHeaderControlVisibility(currentUser, { impersonating: !!realUser });
+    applyRoleScopedControls(currentUser, { impersonating: !!realUser });
     if (canAccessAdminPanel(currentUser)) watchPendingUsers();
 
     // Show "All Locations" pill for admins
@@ -6396,7 +6405,7 @@ function openTicketFromAll(ticketId) {
 // ============================================================
 let realUser = null; // stash the real itsupport user when impersonating
 
-function resetPostImpersonationUI() {
+function resetUiForProfileSwitch() {
     selectedStore = null;
     document.getElementById('storeType').value = '';
     document.querySelectorAll('.brand-pill').forEach(b => b.classList.remove('active'));
@@ -6439,7 +6448,6 @@ function showViewAsModal() {
             </div>
             <div class="modal-actions">
                 <button class="btn btn-primary" onclick="doViewAs()">View As</button>
-                ${realUser ? '<button class="btn btn-accent" onclick="exitViewAs()">↩ Back to IT Support</button>' : ''}
                 <button class="btn btn-secondary" onclick="document.getElementById('viewAsModal').remove()">Cancel</button>
             </div>
         </div>`;
@@ -6468,11 +6476,9 @@ function doViewAs() {
 
         document.getElementById('viewAsModal').remove();
 
-        resetPostImpersonationUI();
-        updateHeaderIdentity(currentUser, { impersonating: true });
-
-        // Mirror impersonated user's controls exactly.
-        applyHeaderControlVisibility(currentUser, { impersonating: true });
+        resetUiForProfileSwitch();
+        applyHeaderIdentity(currentUser, { impersonating: true });
+        applyRoleScopedControls(currentUser, { impersonating: true });
         updateAllLocationsVisibility(currentUser);
 
         // Apply experience CSS + route to correct landing
@@ -6491,13 +6497,13 @@ function exitViewAs() {
     realUser = null;
 
     document.getElementById('viewAsModal')?.remove();
-    resetPostImpersonationUI();
+    resetUiForProfileSwitch();
 
     showScreen('storeSelection');
-    updateHeaderIdentity(currentUser);
+    applyHeaderIdentity(currentUser, { impersonating: false });
 
     // Restore admin experience
-    applyHeaderControlVisibility(currentUser, { impersonating: false });
+    applyRoleScopedControls(currentUser, { impersonating: false });
     applyExperienceClass(currentUser.role);
     updateAllLocationsVisibility(currentUser);
     routeToProfileLanding();
