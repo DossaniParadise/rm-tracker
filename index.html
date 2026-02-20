@@ -5823,11 +5823,18 @@ function initNotificationCenter() {
     }
 
     // Determine visibility scope
-    const isTech = currentUser.role === 'Technician';
-    const isAdmin = currentUser.role === 'Admin';
+    const normalizedRole = getEffectiveUserRole(currentUser);
+    const isTech = normalizedRole === 'Technician';
+    const isAdmin = normalizedRole === 'Admin';
+    const isDirector = normalizedRole === 'Director';
+    const isAdminOrDirector = isAdmin || isDirector;
+    const hasAllStoresAccess = currentUser?.stores === 'all';
     let myStores = null;
-    if (!isAdmin && !isTech) {
-        myStores = Array.isArray(currentUser.stores) ? currentUser.stores : 
+    if (!isAdminOrDirector && !isTech) {
+        myStores = Array.isArray(currentUser.stores) ? currentUser.stores :
+                   (currentUser.stores ? [currentUser.stores] : []);
+    } else if (isDirector && !hasAllStoresAccess) {
+        myStores = Array.isArray(currentUser.stores) ? currentUser.stores :
                    (currentUser.stores ? [currentUser.stores] : []);
     }
 
@@ -5842,25 +5849,30 @@ function initNotificationCenter() {
         }
     }
 
-    console.log('[Notifications] Init for', currentUser.name, 
-        '| isAdmin:', isAdmin, 
-        '| myStores:', myStores, 
+    console.log('[Notifications] Init for', currentUser.name,
+        '| role:', normalizedRole,
+        '| isAdmin:', isAdmin,
+        '| isDirector:', isDirector,
+        '| myStores:', myStores,
         '| routedCats:', myRoutedCategories);
 
     // Create the callback
     notifyListenerCallback = function(snap) {
-        notifyTickets = [];
+        const dedupedTickets = [];
+        const seenTicketKeys = new Set();
+
         snap.forEach(child => {
             const t = child.val();
             if (!t) return;
             t._key = child.key;
+            const normalizedStatus = normalizeTicketStatus(t.status);
 
             // Skip closed/resolved tickets
-            if (!t.status || t.status === 'closed' || t.status === 'resolved') return;
+            if (!normalizedStatus || normalizedStatus === 'closed' || normalizedStatus === 'resolved') return;
 
             // Store access check
             let canSee = false;
-            if (isAdmin) {
+            if (isAdmin || (isDirector && hasAllStoresAccess)) {
                 canSee = true;
             } else if (isTech) {
                 // Techs only see tickets assigned to them
@@ -5869,15 +5881,25 @@ function initNotificationCenter() {
                 canSee = myStores.includes(t.storeCode);
             }
 
+            // Ensure admins/directors include unassigned tickets in their bell list
+            if (!canSee && isAdminOrDirector && normalizedStatus === 'unassigned') {
+                canSee = true;
+            }
+
             // Category routing: if user is routed for this category, also show it
             if (!canSee && myRoutedCategories.length > 0 && t.category) {
                 canSee = myRoutedCategories.includes(t.category);
             }
 
             if (canSee) {
-                notifyTickets.push(t);
+                const dedupeKey = t._key || t.id;
+                if (!dedupeKey || seenTicketKeys.has(dedupeKey)) return;
+                seenTicketKeys.add(dedupeKey);
+                dedupedTickets.push(t);
             }
         });
+
+        notifyTickets = dedupedTickets;
 
         // Sort: urgency, then status, then newest
         const statusOrder = { unassigned: 0, assigned: 1, waiting: 2, inprogress: 3, resolved: 4, closed: 5 };
