@@ -458,6 +458,26 @@ body {
     flex-shrink: 0;
 }
 
+.impersonation-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    border: 1px solid #f59e0b;
+    background: #fffbeb;
+    color: #92400e;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+}
+
+[data-theme="dark"] .impersonation-indicator {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+    border-color: rgba(245, 158, 11, 0.45);
+}
+
 .user-badge {
     display: flex;
     align-items: center;
@@ -2557,6 +2577,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
             <a class="header-logo" href="#" onclick="goHome();return false" style="text-decoration:none;display:flex;align-items:center;gap:8px;cursor:pointer"><img src="logos/dpm-icon.png" alt="DPM" style="height:24px;vertical-align:middle"><span class="header-title">Repair &amp; Maintenance</span></a>
         </div>
         <div class="header-right">
+            <div class="impersonation-indicator hidden" id="impersonationIndicator">👁️ Impersonating</div>
             <div class="user-badge">
                 <div class="user-avatar" id="userAvatar">?</div>
                 <div class="user-meta">
@@ -2568,6 +2589,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
             <button class="admin-btn hidden" id="vendorBtn" onclick="showVendorManager()" title="Manage approved vendors">🏢⚙️</button>
             <button class="admin-btn hidden" id="notifyBtn" onclick="toggleNotifyPanel()" style="position:relative">🔔 <span class="badge hidden" id="notifyBadge" style="background:#dc2626">0</span></button>
             <button class="admin-btn hidden" id="viewAsBtn" onclick="showViewAsModal()">👁 View As</button>
+            <button class="admin-btn hidden" id="returnViewAsBtn" onclick="exitViewAs()">↩ Return to IT</button>
             <button class="btn-logout" onclick="logout()" data-i18n="sign_out">Sign Out</button>
         </div>
     </div>
@@ -3805,21 +3827,26 @@ function applyHeaderControlVisibility(user, { impersonating = false } = {}) {
     const adminBtn = document.getElementById('adminBtn');
     const vendorBtn = document.getElementById('vendorBtn');
     const viewAsBtn = document.getElementById('viewAsBtn');
+    const returnViewAsBtn = document.getElementById('returnViewAsBtn');
 
     const canAccessAdmin = !!(user && canAccessAdminPanel(user));
     const canAccessVendors = !!(user && canManageVendors(user));
-    const canUseViewAs = !!(user && isItsupportUser(user) && !impersonating);
+    const isImpersonating = !!(impersonating || realUser);
+    const canUseViewAs = !!(user && isItsupportUser(user) && !isImpersonating);
 
     adminBtn?.classList.toggle('hidden', !canAccessAdmin);
     vendorBtn?.classList.toggle('hidden', !canAccessVendors);
     viewAsBtn?.classList.toggle('hidden', !canUseViewAs);
+    returnViewAsBtn?.classList.toggle('hidden', !isImpersonating);
 }
 
 function updateHeaderIdentity(user, { impersonating = false } = {}) {
+    const isImpersonating = !!(impersonating || realUser);
     const initials = (user?.name || '').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
     document.getElementById('userAvatar').textContent = initials || '?';
     document.getElementById('userName').textContent = user?.name || 'Unknown User';
-    if (impersonating) {
+    document.getElementById('impersonationIndicator')?.classList.toggle('hidden', !isImpersonating);
+    if (isImpersonating) {
         document.getElementById('userRole').innerHTML = getRoleTitle(user) + ' <span style="font-size:10px;color:var(--accent);font-weight:700">(viewing as)</span>';
     } else {
         document.getElementById('userRole').textContent = getRoleTitle(user);
@@ -3839,7 +3866,7 @@ function showAppScreen() {
     applyExperienceClass(currentUser.role);
 
     // Populate header
-    updateHeaderIdentity(currentUser);
+    updateHeaderIdentity(currentUser, { impersonating: !!realUser });
 
     applyHeaderControlVisibility(currentUser, { impersonating: !!realUser });
     if (canAccessAdminPanel(currentUser)) watchPendingUsers();
@@ -6194,6 +6221,7 @@ function doViewAs() {
 function exitViewAs() {
     if (!realUser) return;
     currentUser = { ...realUser };
+    delete currentUser._impersonating;
     realUser = null;
 
     document.getElementById('viewAsModal')?.remove();
