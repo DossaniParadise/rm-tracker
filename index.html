@@ -673,6 +673,19 @@ body {
 .slv-ticket:last-child { border-bottom: none; }
 .slv-ticket .slv-desc { flex: 1; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .slv-ticket .slv-assignee { font-size: 11px; color: var(--text-muted); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.out-of-zone-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 6px;
+    padding: 2px 6px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #92400e;
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+}
 .inline-assign-row { display: flex; gap: 6px; align-items: center; margin-left: 8px; }
 .inline-assign-select { min-width: 180px; max-width: 260px; font-size: 12px; padding: 5px 8px; }
 [data-theme="dark"] .slv-store-name { background: #1a1f2e; }
@@ -4781,12 +4794,14 @@ function renderStoreListView() {
                 <div class="slv-store-name">${shortName} <span style="font-size:12px;font-weight:400;color:var(--text-muted)">(${storeTickets.length} unassigned)</span></div>`;
             storeTickets.forEach(t => {
                 const assignee = t.assignedTo ? t.assignedTo : '';
+                const outOfZoneBadge = isOutOfZoneTechAssignment(t) ? '<span class="out-of-zone-badge" title="Assigned outside normal tech store list">Out-of-zone assignment</span>' : '';
                 const prBadge = {routine:'<span class="priority-word p-routine">Routine</span>',urgent:'<span class="priority-word p-urgent">Urgent</span>',emergency:'<span class="priority-word p-emergency">Emergency</span>'}[t.priority] || '';
                 html += `<div class="slv-ticket" onclick="listViewOpenTicket('${t._key}')">
                     ${prBadge}
                     <span class="slv-desc">${escHtml(t.description || '').substring(0,80)}</span>
                     <span class="ticket-status-badge status-${getStatusColorClass(t.status)}" style="font-size:11px;padding:2px 8px">${getStatusLabel(t.status)}</span>
                     ${assignee ? '<span class="slv-assignee">' + escHtml(assignee) + '</span>' : ''}
+                    ${outOfZoneBadge}
                     ${renderInlineAssignControls(t, 'slv')}
                 </div>`;
             });
@@ -5475,6 +5490,16 @@ function getAvailableTechs(storeCode) {
     return TECH_INFO.filter(t => t.zone === 'west'); // Only Ronny + Zamir for west
 }
 
+function isOutOfZoneTechAssignment(ticket) {
+    if (!ticket) return false;
+    if (ticket.assigneeType && ticket.assigneeType !== 'tech') return false;
+    const assignedTo = String(ticket.assignedTo || '').trim().toLowerCase();
+    if (!assignedTo) return false;
+    const assignedTech = TECH_INFO.find(t => t.email.toLowerCase() === assignedTo);
+    if (!assignedTech) return false;
+    return !getAvailableTechs(ticket.storeCode || '').some(t => t.email.toLowerCase() === assignedTo);
+}
+
 function populateAssignDropdown() {
     const sel = document.getElementById('assignTo');
     if (!sel) return;
@@ -5779,17 +5804,24 @@ function loadTechJobs() {
     db.ref('tickets').once('value', snap => {
         const allTickets = [];
         snap.forEach(child => { allTickets.push({ _key: child.key, ...child.val() }); });
-        
-        // Get stores this tech has access to
-        const techStores = currentUser.stores === 'all' ? stores.map(s => s.code) :
-            (Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores]);
-        
-        // Filter: only tickets explicitly assigned to this tech
-        techJobs = allTickets.filter(t => {
-            if (!techStores.includes(t.storeCode)) return false;
-            return t.assignedTo === currentUser.email;
-        });
-        
+
+        const assignedJobs = allTickets.filter(t => String(t.assignedTo || '').trim().toLowerCase() === String(currentUser.email || '').trim().toLowerCase());
+
+        // Optional browse context for unassigned work only (keeps assigned workload unfiltered by zone/store lists).
+        let browseJobs = [];
+        if (window.techBrowseUnassigned === true) {
+            const techStores = currentUser.stores === 'all' ? stores.map(s => s.code) :
+                (Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores]);
+            browseJobs = allTickets.filter(t => {
+                if (String(t.assignedTo || '').trim()) return false;
+                return techStores.includes(t.storeCode);
+            });
+        }
+
+        const byKey = new Map();
+        [...assignedJobs, ...browseJobs].forEach(t => byKey.set(t._key, t));
+        techJobs = Array.from(byKey.values());
+
         renderTechDashboard();
     });
 }
@@ -5914,6 +5946,7 @@ function renderTechDashboard() {
         const prBadge = {routine:'<span class="priority-word p-routine">Routine</span>',urgent:'<span class="priority-word p-urgent">Urgent</span>',emergency:'<span class="priority-word p-emergency">Emergency</span>'}[t.priority] || '';
         const desc = (t.description || '').substring(0, 100) + ((t.description || '').length > 100 ? '...' : '');
         const time = getTimeAgo(t.createdAt);
+        const zoneBadge = isOutOfZoneTechAssignment(t) ? '<span class="out-of-zone-badge" title="Assigned outside normal tech store list">Out-of-zone assignment</span>' : '';
 
         let actionBtn = '';
         if (isActiveJob) {
@@ -5937,6 +5970,7 @@ function renderTechDashboard() {
                     <span class="ticket-status-badge status-${getStatusColorClass(t.status)}" style="font-size:11px;padding:2px 8px">${getStatusLabel(t.status)}</span>
                     <span style="color:var(--text-muted)">${time}</span>
                     <span style="color:#059669;font-weight:600">Assigned to you</span>
+                    ${zoneBadge}
                 </div>
                 <div class="tjc-fast-actions">
                     <button class="quick-chip" onclick="event.stopPropagation();saveTechQuickChip('${t._key}','On site — troubleshooting now')">On site</button>
