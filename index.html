@@ -2565,7 +2565,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                 </div>
             </div>
             <button class="admin-btn hidden" id="adminBtn" onclick="showAdminPanel()">⚙️ <span class="badge hidden" id="pendingBadge">0</span></button>
-            <button class="admin-btn hidden" id="vendorBtn" onclick="showVendorManager()" title="Vendor Management">🔧</button>
+            <button class="admin-btn hidden" id="vendorBtn" onclick="showVendorManager()" title="Manage approved vendors">🏢⚙️</button>
             <button class="admin-btn hidden" id="notifyBtn" onclick="toggleNotifyPanel()" style="position:relative">🔔 <span class="badge hidden" id="notifyBadge" style="background:#dc2626">0</span></button>
             <button class="admin-btn hidden" id="viewAsBtn" onclick="showViewAsModal()">👁 View As</button>
             <button class="btn-logout" onclick="logout()" data-i18n="sign_out">Sign Out</button>
@@ -3234,7 +3234,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-<!-- Data files + Application logic (single-file build v5.8.1) -->
+<!-- Data files + Application logic (single-file build v5.2.1) -->
 <script>
 // ============================================================
 // STORES DATA - Dossani Paradise Management
@@ -3409,17 +3409,14 @@ const USER_DIRECTORY = {
 
 function getDirectoryProfileByEmail(email) {
     if (!email) return null;
-    const target = String(email).toLowerCase().trim();
-    const direct = USER_DIRECTORY[target];
-    if (direct) return direct;
-    const matchKey = Object.keys(USER_DIRECTORY).find(k => String(k).toLowerCase().trim() === target);
-    return matchKey ? USER_DIRECTORY[matchKey] : null;
+    return USER_DIRECTORY[String(email).toLowerCase()] || null;
 }
 
 function getDirectoryTitleByEmail(email, fallback = '') {
     const profile = getDirectoryProfileByEmail(email);
     return (profile && profile.title) ? profile.title : fallback;
 }
+
 </script>
 <script>
 // ============================================================
@@ -3618,17 +3615,14 @@ async function loadUserData(user) {
             }
         }
 
-        const directoryProfile = resolveDirectoryProfile(user.email, data.name || '');
-        const effectiveRoleRaw = (directoryProfile && directoryProfile.role) ? directoryProfile.role : data.role;
-        const effectiveStores = (directoryProfile && directoryProfile.stores) ? directoryProfile.stores : (data.stores || []);
-        const fallbackTitle = (directoryProfile && directoryProfile.title) ? directoryProfile.title : getDirectoryTitleByEmail(user.email, '');
+        const fallbackTitle = getDirectoryTitleByEmail(user.email, '');
         currentUser = {
             uid: user.uid,
             email: user.email,
-            name: data.name || (directoryProfile && directoryProfile.name) || user.email.split('@')[0],
-            role: normalizeRole(effectiveRoleRaw),
-            stores: effectiveStores,
-            title: data.title || fallbackTitle || effectiveRoleRaw || normalizeRole(effectiveRoleRaw)
+            name: data.name || user.email.split('@')[0],
+            role: normalizeRole(data.role),
+            stores: data.stores || [],
+            title: data.title || data.role || normalizeRole(data.role)
         };
 
         showAppScreen();
@@ -3789,16 +3783,21 @@ function showAppScreen() {
     document.getElementById('userName').textContent = currentUser.name;
     document.getElementById('userRole').textContent = getRoleTitle(currentUser);
 
-    // Toggle top-right privileged buttons for this user
-    document.getElementById('adminBtn').classList.toggle('hidden', !canAccessAdminPanel(currentUser));
-    document.getElementById('vendorBtn').classList.toggle('hidden', !canManageVendors(currentUser));
-    document.getElementById('viewAsBtn').classList.toggle('hidden', !isItsupportUser(currentUser));
-    if (canAccessAdminPanel(currentUser)) watchPendingUsers();
+    // Show admin button for admins (case-insensitive check)
+    if (canAccessAdminPanel(currentUser)) {
+        document.getElementById('adminBtn').classList.remove('hidden');
+        watchPendingUsers();
+    }
 
     // Show "All Locations" pill for admins
     if (currentUser.role === 'Admin' || currentUser.role === 'Director' || currentUser.role === 'Technician' || currentUser.stores === 'all') {
         document.getElementById('brandPill-all').classList.remove('hidden');
         document.querySelectorAll('.admin-only-opt').forEach(el => el.classList.remove('hidden'));
+    }
+
+    // Show "View As" only for itsupport
+    if (isItsupportUser(currentUser)) {
+        document.getElementById('viewAsBtn').classList.remove('hidden');
     }
 
     // Load notification routing config
@@ -4100,6 +4099,50 @@ function fetchTicketCounts(codes, callback) {
     });
 }
 
+
+function getTicketAgeHours(ticket) {
+    const createdAt = Number(ticket && ticket.createdAt) || 0;
+    if (!createdAt) return 0;
+    return Math.max(0, (Date.now() - createdAt) / 3600000);
+}
+
+function getSlaHoursForPriority(priority) {
+    if (priority === 'emergency') return 24;
+    if (priority === 'urgent') return 72;
+    return 168;
+}
+
+function isActiveTicketStatus(status) {
+    const normalized = normalizeTicketStatus(status);
+    return !!normalized && normalized !== 'closed' && normalized !== 'resolved';
+}
+
+function buildDesktopInsights(ticketList, allowedStoreCodes = null) {
+    // NOTE: legacy SLA/aging insight pipeline intentionally simplified.
+    // We keep a stable return shape for compatibility, but avoid heavy
+    // derived analytics that are no longer part of the core operations flow.
+    return {
+        slaRisk: [],
+        agingBuckets: [],
+        unassignedCritical: [],
+        techWorkload: [],
+        pendingApprovals: Object.values(pendingUsers || {}).filter(u => u).slice(0, 8),
+        vendorFollowups: []
+    };
+}
+
+function desktopDrilldown(filter) {
+    if (window.innerWidth < 1100 || !isAdminDesktopExperience()) return;
+    allTicketsDrilldown = filter;
+    const defaultStatus = filter && filter.status ? filter.status : 'unassigned';
+    showAllTickets(defaultStatus);
+}
+
+function renderDesktopInsightsCards(containerId, insights) {
+    const el = document.getElementById(containerId);
+    if (!el || window.innerWidth < 1100 || !isAdminDesktopExperience()) return;
+    el.innerHTML = '';
+}
 
 function mapSelectStore(storeId, action) {
     // Set the dropdown and select the store
@@ -5124,6 +5167,84 @@ async function quickAssignTicket(ticketKey, selectId) {
     }
 }
 
+function getAssignmentOptionsHtml(storeCode) {
+    const availTechs = getAvailableTechs(storeCode || '');
+    let html = '<option value="">Assign to...</option>';
+
+    if (availTechs.length) {
+        html += '<optgroup label="Repair Technicians">';
+        availTechs.forEach(t => {
+            html += `<option value="tech:${t.email}">🔧 ${escHtml(t.name)}</option>`;
+        });
+        html += '</optgroup>';
+    }
+
+    if (vendorList.length) {
+        html += '<optgroup label="Approved Vendors">';
+        vendorList.forEach(v => {
+            html += `<option value="vendor:${escHtml(v.name)}">🏢 ${escHtml(v.name)}</option>`;
+        });
+        html += '</optgroup>';
+    }
+
+    return html;
+}
+
+function renderInlineAssignControls(ticket, contextPrefix = 'inline') {
+    if (!canAssignTickets() || normalizeTicketStatus(ticket.status) !== 'unassigned') return '';
+    const safeKey = String(ticket._key || ticket.id || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const selectId = `${contextPrefix}Assign_${safeKey}`;
+
+    return `<div class="inline-assign-row" onclick="event.stopPropagation()">
+        <select class="form-select inline-assign-select" id="${selectId}">${getAssignmentOptionsHtml(ticket.storeCode)}</select>
+        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();quickAssignTicket('${ticket._key}', '${selectId}')">Assign</button>
+    </div>`;
+}
+
+async function quickAssignTicket(ticketKey, selectId) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+    const value = select.value;
+
+    if (!value) { toast('Select a technician or vendor', 'error'); return; }
+    if (!canAssignTickets()) { toast('You do not have assignment permissions', 'error'); return; }
+
+    const parsed = parseAssignmentValue(value);
+    if (!parsed.assignedTo) { toast('Invalid assignee', 'error'); return; }
+
+    try {
+        const updates = {
+            [`tickets/${ticketKey}/assignedTo`]: parsed.assignedTo,
+            [`tickets/${ticketKey}/assigneeType`]: parsed.assigneeType,
+            [`tickets/${ticketKey}/status`]: 'assigned',
+            [`tickets/${ticketKey}/updatedAt`]: firebase.database.ServerValue.TIMESTAMP
+        };
+
+        const actSnap = await db.ref(`tickets/${ticketKey}/activity`).once('value');
+        const activity = actSnap.val() || [];
+        activity.push({
+            action: 'assignment_change',
+            by: currentUser.name,
+            byEmail: currentUser.email,
+            timestamp: Date.now(),
+            assignedTo: parsed.assignedTo,
+            assigneeType: parsed.assigneeType,
+            note: 'Assigned from unassigned queue'
+        });
+        updates[`tickets/${ticketKey}/activity`] = activity;
+
+        await db.ref().update(updates);
+        toast('Ticket assigned', 'success');
+
+        if (!document.getElementById('allTicketsScreen').classList.contains('hidden')) filterAllTickets();
+        if (currentMapView === 'list') renderStoreListView();
+        loadAdminSummary();
+    } catch (err) {
+        console.error('Quick assign failed', err);
+        toast('Assignment failed', 'error');
+    }
+}
+
 function toggleDateFields() {
     const type = document.getElementById('reqDateType').value;
     const d1 = document.getElementById('reqDate1');
@@ -5981,17 +6102,14 @@ function doViewAs() {
         if (!realUser) realUser = { ...currentUser };
 
         // Impersonate
-        const directoryProfile = resolveDirectoryProfile(data.email || '', data.name || '');
-        const effectiveRoleRaw = (directoryProfile && directoryProfile.role) ? directoryProfile.role : data.role;
-        const effectiveStores = (directoryProfile && directoryProfile.stores) ? directoryProfile.stores : (data.stores || []);
-        const fallbackTitle = (directoryProfile && directoryProfile.title) ? directoryProfile.title : getDirectoryTitleByEmail(data.email || '', '');
+        const fallbackTitle = getDirectoryTitleByEmail(data.email || '', '');
         currentUser = {
             uid: realUser.uid,
             email: data.email || '',
-            name: data.name || (directoryProfile && directoryProfile.name) || 'Unknown',
-            role: normalizeRole(effectiveRoleRaw),
-            stores: effectiveStores,
-            title: data.title || fallbackTitle || effectiveRoleRaw || normalizeRole(effectiveRoleRaw),
+            name: data.name || 'Unknown',
+            role: normalizeRole(data.role),
+            stores: data.stores || [],
+            title: data.title || data.role || normalizeRole(data.role),
             _impersonating: data.name || data.email
         };
 
@@ -6744,16 +6862,6 @@ function openTicketDetail(key, forceModal = true) {
         if (vendorList.length) {
             reassignSel.innerHTML += '<optgroup label="Third-Party Vendors">' + vendorList.map(v => `<option value="vendor:${escHtml(v.name)}">🏢 ${escHtml(v.name)}</option>`).join('') + '</optgroup>';
         }
-        if (canManageVendors()) {
-            reassignSel.innerHTML += '<optgroup label="Vendor Tools"><option value="__edit_vendors__" class="vendor-manage-option">🛠 Edit Vendors</option></optgroup>';
-        }
-        reassignSel.onchange = () => {
-            if (handleVendorManagerSelection(reassignSel)) {
-                setModalSaveVisibility();
-                return;
-            }
-            setModalSaveVisibility();
-        };
     }
 
     // Wire change tracking so save buttons appear only when edits are made
@@ -6827,6 +6935,62 @@ function wireModalChangeTracking() {
         if (!el) return;
         el.addEventListener('input', setModalSaveVisibility);
         el.addEventListener('change', setModalSaveVisibility);
+    });
+}
+
+function parseAssignmentValue(value) {
+    if (!value) return { assignedTo: '', assigneeType: 'unassigned' };
+    if (value.startsWith('tech:')) return { assignedTo: value.replace('tech:', ''), assigneeType: 'tech' };
+    if (value.startsWith('vendor:')) return { assignedTo: value.replace('vendor:', ''), assigneeType: 'vendor' };
+    return { assignedTo: '', assigneeType: 'unassigned' };
+}
+
+function promptWaitingReason(existingReason = '', existingNote = '') {
+    return new Promise(resolve => {
+        const overlay = document.createElement('div');
+        overlay.className = 'confirm-overlay';
+        overlay.innerHTML = `<div class="confirm-box" style="max-width:460px">
+            <h4>⏳ What are we waiting on?</h4>
+            <div style="display:grid;grid-template-columns:repeat(2,minmax(140px,1fr));gap:8px;margin:12px 0">
+                <button class="btn btn-secondary waiting-btn" data-reason="parts">Waiting on Parts</button>
+                <button class="btn btn-secondary waiting-btn" data-reason="vendor">Waiting on Vendor</button>
+                <button class="btn btn-secondary waiting-btn" data-reason="approval">Waiting on Approval</button>
+                <button class="btn btn-secondary waiting-btn" data-reason="other">Waiting on Other</button>
+            </div>
+            <textarea id="waitingOtherReason" class="form-textarea" placeholder="Explain what we are waiting on (required for 'Other')" style="min-height:72px;display:${existingReason === 'other' ? '' : 'none'}">${escHtml(existingNote || '')}</textarea>
+            <div class="confirm-btns" style="margin-top:10px">
+                <button class="btn btn-ghost" id="waitingCancel">Cancel</button>
+                <button class="btn btn-primary" id="waitingSave">Save Waiting Reason</button>
+            </div>
+        </div>`;
+        document.body.appendChild(overlay);
+
+        let selectedReason = existingReason || '';
+        const setSelected = () => {
+            overlay.querySelectorAll('.waiting-btn').forEach(btn => {
+                btn.classList.toggle('btn-primary', btn.dataset.reason === selectedReason);
+                btn.classList.toggle('btn-secondary', btn.dataset.reason !== selectedReason);
+            });
+            const otherBox = overlay.querySelector('#waitingOtherReason');
+            if (otherBox) otherBox.style.display = selectedReason === 'other' ? '' : 'none';
+        };
+
+        overlay.querySelectorAll('.waiting-btn').forEach(btn => {
+            btn.onclick = (e) => { e.preventDefault(); selectedReason = btn.dataset.reason; setSelected(); };
+        });
+        setSelected();
+
+        overlay.querySelector('#waitingCancel').onclick = () => { overlay.remove(); resolve(null); };
+        overlay.querySelector('#waitingSave').onclick = () => {
+            if (!selectedReason) { toast('Please select a waiting reason', 'error'); return; }
+            const otherText = (overlay.querySelector('#waitingOtherReason')?.value || '').trim();
+            if (selectedReason === 'other' && otherText.length < 10) {
+                toast('Waiting on Other requires at least 10 characters', 'error');
+                return;
+            }
+            overlay.remove();
+            resolve({ reason: selectedReason, note: selectedReason === 'other' ? otherText : '' });
+        };
     });
 }
 
@@ -6960,14 +7124,7 @@ async function saveStatusUpdate(key) {
     const priorityChanged = nextPriority !== (t.priority || 'routine');
     const priorityReason = (document.getElementById('priorityReason')?.value || '').trim();
     const reassignVal = document.getElementById('reassignTo')?.value || '';
-    if (reassignVal === '__edit_vendors__') {
-        showVendorManager();
-        return;
-    }
     const assignmentChanged = canAssignTickets() && reassignVal !== '';
-    const parsedAssignment = assignmentChanged ? parseAssignmentValue(reassignVal) : null;
-    const targetAssignedTo = assignmentChanged ? parsedAssignment.assignedTo : (t.assignedTo || '');
-    const targetAssigneeType = assignmentChanged ? parsedAssignment.assigneeType : (t.assigneeType || (t.assignedTo ? 'tech' : 'unassigned'));
 
     if (!canTransitionStatus(currentStatus, newStatus, t)) {
         toast('You do not have permission for this status change', 'error');
@@ -6977,11 +7134,6 @@ async function saveStatusUpdate(key) {
     if (newStatus === 'waiting' && !pendingWaitingReason) {
         pendingWaitingReason = await promptWaitingReason(t.waitingReason || '', t.waitingReasonNote || '');
         if (!pendingWaitingReason) return;
-    }
-
-    if (newStatus === 'assigned' && !targetAssignedTo) {
-        toast('Select technician/vendor before marking Assigned', 'error');
-        return;
     }
 
     if (priorityChanged && !canEditUrgency()) {
@@ -7022,9 +7174,10 @@ async function saveStatusUpdate(key) {
         }
 
         if (assignmentChanged) {
-            updates[`tickets/${key}/assignedTo`] = parsedAssignment.assignedTo;
-            updates[`tickets/${key}/assigneeType`] = parsedAssignment.assigneeType;
-            if (newStatus === 'unassigned' && parsedAssignment.assignedTo) {
+            const parsed = parseAssignmentValue(reassignVal);
+            updates[`tickets/${key}/assignedTo`] = parsed.assignedTo;
+            updates[`tickets/${key}/assigneeType`] = parsed.assigneeType;
+            if (newStatus === 'unassigned' && parsed.assignedTo) {
                 updates[`tickets/${key}/status`] = 'assigned';
             }
         }
@@ -7073,30 +7226,16 @@ async function saveStatusUpdate(key) {
             });
         }
 
-        let assignmentReminderPayload = null;
         if (assignmentChanged) {
+            const parsed = parseAssignmentValue(reassignVal);
             currentActivity.push({
                 action: 'assignment_change',
                 by: currentUser.name,
                 byEmail: currentUser.email,
                 timestamp: Date.now(),
-                assignedTo: parsedAssignment.assignedTo,
-                assigneeType: parsedAssignment.assigneeType
+                assignedTo: parsed.assignedTo,
+                assigneeType: parsed.assigneeType
             });
-        }
-
-        const becameAssigned = currentStatus !== 'assigned' && newStatus === 'assigned';
-        if ((assignmentChanged || becameAssigned) && targetAssignedTo) {
-            assignmentReminderPayload = {
-                ticket: {
-                    ...t,
-                    _key: key,
-                    status: newStatus,
-                    assignedTo: targetAssignedTo,
-                    assigneeType: targetAssigneeType
-                },
-                party: targetAssignedTo
-            };
         }
 
         updates[`tickets/${key}/activity`] = currentActivity;
@@ -7109,7 +7248,10 @@ async function saveStatusUpdate(key) {
                 waitingReason: pendingWaitingReason.reason,
                 waitingReasonNote: pendingWaitingReason.note || ''
             } : {}),
-            ...(assignmentChanged ? { assignedTo: parsedAssignment.assignedTo, assigneeType: parsedAssignment.assigneeType, status: (newStatus === 'unassigned' ? 'assigned' : newStatus) } : {}),
+            ...(assignmentChanged ? (() => {
+                const parsed = parseAssignmentValue(reassignVal);
+                return { assignedTo: parsed.assignedTo, assigneeType: parsed.assigneeType, status: (newStatus === 'unassigned' ? 'assigned' : newStatus) };
+            })() : {}),
             updatedAt: Date.now(),
             activity: currentActivity
         };
@@ -7181,16 +7323,6 @@ function normalizeRole(r) {
     return 'Manager';
 }
 
-function resolveDirectoryProfile(email = '', name = '') {
-    const byEmail = getDirectoryProfileByEmail(email || '');
-    if (byEmail) return byEmail;
-    if (!name || typeof USER_DIRECTORY === 'undefined') return null;
-    const targetName = String(name).trim().toLowerCase();
-    if (!targetName) return null;
-    const entry = Object.values(USER_DIRECTORY).find(p => String(p && p.name || '').trim().toLowerCase() === targetName);
-    return entry || null;
-}
-
 function getRoleTitle(user = currentUser) {
     if (!user) return '';
     return user.title || user.role;
@@ -7204,24 +7336,8 @@ function canAccessAdminPanel(user = currentUser) {
     return isItsupportUser(user);
 }
 
-function getEffectiveRole(user = currentUser) {
-    if (!user) return '';
-    const role = normalizeRole(user.role || '');
-    if (role === 'Admin' || role === 'Director') return role;
-    const titleRole = normalizeRole(user.title || '');
-    return titleRole;
-}
-
-function canManageVendors(user = currentUser) {
-    const baseUser = user || currentUser;
-    const viaRole = canAssignTickets(baseUser);
-    const viaItsupport = isItsupportUser(baseUser);
-    return !!baseUser && (viaRole || viaItsupport);
-}
-
 function canAssignTickets(user = currentUser) {
-    const effective = getEffectiveRole(user);
-    return effective === 'Admin' || effective === 'Director';
+    return !!user && (user.role === 'Admin' || user.role === 'Director');
 }
 
 function canEditUrgency(user = currentUser) {
@@ -7561,7 +7677,7 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v5.8.1</span>
+    <span>R&M Tracker v5.7.0</span>
 </div>
 
 </body>
