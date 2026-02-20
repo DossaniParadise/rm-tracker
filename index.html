@@ -857,6 +857,32 @@ body {
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
+.selected-store-summary-dock { padding: 0 16px; }
+
+.selected-store-summary-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.selected-store-summary-meta {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.selected-store-summary-chip {
+    font-size: 12px;
+    font-weight: 700;
+    border-radius: 999px;
+    padding: 6px 10px;
+    background: rgba(30, 64, 175, 0.12);
+    color: #1e3a8a;
+    white-space: nowrap;
+}
+
 .selected-store-summary.hidden { display: none; }
 
 .selected-store-summary-name {
@@ -1842,6 +1868,10 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
 }
 [data-theme="dark"] .selected-store-summary-name { color: #f8fafc; }
 [data-theme="dark"] .selected-store-summary-address { color: #bfdbfe; }
+[data-theme="dark"] .selected-store-summary-chip {
+    background: rgba(147,197,253,.16);
+    color: #dbeafe;
+}
 
 @media (max-width: 768px) {
     .app-header {
@@ -1880,6 +1910,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
         padding: 14px;
         margin-top: 12px;
     }
+    .selected-store-summary-dock { padding: 0 12px; }
     .selected-store-summary-name { font-size: 17px; }
     .selected-store-summary-address { font-size: 12px; line-height: 1.35; }
     .notify-panel {
@@ -1961,7 +1992,22 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
     .form-label { font-size: 11px; }
     .form-select, .form-input { font-size: 13px; padding: 8px 10px; }
     .action-grid { gap: 10px; }
-    .selected-store-summary { padding: 14px; }
+    .selected-store-summary {
+        padding: 14px;
+        overflow-x: auto;
+    }
+    .selected-store-summary-content {
+        flex-direction: column;
+        align-items: flex-start;
+        min-width: min-content;
+    }
+    .selected-store-summary-meta {
+        width: 100%;
+        justify-content: flex-start;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding-bottom: 2px;
+    }
     .selected-store-summary-name { font-size: 18px; }
     .selected-store-summary-address { font-size: 13px; }
     .action-card { padding: 16px 12px; min-width: 110px; max-width: 48%; }
@@ -2806,6 +2852,21 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
         </div>
     </div>
 
+    <div id="selectedStoreSummaryDock" class="selected-store-summary-dock hidden">
+        <div id="selectedStoreSummary" class="selected-store-summary hidden" aria-live="polite">
+            <div class="selected-store-summary-content">
+                <div>
+                    <div id="selectedStoreSummaryName" class="selected-store-summary-name"></div>
+                    <div id="selectedStoreSummaryAddress" class="selected-store-summary-address"></div>
+                </div>
+                <div class="selected-store-summary-meta">
+                    <span id="selectedStoreSummaryOpen" class="selected-store-summary-chip">0 unassigned</span>
+                    <span id="selectedStoreSummaryTotal" class="selected-store-summary-chip">0 total</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Content Area -->
     <div class="app-content">
 
@@ -2957,11 +3018,6 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                             <option value="">Choose store...</option>
                         </select>
                     </div>
-                </div>
-
-                <div id="selectedStoreSummary" class="selected-store-summary hidden" aria-live="polite">
-                    <div id="selectedStoreSummaryName" class="selected-store-summary-name"></div>
-                    <div id="selectedStoreSummaryAddress" class="selected-store-summary-address"></div>
                 </div>
 
                 <div id="actionButtons" class="action-grid hidden">
@@ -3753,6 +3809,27 @@ let activeTicketListener = null;
 let vendorList = [];
 let desktopStoreData = [];
 let dslShowAll = false;
+let currentScreenId = 'storeSelection';
+let selectedStoreSummaryCounts = { open: 0, total: 0 };
+let selectedStoreSummaryListenerRef = null;
+let selectedStoreSummaryListenerCallback = null;
+let adminSummaryListenerRef = null;
+let adminSummaryListenerCallback = null;
+
+const SUMMARY_LAYOUT_RULES = {
+    adminSummary: {
+        roles: new Set(['Admin', 'Director']),
+        screens: new Set(['storeSelection'])
+    },
+    selectedStoreSummary: {
+        screensByRole: {
+            Admin: new Set(['storeSelection', 'newIssueScreen', 'existingIssuesScreen', 'allTicketsScreen']),
+            Director: new Set(['storeSelection', 'newIssueScreen', 'existingIssuesScreen', 'allTicketsScreen']),
+            Manager: new Set(['managerLanding', 'newIssueScreen', 'existingIssuesScreen', 'allTicketsScreen']),
+            'Area Coach': new Set(['coachStoreView', 'newIssueScreen', 'existingIssuesScreen', 'allTicketsScreen'])
+        }
+    }
+};
 
 const TICKET_STATUS_CONFIG = {
     unassigned: { order: 0, label: 'Unassigned', isActive: true, colorClass: 'unassigned', allowedTransitions: ['assigned', 'dispatched', 'inprogress', 'waiting', 'resolved', 'closed'] },
@@ -3927,6 +4004,12 @@ function logout() {
         notifyListenerCallback = null;
     }
     notifyTickets = [];
+    detachSelectedStoreSummaryListener();
+    if (adminSummaryListenerRef && adminSummaryListenerCallback) {
+        adminSummaryListenerRef.off('value', adminSummaryListenerCallback);
+        adminSummaryListenerRef = null;
+        adminSummaryListenerCallback = null;
+    }
     auth.signOut();
 }
 
@@ -4002,6 +4085,7 @@ function routeToProfileLanding() {
                 document.getElementById('mgrStoreName').textContent = store.name;
             }
         }
+        refreshSelectedStoreSummaryCounts();
         showScreen('managerLanding');
         return;
     }
@@ -4015,7 +4099,6 @@ function routeToProfileLanding() {
 
     // DIRECTOR / ADMIN: summary cards + map (mobile portrait defaults to list flow)
     showScreen('storeSelection');
-    loadAdminSummary();
     if (window.innerWidth >= 1100 || window.innerWidth > window.innerHeight) {
         setTimeout(() => selectBrand('all'), 100);
     }
@@ -4077,6 +4160,7 @@ function coachSelectStore(storeId) {
     const store = stores.find(s => s.id === storeId);
     if (!store) return;
     selectedStore = store;
+    refreshSelectedStoreSummaryCounts();
     document.getElementById('coachSelectedStoreName').textContent = store.name;
     showScreen('coachStoreView');
 }
@@ -4139,6 +4223,9 @@ function showAppScreen() {
     applyRoleScopedControls(currentUser, { impersonating: !!realUser });
     if (canAccessAdminPanel(currentUser)) watchPendingUsers();
 
+    selectedStore = null;
+    refreshSelectedStoreSummaryCounts();
+
     // Show "All Locations" pill for admins
     updateAllLocationsVisibility(currentUser);
     // Load notification routing config
@@ -4168,7 +4255,9 @@ function showAppScreen() {
     // Load vendor list
     loadVendors();
 
+    subscribeAdminSummary();
     routeToProfileLanding();
+    updateLayoutVisibility(currentScreenId);
 }
 
 function showError(msg) {
@@ -4178,15 +4267,30 @@ function showError(msg) {
     setTimeout(() => el.classList.add('hidden'), 8000);
 }
 
+function canShowSelectedStoreSummary(role, screenId) {
+    const roleRules = SUMMARY_LAYOUT_RULES.selectedStoreSummary.screensByRole[role];
+    return !!(roleRules && roleRules.has(screenId));
+}
+
+function updateLayoutVisibility(screenId = currentScreenId) {
+    currentScreenId = screenId;
+
+    const role = currentUser?.role;
+    const showAdminSummary = !!(role && SUMMARY_LAYOUT_RULES.adminSummary.roles.has(role) && SUMMARY_LAYOUT_RULES.adminSummary.screens.has(screenId));
+    document.getElementById('adminSummary')?.classList.toggle('hidden', !showAdminSummary);
+
+    const showSummaryDock = !!(role && canShowSelectedStoreSummary(role, screenId));
+    document.getElementById('selectedStoreSummaryDock')?.classList.toggle('hidden', !showSummaryDock);
+
+    renderSelectedStoreSummary();
+}
+
 function showScreen(screenId) {
     ['managerLanding', 'coachLanding', 'coachStoreView', 'techDashboard', 'adminSummary', 'storeSelection', 'newIssueScreen', 'existingIssuesScreen', 'allTicketsScreen', 'adminScreen'].forEach(id => {
         document.getElementById(id).classList.toggle('hidden', id !== screenId);
     });
-    // Admin summary shows alongside storeSelection for admins
-    if (screenId === 'storeSelection' && currentUser && (currentUser.role === 'Admin' || currentUser.role === 'Director')) {
-        document.getElementById('adminSummary').classList.remove('hidden');
-    }
-    if (screenId === 'storeSelection') renderSelectedStoreSummary();
+
+    updateLayoutVisibility(screenId);
 }
 
 function goBack() {
@@ -4205,21 +4309,62 @@ function goBack() {
 // ============================================================
 // STORE SELECTION
 // ============================================================
+function detachSelectedStoreSummaryListener() {
+    if (selectedStoreSummaryListenerRef && selectedStoreSummaryListenerCallback) {
+        selectedStoreSummaryListenerRef.off('value', selectedStoreSummaryListenerCallback);
+    }
+    selectedStoreSummaryListenerRef = null;
+    selectedStoreSummaryListenerCallback = null;
+}
+
+function refreshSelectedStoreSummaryCounts() {
+    detachSelectedStoreSummaryListener();
+    selectedStoreSummaryCounts = { open: 0, total: 0 };
+
+    const role = currentUser?.role;
+    if (!selectedStore?.code || !SUMMARY_LAYOUT_RULES.selectedStoreSummary.screensByRole[role]) {
+        renderSelectedStoreSummary();
+        return;
+    }
+
+    selectedStoreSummaryListenerRef = db.ref('tickets').orderByChild('storeCode').equalTo(selectedStore.code);
+    selectedStoreSummaryListenerCallback = snap => {
+        let open = 0;
+        let total = 0;
+        snap.forEach(child => {
+            total++;
+            const status = normalizeTicketStatus(child.val()?.status || '');
+            if (status === 'unassigned') open++;
+        });
+        selectedStoreSummaryCounts = { open, total };
+        renderSelectedStoreSummary();
+    };
+
+    selectedStoreSummaryListenerRef.on('value', selectedStoreSummaryListenerCallback);
+}
+
 function renderSelectedStoreSummary() {
     const summaryCard = document.getElementById('selectedStoreSummary');
     const summaryName = document.getElementById('selectedStoreSummaryName');
     const summaryAddress = document.getElementById('selectedStoreSummaryAddress');
-    if (!summaryCard || !summaryName || !summaryAddress) return;
+    const summaryOpen = document.getElementById('selectedStoreSummaryOpen');
+    const summaryTotal = document.getElementById('selectedStoreSummaryTotal');
+    const shouldShow = canShowSelectedStoreSummary(currentUser?.role, currentScreenId);
+    if (!summaryCard || !summaryName || !summaryAddress || !summaryOpen || !summaryTotal) return;
 
-    if (!selectedStore) {
+    if (!shouldShow || !selectedStore) {
         summaryCard.classList.add('hidden');
         summaryName.textContent = '';
         summaryAddress.textContent = '';
+        summaryOpen.textContent = '0 unassigned';
+        summaryTotal.textContent = '0 total';
         return;
     }
 
     summaryName.textContent = selectedStore.name || selectedStore.code || 'Selected Store';
     summaryAddress.textContent = selectedStore.address || 'Address unavailable';
+    summaryOpen.textContent = `${selectedStoreSummaryCounts.open || 0} unassigned`;
+    summaryTotal.textContent = `${selectedStoreSummaryCounts.total || 0} total`;
     summaryCard.classList.remove('hidden');
 }
 
@@ -4229,7 +4374,7 @@ function filterStores() {
     sel.innerHTML = '<option value="">Choose store...</option>';
     document.getElementById('actionButtons').classList.add('hidden');
     selectedStore = null;
-    renderSelectedStoreSummary();
+    refreshSelectedStoreSummaryCounts();
 
     if (!type) return;
 
@@ -4260,12 +4405,12 @@ function selectStore() {
     if (!id) {
         document.getElementById('actionButtons').classList.add('hidden');
         selectedStore = null;
-        renderSelectedStoreSummary();
+        refreshSelectedStoreSummaryCounts();
         return;
     }
     selectedStore = stores.find(s => s.id === id);
     document.getElementById('actionButtons').classList.remove('hidden');
-    renderSelectedStoreSummary();
+    refreshSelectedStoreSummaryCounts();
 }
 
 
@@ -4515,9 +4660,9 @@ function mapSelectStore(storeId, action) {
     const store = stores.find(s => s.id === storeId);
     if (!store) return;
     selectedStore = store;
+    refreshSelectedStoreSummaryCounts();
     document.getElementById('storeSelect').value = storeId;
     document.getElementById('actionButtons').classList.remove('hidden');
-    renderSelectedStoreSummary();
     // Close any open popup
     if (overviewMap) overviewMap.closePopup();
     // Navigate
@@ -4563,9 +4708,9 @@ function desktopSelectStore(storeId) {
     const store = stores.find(s => s.id === storeId);
     if (!store) return;
     selectedStore = store;
+    refreshSelectedStoreSummaryCounts();
     document.getElementById('storeSelect').value = storeId;
     document.getElementById('actionButtons').classList.remove('hidden');
-    renderSelectedStoreSummary();
     document.querySelectorAll('.store-list-item').forEach(el => el.classList.remove('active'));
     if (event && event.currentTarget) event.currentTarget.classList.add('active');
     if (overviewMap && store.lat && store.lng) {
@@ -5826,7 +5971,7 @@ function techOpenTicket(key) {
     const t = techJobs.find(x => x._key === key);
     if (!t) return;
     const store = stores.find(s => s.code === t.storeCode);
-    if (store) selectedStore = store;
+    if (store) { selectedStore = store; refreshSelectedStoreSummaryCounts(); }
     currentTickets = [t];
     if ((window.innerWidth || 0) >= 768 && (window.innerWidth || 0) < 1100) {
         renderTechDetailPane(key);
@@ -6016,34 +6161,55 @@ async function confirmClockOut() {
 // ============================================================
 // ADMIN SUMMARY DASHBOARD
 // ============================================================
-function loadAdminSummary() {
-    db.ref('tickets').once('value', snap => {
+function renderAdminSummaryFromTickets(tickets) {
+    const statusCounts = Object.fromEntries(STATUS_ORDER.map(status => [status, 0]));
+    tickets.forEach(t => {
+        const key = normalizeTicketStatus(t.status || '');
+        if (Object.prototype.hasOwnProperty.call(statusCounts, key)) statusCounts[key]++;
+    });
+
+    const numberClassByColor = {
+        unassigned: 'red',
+        assigned: 'purple',
+        inprogress: 'blue',
+        waiting: 'orange',
+        resolved: 'green',
+        closed: 'gray'
+    };
+
+    document.getElementById('adminSummaryGrid').innerHTML = STATUS_ORDER.map(status => `
+        <div class="admin-sum-card" onclick="selectBrand('all');setTimeout(()=>showAllTickets('${status}'),200)">
+            <div class="asc-num ${numberClassByColor[getStatusColorClass(status)] || 'blue'}">${statusCounts[status] || 0}</div>
+            <div class="asc-label">${getStatusLabel(status)}</div>
+        </div>`).join('');
+
+    updateLayoutVisibility();
+}
+
+function subscribeAdminSummary() {
+    if (adminSummaryListenerRef && adminSummaryListenerCallback) {
+        adminSummaryListenerRef.off('value', adminSummaryListenerCallback);
+    }
+
+    if (!currentUser || !(currentUser.role === 'Admin' || currentUser.role === 'Director')) {
+        adminSummaryListenerRef = null;
+        adminSummaryListenerCallback = null;
+        document.getElementById('adminSummaryGrid').innerHTML = '';
+        return;
+    }
+
+    adminSummaryListenerRef = db.ref('tickets');
+    adminSummaryListenerCallback = snap => {
         const tickets = [];
         snap.forEach(child => { tickets.push({ _key: child.key, ...child.val() }); });
+        renderAdminSummaryFromTickets(tickets);
+    };
 
-        const statusCounts = Object.fromEntries(STATUS_ORDER.map(status => [status, 0]));
-        tickets.forEach(t => {
-            const key = normalizeTicketStatus(t.status || '');
-            if (Object.prototype.hasOwnProperty.call(statusCounts, key)) statusCounts[key]++;
-        });
+    adminSummaryListenerRef.on('value', adminSummaryListenerCallback);
+}
 
-        const numberClassByColor = {
-            unassigned: 'red',
-            assigned: 'purple',
-            inprogress: 'blue',
-            waiting: 'orange',
-            resolved: 'green',
-            closed: 'gray'
-        };
-
-        document.getElementById('adminSummaryGrid').innerHTML = STATUS_ORDER.map(status => `
-            <div class="admin-sum-card" onclick="selectBrand('all');setTimeout(()=>showAllTickets('${status}'),200)">
-                <div class="asc-num ${numberClassByColor[getStatusColorClass(status)] || 'blue'}">${statusCounts[status] || 0}</div>
-                <div class="asc-label">${getStatusLabel(status)}</div>
-            </div>`).join('');
-
-        document.getElementById('adminSummary').classList.remove('hidden');
-    });
+function loadAdminSummary() {
+    subscribeAdminSummary();
 }
 
 // ============================================================
@@ -6218,6 +6384,7 @@ function notifyGoToTicket(key, storeCode) {
     const store = stores.find(s => s.code === storeCode);
     if (store) {
         selectedStore = store;
+        refreshSelectedStoreSummaryCounts();
         const t = notifyTickets.find(x => (x._key === key || x.id === key));
         if (t) {
             if (!t._key) t._key = key;
@@ -6388,7 +6555,7 @@ function openTicketFromAllByKey(ticketKey) {
     const t = allTicketsData.find(x => x._key === ticketKey || x.id === ticketKey);
     if (!t) return;
     const store = stores.find(s => s.code === t.storeCode);
-    if (store) selectedStore = store;
+    if (store) { selectedStore = store; refreshSelectedStoreSummaryCounts(); }
     if (!t._key) t._key = ticketKey;
     const existing = currentTickets.find(x => x._key === t._key);
     if (!existing) currentTickets.push(t);
@@ -6411,7 +6578,7 @@ function resetUiForProfileSwitch() {
     document.querySelectorAll('.brand-pill').forEach(b => b.classList.remove('active'));
     document.getElementById('storeSelect').innerHTML = '<option value="">Choose store...</option>';
     document.getElementById('actionButtons').classList.add('hidden');
-    renderSelectedStoreSummary();
+    refreshSelectedStoreSummaryCounts();
     document.getElementById('mapOverview').classList.add('hidden');
     document.getElementById('adminSummary').classList.add('hidden');
 
@@ -6571,6 +6738,7 @@ function renderWizardStoreOptions() {
     const available = getAccessibleStores();
     if (!selectedStore && available.length === 1) {
         selectedStore = available[0];
+        refreshSelectedStoreSummaryCounts();
         document.getElementById('newIssueStoreName').textContent = selectedStore.name;
         document.getElementById('storeSelect').value = selectedStore.id;
     }
@@ -6583,6 +6751,7 @@ function renderWizardStoreOptions() {
         btn.classList.toggle('selected', selectedStore && selectedStore.id === store.id);
         btn.onclick = () => {
             selectedStore = store;
+            refreshSelectedStoreSummaryCounts();
             document.getElementById('newIssueStoreName').textContent = store.name;
             document.getElementById('storeSelect').value = store.id;
             renderWizardStoreOptions();
@@ -6678,6 +6847,7 @@ function restoreNewIssueDraft() {
         const store = stores.find(s => s.id === draft.storeId);
         if (store && getAccessibleStores().some(x => x.id === store.id)) {
             selectedStore = store;
+            refreshSelectedStoreSummaryCounts();
             document.getElementById('storeSelect').value = store.id;
             document.getElementById('newIssueStoreName').textContent = store.name;
             renderWizardStoreOptions();
@@ -7422,7 +7592,6 @@ function syncAfterTicketMutation(ticketKey, patch) {
         renderNotifyPanel();
     }
 
-    loadAdminSummary();
 }
 
 async function saveStatusUpdate(key) {
