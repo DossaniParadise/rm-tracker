@@ -3815,6 +3815,23 @@ function applyHeaderControlVisibility(user, { impersonating = false } = {}) {
     viewAsBtn?.classList.toggle('hidden', !canUseViewAs);
 }
 
+function updateHeaderIdentity(user, { impersonating = false } = {}) {
+    const initials = (user?.name || '').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+    document.getElementById('userAvatar').textContent = initials || '?';
+    document.getElementById('userName').textContent = user?.name || 'Unknown User';
+    if (impersonating) {
+        document.getElementById('userRole').innerHTML = getRoleTitle(user) + ' <span style="font-size:10px;color:var(--accent);font-weight:700">(viewing as)</span>';
+    } else {
+        document.getElementById('userRole').textContent = getRoleTitle(user);
+    }
+}
+
+function updateAllLocationsVisibility(user) {
+    const showAllLocations = !!(user && (user.role === 'Admin' || user.role === 'Director' || user.role === 'Technician' || user.stores === 'all'));
+    document.getElementById('brandPill-all')?.classList.toggle('hidden', !showAllLocations);
+    document.querySelectorAll('.admin-only-opt').forEach(el => el.classList.toggle('hidden', !showAllLocations));
+}
+
 function showAppScreen() {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('appContainer').style.display = 'flex';
@@ -3822,19 +3839,13 @@ function showAppScreen() {
     applyExperienceClass(currentUser.role);
 
     // Populate header
-    const initials = currentUser.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-    document.getElementById('userAvatar').textContent = initials || '?';
-    document.getElementById('userName').textContent = currentUser.name;
-    document.getElementById('userRole').textContent = getRoleTitle(currentUser);
+    updateHeaderIdentity(currentUser);
 
     applyHeaderControlVisibility(currentUser, { impersonating: !!realUser });
     if (canAccessAdminPanel(currentUser)) watchPendingUsers();
 
     // Show "All Locations" pill for admins
-    if (currentUser.role === 'Admin' || currentUser.role === 'Director' || currentUser.role === 'Technician' || currentUser.stores === 'all') {
-        document.getElementById('brandPill-all').classList.remove('hidden');
-        document.querySelectorAll('.admin-only-opt').forEach(el => el.classList.remove('hidden'));
-    }
+    updateAllLocationsVisibility(currentUser);
     // Load notification routing config
     db.ref('config/notifyRouting').once('value', snap => {
         notifyRouting = snap.val() || {};
@@ -6093,6 +6104,24 @@ function openTicketFromAll(ticketId) {
 // ============================================================
 let realUser = null; // stash the real itsupport user when impersonating
 
+function resetPostImpersonationUI() {
+    selectedStore = null;
+    document.getElementById('storeType').value = '';
+    document.querySelectorAll('.brand-pill').forEach(b => b.classList.remove('active'));
+    document.getElementById('storeSelect').innerHTML = '<option value="">Choose store...</option>';
+    document.getElementById('actionButtons').classList.add('hidden');
+    document.getElementById('mapOverview').classList.add('hidden');
+    document.getElementById('adminSummary').classList.add('hidden');
+
+    if (clockTimerInterval) { clearInterval(clockTimerInterval); clockTimerInterval = null; }
+    activeClockIn = null;
+    document.getElementById('techClockBanner')?.classList.add('hidden');
+}
+
+function resolveViewAsOptionTitle(userRecord = {}) {
+    return userRecord.title || getDirectoryTitleByEmail(userRecord.email, '') || userRecord.role || 'Manager';
+}
+
 function showViewAsModal() {
     // Load all active users from Firebase
     db.ref('users').once('value', snap => {
@@ -6111,7 +6140,7 @@ function showViewAsModal() {
                 <select class="form-select" id="viewAsSelect" style="font-size:14px">
                     <option value="">Choose a user...</option>
                     ${entries.sort((a,b) => (a[1].name||'').localeCompare(b[1].name||'')).map(([uid, u]) =>
-                        `<option value="${uid}">${esc(u.name || 'Unknown')} — ${esc(u.title || getDirectoryTitleByEmail(u.email, '') || u.role || 'Manager')} (${esc(u.email || uid)})</option>`
+                        `<option value="${uid}">${esc(u.name || 'Unknown')} — ${esc(resolveViewAsOptionTitle(u))} (${esc(u.email || uid)})</option>`
                     ).join('')}
                 </select>
             </div>
@@ -6144,47 +6173,14 @@ function doViewAs() {
             _impersonating: resolved.name || resolved.email
         };
 
-        if (resolved._profileSource === 'directory-name') {
-            showToast('View As debug: directory email miss, name fallback hit.', 'warning');
-        } else if (resolved._profileSource === 'firebase-fallback') {
-            showToast('View As debug: no directory match; using Firebase profile fallback.', 'warning');
-        }
-
         document.getElementById('viewAsModal').remove();
 
-        // === FULL STATE RESET ===
-        selectedStore = null;
-        document.getElementById('storeType').value = '';
-        document.querySelectorAll('.brand-pill').forEach(b => b.classList.remove('active'));
-        document.getElementById('storeSelect').innerHTML = '<option value="">Choose store...</option>';
-        document.getElementById('actionButtons').classList.add('hidden');
-        document.getElementById('mapOverview').classList.add('hidden');
-        document.getElementById('adminSummary').classList.add('hidden');
-
-        // Clear tech dashboard state
-        if (clockTimerInterval) { clearInterval(clockTimerInterval); clockTimerInterval = null; }
-        activeClockIn = null;
-        document.getElementById('techClockBanner')?.classList.add('hidden');
-
-        // Update header
-        const initials = currentUser.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-        document.getElementById('userAvatar').textContent = initials || '?';
-        document.getElementById('userName').textContent = currentUser.name;
-        document.getElementById('userRole').innerHTML = getRoleTitle(currentUser) + ' <span style="font-size:10px;color:var(--accent);font-weight:700">(viewing as)</span>';
+        resetPostImpersonationUI();
+        updateHeaderIdentity(currentUser, { impersonating: true });
 
         // Mirror impersonated user's controls exactly.
         applyHeaderControlVisibility(currentUser, { impersonating: true });
-
-        // Show/hide admin-only UI
-        const allPill = document.getElementById('brandPill-all');
-        const allOpt = document.querySelector('.admin-only-opt');
-        if (currentUser.role === 'Admin' || currentUser.role === 'Director') {
-            if (allPill) allPill.classList.remove('hidden');
-            if (allOpt) allOpt.classList.remove('hidden');
-        } else {
-            if (allPill) allPill.classList.add('hidden');
-            if (allOpt) allOpt.classList.add('hidden');
-        }
+        updateAllLocationsVisibility(currentUser);
 
         // Apply experience CSS + route to correct landing
         applyExperienceClass(currentUser.role);
@@ -6201,31 +6197,15 @@ function exitViewAs() {
     realUser = null;
 
     document.getElementById('viewAsModal')?.remove();
-
-    // Full state reset
-    selectedStore = null;
-    if (clockTimerInterval) { clearInterval(clockTimerInterval); clockTimerInterval = null; }
-    activeClockIn = null;
-    document.getElementById('techClockBanner')?.classList.add('hidden');
+    resetPostImpersonationUI();
 
     showScreen('storeSelection');
-    document.getElementById('storeType').value = '';
-    document.querySelectorAll('.brand-pill').forEach(b => b.classList.remove('active'));
-    document.getElementById('storeSelect').innerHTML = '<option value="">Choose store...</option>';
-    document.getElementById('actionButtons').classList.add('hidden');
-    document.getElementById('mapOverview').classList.add('hidden');
-
-    // Restore header
-    const initials = currentUser.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-    document.getElementById('userAvatar').textContent = initials || '?';
-    document.getElementById('userName').textContent = currentUser.name;
-    document.getElementById('userRole').textContent = getRoleTitle(currentUser);
+    updateHeaderIdentity(currentUser);
 
     // Restore admin experience
     applyHeaderControlVisibility(currentUser, { impersonating: false });
     applyExperienceClass(currentUser.role);
-    document.getElementById('brandPill-all')?.classList.remove('hidden');
-    document.querySelector('.admin-only-opt')?.classList.remove('hidden');
+    updateAllLocationsVisibility(currentUser);
     routeToProfileLanding();
 
     initNotificationCenter();
