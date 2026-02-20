@@ -362,16 +362,21 @@ function showAppScreen() {
     document.getElementById('userName').textContent = currentUser.name;
     document.getElementById('userRole').textContent = getRoleTitle(currentUser);
 
-    // Toggle top-right privileged buttons for this user
-    document.getElementById('adminBtn').classList.toggle('hidden', !canAccessAdminPanel(currentUser));
-    document.getElementById('vendorBtn').classList.toggle('hidden', !canManageVendors(currentUser));
-    document.getElementById('viewAsBtn').classList.toggle('hidden', !isItsupportUser(currentUser));
-    if (canAccessAdminPanel(currentUser)) watchPendingUsers();
+    // Show admin button for admins (case-insensitive check)
+    if (canAccessAdminPanel(currentUser)) {
+        document.getElementById('adminBtn').classList.remove('hidden');
+        watchPendingUsers();
+    }
 
     // Show "All Locations" pill for admins
     if (currentUser.role === 'Admin' || currentUser.role === 'Director' || currentUser.role === 'Technician' || currentUser.stores === 'all') {
         document.getElementById('brandPill-all').classList.remove('hidden');
         document.querySelectorAll('.admin-only-opt').forEach(el => el.classList.remove('hidden'));
+    }
+
+    // Show "View As" only for itsupport
+    if (isItsupportUser(currentUser)) {
+        document.getElementById('viewAsBtn').classList.remove('hidden');
     }
 
     // Load notification routing config
@@ -1321,7 +1326,6 @@ async function loadVendors() {
     renderVendorRows();
     populateAssignDropdown();
     renderVendorCatCheckboxes();
-    renderVendorManagerRows();
 }
 
 function renderVendorRows() {
@@ -1381,83 +1385,8 @@ async function removeVendor(id) {
     }
 }
 
-function showVendorManager() {
-    if (!canManageVendors()) { showToast('Only admin/director/IT support can edit vendors', 'error'); return; }
-    document.getElementById('vendorManagerModal')?.remove();
-
-    const overlay = document.createElement('div');
-    overlay.className = 'admin-modal';
-    overlay.id = 'vendorManagerModal';
-    overlay.style.zIndex = '220';
-    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
-    overlay.innerHTML = `<div class="modal-card" style="max-width:760px">
-        <h3>🏢 Approved Vendors</h3>
-        <p style="font-size:13px;color:var(--text-mid);margin-bottom:10px">Add or remove vendors used in assignment dropdowns.</p>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-            <input class="form-input" id="vmName" placeholder="Vendor name">
-            <input class="form-input" id="vmAreas" placeholder="Areas served (optional)">
-        </div>
-        <div id="vmCats" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px"></div>
-        <div style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:10px">
-            <button class="btn btn-primary" onclick="addVendorFromManager()">Add Vendor</button>
-        </div>
-        <div id="vmRows" style="max-height:300px;overflow:auto;border:1px solid var(--border);border-radius:8px;padding:8px"></div>
-        <div class="modal-actions" style="margin-top:10px">
-            <button class="btn btn-secondary" onclick="document.getElementById('vendorManagerModal')?.remove()">Close</button>
-        </div>
-    </div>`;
-    document.body.appendChild(overlay);
-    renderVendorManagerCatCheckboxes();
-    renderVendorManagerRows();
-}
-
-function renderVendorManagerCatCheckboxes() {
-    const container = document.getElementById('vmCats');
-    if (!container) return;
-    const cats = ['plumbing','equipment','it','structural','safety','other'];
-    container.innerHTML = cats.map(c => `<label class="store-cb" style="border:1px solid var(--border);border-radius:6px;padding:2px 6px"><input type="checkbox" class="vm-cat-cb" value="${c}"> ${capitalize(c)}</label>`).join('');
-}
-
-function renderVendorManagerRows() {
-    const container = document.getElementById('vmRows');
-    if (!container) return;
-    if (!vendorList.length) {
-        container.innerHTML = '<div class="empty-state" style="font-size:13px">No approved vendors yet</div>';
-        return;
-    }
-    container.innerHTML = vendorList.map(v => `<div class="vendor-row">
-        <span class="vendor-name">${escHtml(v.name)}</span>
-        <span class="vendor-meta">${escHtml(v.areas || '')}${(v.categories || []).length ? ' · ' + (v.categories || []).map(capitalize).join(', ') : ''}</span>
-        <button class="btn btn-ghost" style="font-size:11px;color:var(--danger)" onclick="removeVendorFromManager('${v.id}')">Delete</button>
-    </div>`).join('');
-}
-
-async function addVendorFromManager() {
-    const name = (document.getElementById('vmName')?.value || '').trim();
-    const areas = (document.getElementById('vmAreas')?.value || '').trim();
-    const cats = [...document.querySelectorAll('.vm-cat-cb:checked')].map(c => c.value);
-    if (!name) { showToast('Enter vendor name', 'error'); return; }
-    const canEdit = await checkVendorEditPermission();
-    if (!canEdit) { showToast('No permission', 'error'); return; }
-    try {
-        await db.ref('config/vendors').push({ name, areas, categories: cats });
-        showToast('Vendor added', 'success');
-        document.getElementById('vmName').value = '';
-        document.getElementById('vmAreas').value = '';
-        document.querySelectorAll('.vm-cat-cb').forEach(c => c.checked = false);
-        await loadVendors();
-    } catch (err) {
-        showToast('Error: ' + err.message, 'error');
-    }
-}
-
-async function removeVendorFromManager(id) {
-    if (!confirm('Delete this vendor from approved list?')) return;
-    await removeVendor(id);
-}
-
 async function checkVendorEditPermission() {
-    if (canManageVendors(currentUser)) return true;
+    if (currentUser.role === 'Admin') return true;
     const snap = await db.ref('config/vendorEditors').once('value');
     const editors = snap.val() || [];
     return editors.includes(currentUser.email);
@@ -1504,11 +1433,6 @@ function populateAssignDropdown() {
         });
         sel.innerHTML += '</optgroup>';
     }
-
-    if (canManageVendors()) {
-        sel.innerHTML += '<optgroup label="Vendor Tools"><option value="__add_vendor__" class="vendor-manage-option">✨ Add New Vendor</option></optgroup>';
-    }
-    sel.onchange = () => handleVendorManagerSelection(sel);
 }
 
 function getAssignmentOptionsHtml(storeCode) {
@@ -1531,23 +1455,7 @@ function getAssignmentOptionsHtml(storeCode) {
         html += '</optgroup>';
     }
 
-    if (canManageVendors()) {
-        html += '<optgroup label="Vendor Tools"><option value="__add_vendor__" class="vendor-manage-option">✨ Add New Vendor</option></optgroup>';
-    }
-
     return html;
-}
-
-function handleVendorManagerSelection(selectEl) {
-    if (!selectEl || selectEl.value !== '__add_vendor__') return false;
-    if (!canManageVendors()) {
-        toast('Only admin/director/IT support can edit vendors', 'error');
-        selectEl.value = '';
-        return true;
-    }
-    showVendorManager();
-    setTimeout(() => { selectEl.value = ''; }, 0);
-    return true;
 }
 
 function renderInlineAssignControls(ticket, contextPrefix = 'inline') {
@@ -1652,7 +1560,6 @@ async function quickAssignTicket(ticketKey, selectId) {
     if (!select) return;
     const value = select.value;
 
-    if (handleVendorManagerSelection(select)) return;
     if (!value) { toast('Select a technician or vendor', 'error'); return; }
     if (!canAssignTickets()) { toast('You do not have assignment permissions', 'error'); return; }
 
@@ -2589,7 +2496,6 @@ function doViewAs() {
 
         // Keep admin + viewAs buttons visible (real user is admin)
         document.getElementById('adminBtn').classList.remove('hidden');
-        document.getElementById('vendorBtn').classList.remove('hidden');
         document.getElementById('viewAsBtn').classList.remove('hidden');
 
         // Show/hide admin-only UI
@@ -2639,7 +2545,6 @@ function exitViewAs() {
     document.getElementById('userRole').textContent = getRoleTitle(currentUser);
 
     // Restore admin experience
-    document.getElementById('vendorBtn')?.classList.toggle('hidden', !canManageVendors(currentUser));
     applyExperienceClass(currentUser.role);
     document.getElementById('brandPill-all')?.classList.remove('hidden');
     document.querySelector('.admin-only-opt')?.classList.remove('hidden');
@@ -3314,16 +3219,6 @@ function openTicketDetail(key, forceModal = true) {
         if (vendorList.length) {
             reassignSel.innerHTML += '<optgroup label="Third-Party Vendors">' + vendorList.map(v => `<option value="vendor:${escHtml(v.name)}">🏢 ${escHtml(v.name)}</option>`).join('') + '</optgroup>';
         }
-        if (canManageVendors()) {
-            reassignSel.innerHTML += '<optgroup label="Vendor Tools"><option value="__add_vendor__" class="vendor-manage-option">✨ Add New Vendor</option></optgroup>';
-        }
-        reassignSel.onchange = () => {
-            if (handleVendorManagerSelection(reassignSel)) {
-                setModalSaveVisibility();
-                return;
-            }
-            setModalSaveVisibility();
-        };
     }
 
     // Wire change tracking so save buttons appear only when edits are made
@@ -3530,10 +3425,6 @@ async function saveStatusUpdate(key) {
     const priorityChanged = nextPriority !== (t.priority || 'routine');
     const priorityReason = (document.getElementById('priorityReason')?.value || '').trim();
     const reassignVal = document.getElementById('reassignTo')?.value || '';
-    if (reassignVal === '__add_vendor__') {
-        showVendorManager();
-        return;
-    }
     const assignmentChanged = canAssignTickets() && reassignVal !== '';
     const parsedAssignment = assignmentChanged ? parseAssignmentValue(reassignVal) : null;
     const targetAssignedTo = assignmentChanged ? parsedAssignment.assignedTo : (t.assignedTo || '');
@@ -3764,27 +3655,8 @@ function canAccessAdminPanel(user = currentUser) {
     return isItsupportUser(user);
 }
 
-function getEffectiveRole(user = currentUser) {
-    if (!user) return '';
-    const role = normalizeRole(user.role || '');
-    if (role === 'Admin' || role === 'Director') return role;
-    const titleRole = normalizeRole(user.title || '');
-    return titleRole;
-}
-
-function canManageVendors(user = currentUser) {
-    // Vendor management must be available to assignment-capable users
-    // and to IT Support (including when IT is impersonating via View As).
-    const baseUser = user || currentUser;
-    const viaRole = canAssignTickets(baseUser);
-    const viaItsupport = isItsupportUser(baseUser);
-    const viaImpersonation = !!realUser && isItsupportUser(realUser);
-    return !!baseUser && (viaRole || viaItsupport || viaImpersonation);
-}
-
 function canAssignTickets(user = currentUser) {
-    const effective = getEffectiveRole(user);
-    return effective === 'Admin' || effective === 'Director';
+    return !!user && (user.role === 'Admin' || user.role === 'Director');
 }
 
 function canEditUrgency(user = currentUser) {
