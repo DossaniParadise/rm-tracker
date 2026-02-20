@@ -640,8 +640,6 @@ body {
 }
 
 /* Vendor management */
-.vendor-manage-option { color: var(--accent); font-weight: 700; }
-
 .vendor-row {
     display: flex;
     align-items: center;
