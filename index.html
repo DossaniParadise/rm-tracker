@@ -2652,6 +2652,17 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
 .asc-num.purple { color: #7c3aed; }
 .asc-num.gray { color: #6b7280; }
 
+/* Keep director/admin status numbers visible as a header */
+#adminSummary {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: var(--bg);
+    padding-top: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+}
+
 .desktop-insights-grid { display: none !important; }
 ._disabled_desktop-insights-grid {
     display: grid;
@@ -2961,7 +2972,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                 </div>
                 <div class="landing-actions" id="coachStoreGrid"></div>
                 <div style="text-align:center;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
-                    <button class="btn btn-primary" onclick="showAllTickets('unassigned')" style="padding:14px 32px;font-size:15px;border-radius:12px;font-weight:600" data-i18n="view_all_tickets">🔍 View All Unassigned Tickets</button>
+                    <button class="btn btn-primary" onclick="showCoachOpenTickets()" style="padding:14px 32px;font-size:15px;border-radius:12px;font-weight:600" data-i18n="view_all_tickets">🔍 View All Open Tickets</button>
                 </div>
             </div>
         </div>
@@ -2983,6 +2994,19 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                         <div class="action-desc" data-i18n="view_tickets_desc">View and track unassigned issues</div>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        
+        <!-- ===== SCREEN: Coach Open Tickets (grouped by store) ===== -->
+        <div id="coachOpenTicketsScreen" class="hidden">
+            <div class="role-landing" style="max-width:980px">
+                <button class="btn-back" onclick="showScreen('coachLanding');initCoachLanding()" style="margin-bottom:12px" data-i18n="back_my_stores">← Back to My Stores</button>
+                <div class="landing-header" style="margin-bottom:10px">
+                    <h2 id="coachOpenTicketsTitle">Tickets open for Coach's Stores</h2>
+                    <p style="color:var(--text-muted);font-size:13px;margin-top:6px">Tap a ticket to add comments, attach photos, or change urgency.</p>
+                </div>
+                <div id="coachOpenTicketsList" class="store-list-view"></div>
             </div>
         </div>
 
@@ -3530,7 +3554,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-<!-- Data files + Application logic (single-file build v5.8.0) -->
+<!-- Data files + Application logic (single-file build v5.9.0) -->
 <script>
 // ============================================================
 // STORES DATA - Dossani Paradise Management
@@ -3832,7 +3856,7 @@ let adminSummaryListenerCallback = null;
 const SUMMARY_LAYOUT_RULES = {
     adminSummary: {
         roles: new Set(['Admin', 'Director']),
-        screens: new Set(['storeSelection'])
+        screens: new Set(['storeSelection','allTicketsScreen'])
     },
     selectedStoreSummary: {
         screensByRole: {
@@ -4163,6 +4187,88 @@ function getCoachStoresHeadingText() {
     return 'My Stores';
 }
 
+
+function showCoachOpenTickets() {
+    if (!currentUser || currentUser.role !== 'Area Coach') return;
+    showScreen('coachOpenTicketsScreen');
+
+    const titleEl = document.getElementById('coachOpenTicketsTitle');
+    if (titleEl) {
+        const name = (currentUser.name || '').trim() || 'Coach';
+        titleEl.textContent = `Tickets open for ${name}'s Stores`;
+    }
+
+    const listEl = document.getElementById('coachOpenTicketsList');
+    if (listEl) {
+        listEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted)"><span class="spinner spinner-dark"></span> Loading open tickets...</div>';
+    }
+
+    const myStores = getAccessibleStores();
+    const codes = myStores.map(s => s.code);
+
+    db.ref('tickets').once('value', snap => {
+        const scoped = [];
+        snap.forEach(child => {
+            const t = child.val();
+            if (!t) return;
+            const ticket = { _key: child.key, ...t };
+            if (!codes.includes(ticket.storeCode)) return;
+            if (!isActiveStatus(ticket.status)) return; // "open" tickets only
+            scoped.push(ticket);
+        });
+
+        // Reuse the global list opener so ticket modal works everywhere
+        allTicketsData = scoped.slice();
+
+        if (!listEl) return;
+        if (scoped.length === 0) {
+            listEl.innerHTML = '<div style="padding:40px;text-align:center;font-size:15px;color:var(--text-muted)">🎉 No open tickets across your stores!</div>';
+            return;
+        }
+
+        // Group by store, then sort tickets by urgency + status + recency
+        const byStore = {};
+        scoped.forEach(t => {
+            (byStore[t.storeCode] ||= []).push(t);
+        });
+
+        const storeOrder = myStores
+            .filter(s => byStore[s.code])
+            .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+        const priRank = { emergency: 0, urgent: 1, routine: 2 };
+        const statusRank = s => (TICKET_STATUS_CONFIG[normalizeTicketStatus(s)]?.order ?? 99);
+
+        let html = '';
+        storeOrder.forEach(s => {
+            const storeTickets = byStore[s.code] || [];
+            storeTickets.sort((a, b) =>
+                (priRank[a.priority] ?? 2) - (priRank[b.priority] ?? 2) ||
+                statusRank(a.status) - statusRank(b.status) ||
+                (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0)
+            );
+
+            const shortName = (s.name || '').replace(/^Burger King /, 'BK ').replace(/^Paradise QS /, 'PQS ');
+            html += `<div class="slv-store">
+                <div class="slv-store-name">${escHtml(shortName)} <span style="font-size:12px;font-weight:400;color:var(--text-muted)">(${storeTickets.length} open)</span></div>`;
+
+            storeTickets.forEach(t => {
+                const prBadge = {routine:'<span class="priority-word p-routine">Routine</span>',urgent:'<span class="priority-word p-urgent">Urgent</span>',emergency:'<span class="priority-word p-emergency">Emergency</span>'}[t.priority] || '';
+                html += `<div class="slv-ticket" onclick="openTicketFromAllByKey('${esc(t._key || t.id)}')">
+                    ${prBadge}
+                    <span class="slv-desc">${escHtml((t.description || '').substring(0, 80))}</span>
+                    <span class="ticket-status-badge status-${getStatusColorClass(t.status)}" style="font-size:11px;padding:2px 8px">${getStatusLabel(t.status)}</span>
+                    ${t.photos && t.photos.length ? '<span class="slv-assignee" style="color:var(--text-muted)">📷 ' + t.photos.length + '</span>' : ''}
+                </div>`;
+            });
+
+            html += '</div>';
+        });
+
+        listEl.innerHTML = html;
+    });
+}
+
 function updateCoachStoresHeading() {
     const heading = document.getElementById('coachStoresHeading');
     if (!heading) return;
@@ -4299,7 +4405,7 @@ function updateLayoutVisibility(screenId = currentScreenId) {
 }
 
 function showScreen(screenId) {
-    ['managerLanding', 'coachLanding', 'coachStoreView', 'techDashboard', 'adminSummary', 'storeSelection', 'newIssueScreen', 'existingIssuesScreen', 'allTicketsScreen', 'adminScreen'].forEach(id => {
+    ['managerLanding', 'coachLanding', 'coachStoreView', 'coachOpenTicketsScreen', 'techDashboard', 'adminSummary', 'storeSelection', 'newIssueScreen', 'existingIssuesScreen', 'allTicketsScreen', 'adminScreen'].forEach(id => {
         document.getElementById(id).classList.toggle('hidden', id !== screenId);
     });
 
@@ -4312,6 +4418,8 @@ function goBack() {
     if (currentUser.role === 'Technician') { showScreen('techDashboard'); loadTechJobs(); return; }
     if (currentUser.role === 'Manager') { showScreen('managerLanding'); return; }
     if (currentUser.role === 'Area Coach') {
+        // If we are viewing the grouped open tickets list, go back to coach landing
+        if (currentScreenId === 'coachOpenTicketsScreen') { showScreen('coachLanding'); initCoachLanding(); return; }
         // If we came from a specific store, go back to coach store view
         if (selectedStore) { showScreen('coachStoreView'); return; }
         showScreen('coachLanding'); initCoachLanding(); return;
@@ -6212,12 +6320,27 @@ function renderAdminSummaryFromTickets(tickets) {
     };
 
     document.getElementById('adminSummaryGrid').innerHTML = STATUS_ORDER.map(status => `
-        <div class="admin-sum-card" onclick="selectBrand('all');setTimeout(()=>showAllTickets('${status}'),200)">
+        <div class="admin-sum-card" onclick="handleAdminSummaryClick('${status}')">
             <div class="asc-num ${numberClassByColor[getStatusColorClass(status)] || 'blue'}">${statusCounts[status] || 0}</div>
             <div class="asc-label">${getStatusLabel(status)}</div>
         </div>`).join('');
 
     updateLayoutVisibility();
+}
+
+
+function handleAdminSummaryClick(status) {
+    // If we're already in the All Tickets list, just switch the filter (no need to go back to overview).
+    if (currentScreenId === 'allTicketsScreen') {
+        const sel = document.getElementById('atFilterStatus');
+        if (sel) sel.value = status || 'unassigned';
+        filterAllTickets();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+    }
+    // Default behavior from overview
+    selectBrand('all');
+    setTimeout(() => showAllTickets(status), 200);
 }
 
 function subscribeAdminSummary() {
@@ -8042,7 +8165,7 @@ const TRANSLATIONS = {
         report_issue_desc: 'Enviar ticket de reparación',
         view_tickets: 'Tickets Existentes',
         view_tickets_desc: 'Ver y seguir problemas abiertos',
-        view_all_tickets: '🔍 Ver Todos los Tickets',
+        view_all_tickets: '🔍 Ver Todos los Tickets Abiertos',
         view_all_desc: 'Todas las tiendas por ubicación',
         coach_my_stores: 'Mis Tiendas',
         back_my_stores: '← Volver a Mis Tiendas',
@@ -8218,7 +8341,7 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v5.8.0</span>
+    <span>R&M Tracker v5.9.0</span>
 </div>
 
 </body>
