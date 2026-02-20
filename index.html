@@ -3754,7 +3754,16 @@ let vendorList = [];
 let desktopStoreData = [];
 let dslShowAll = false;
 
-const STATUS_ORDER = ['unassigned', 'assigned', 'waiting', 'inprogress', 'resolved', 'closed'];
+const TICKET_STATUS_CONFIG = {
+    unassigned: { order: 0, label: 'Unassigned', isActive: true, colorClass: 'unassigned', allowedTransitions: ['assigned', 'dispatched', 'inprogress', 'waiting', 'resolved', 'closed'] },
+    assigned: { order: 1, label: 'Assigned', isActive: true, colorClass: 'assigned', allowedTransitions: ['dispatched', 'inprogress', 'waiting', 'resolved', 'closed'] },
+    dispatched: { order: 2, label: 'Dispatched', isActive: true, colorClass: 'assigned', allowedTransitions: ['inprogress', 'waiting', 'resolved', 'closed'] },
+    waiting: { order: 3, label: 'Waiting', isActive: true, colorClass: 'waiting', allowedTransitions: ['inprogress', 'resolved', 'closed'] },
+    inprogress: { order: 4, label: 'In Progress', isActive: true, colorClass: 'inprogress', allowedTransitions: ['waiting', 'resolved', 'closed'] },
+    resolved: { order: 5, label: 'Resolved', isActive: false, colorClass: 'resolved', allowedTransitions: ['closed'] },
+    closed: { order: 6, label: 'Closed', isActive: false, colorClass: 'closed', allowedTransitions: [] }
+};
+const STATUS_ORDER = Object.keys(TICKET_STATUS_CONFIG).sort((a, b) => TICKET_STATUS_CONFIG[a].order - TICKET_STATUS_CONFIG[b].order);
 const PRIORITY_ORDER = { emergency: 0, urgent: 1, routine: 2 };
 const WAITING_REASONS = {
     parts: 'Waiting on Parts',
@@ -3763,9 +3772,31 @@ const WAITING_REASONS = {
     other: 'Waiting on Other'
 };
 
+
+function syncStatusFilterUIFromConfig() {
+    const statusButtonsHtml = STATUS_ORDER.map(status =>
+        `<button class="filter-chip" data-filter="${status}" onclick="filterTickets('${status}', this)">${getStatusLabel(status)}</button>`
+    ).join('');
+
+    ['ticketFilters', 'compactTicketFilters'].forEach((id, idx) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const allLabel = idx === 0 ? 'All' : 'All';
+        el.innerHTML = `<button class="filter-chip active" data-filter="all" onclick="filterTickets('all', this)">${allLabel}</button>${statusButtonsHtml}`;
+    });
+
+    const statusSelect = document.getElementById('atFilterStatus');
+    if (statusSelect) {
+        statusSelect.innerHTML = `<option value="all">All Statuses</option>${STATUS_ORDER.map(status => `<option value="${status}">${getStatusLabel(status)}</option>`).join('')}`;
+    }
+}
+
+
 // ============================================================
 // AUTH
 // ============================================================
+syncStatusFilterUIFromConfig();
+
 auth.onAuthStateChanged(async (user) => {
     if (user) {
         console.log('Signed in:', user.email);
@@ -4408,7 +4439,7 @@ function fetchTicketCounts(codes, callback) {
                 scopedTickets.push(t);
                 if (!allTicketCounts[t.storeCode]) allTicketCounts[t.storeCode] = { open: 0, total: 0, score: 0, hasEmergency: false };
                 allTicketCounts[t.storeCode].total++;
-                if (isActiveTicketStatus(t.status)) {
+                if (isActiveStatus(t.status)) {
                     allTicketCounts[t.storeCode].open++;
                     if (t.priority === 'emergency') {
                         allTicketCounts[t.storeCode].score += 3;
@@ -4440,8 +4471,7 @@ function getSlaHoursForPriority(priority) {
 }
 
 function isActiveTicketStatus(status) {
-    const normalized = normalizeTicketStatus(status);
-    return !!normalized && normalized !== 'closed' && normalized !== 'resolved';
+    return isActiveStatus(status);
 }
 
 function buildDesktopInsights(ticketList, allowedStoreCodes = null) {
@@ -4576,11 +4606,10 @@ function renderStoreListView() {
         const allT = [];
         snap.forEach(child => { allT.push({ _key: child.key, ...child.val() }); });
         
-        const statusLabel = { unassigned:'Unassigned', assigned:'Assigned', inprogress:'In Progress', waiting:'Waiting', resolved:'Resolved', closed:'Closed' };
-        
+                
         // Only show stores that have unassigned tickets
         const storesWithTickets = lastFilteredStores.filter(s => {
-            return allT.some(t => t.storeCode === s.code && t.status !== 'closed' && t.status !== 'resolved');
+            return allT.some(t => t.storeCode === s.code && isActiveStatus(t.status));
         });
 
         if (storesWithTickets.length === 0) {
@@ -4590,7 +4619,7 @@ function renderStoreListView() {
         
         let html = '';
         storesWithTickets.forEach(s => {
-            const storeTickets = allT.filter(t => t.storeCode === s.code && t.status !== 'closed' && t.status !== 'resolved');
+            const storeTickets = allT.filter(t => t.storeCode === s.code && isActiveStatus(t.status));
             const shortName = s.name.replace(/^Burger King /, 'BK ').replace(/^Paradise QS /, 'PQS ');
             storeTickets.sort((a,b) => { const p = {emergency:0,urgent:1,routine:2}; return (p[a.priority]||2) - (p[b.priority]||2); });
             
@@ -4602,7 +4631,7 @@ function renderStoreListView() {
                 html += `<div class="slv-ticket" onclick="listViewOpenTicket('${t._key}')">
                     ${prBadge}
                     <span class="slv-desc">${escHtml(t.description || '').substring(0,80)}</span>
-                    <span class="ticket-status-badge status-${normalizeTicketStatus(t.status)}" style="font-size:11px;padding:2px 8px">${statusLabel[normalizeTicketStatus(t.status)] || t.status}</span>
+                    <span class="ticket-status-badge status-${getStatusColorClass(t.status)}" style="font-size:11px;padding:2px 8px">${getStatusLabel(t.status)}</span>
                     ${assignee ? '<span class="slv-assignee">' + escHtml(assignee) + '</span>' : ''}
                     ${renderInlineAssignControls(t, 'slv')}
                 </div>`;
@@ -5653,9 +5682,10 @@ function loadTechJobs() {
 }
 
 function getExecutionModeState(status = 'inprogress') {
-    if (status === 'assigned' || status === 'unassigned' || status === 'open') return { key: 'travel', label: '🚗 Start Travel', nextStatus: 'inprogress', note: 'Travel started to site' };
-    if (status === 'inprogress') return { key: 'arrived', label: '📍 Arrived', nextStatus: 'inprogress', note: 'Arrived onsite and began diagnosis' };
-    if (status === 'waiting') return { key: 'waiting', label: '📦 Waiting Parts', nextStatus: 'waiting', note: 'Waiting on parts / vendor support' };
+    const normalizedStatus = normalizeTicketStatus(status);
+    if (normalizedStatus === 'assigned' || normalizedStatus === 'unassigned') return { key: 'travel', label: '🚗 Start Travel', nextStatus: 'inprogress', note: 'Travel started to site' };
+    if (normalizedStatus === 'inprogress') return { key: 'arrived', label: '📍 Arrived', nextStatus: 'inprogress', note: 'Arrived onsite and began diagnosis' };
+    if (normalizedStatus === 'waiting') return { key: 'waiting', label: '📦 Waiting Parts', nextStatus: 'waiting', note: 'Waiting on parts / vendor support' };
     return { key: 'complete', label: '✅ Complete', nextStatus: 'resolved', note: 'Work completed, ready to close out' };
 }
 
@@ -5671,8 +5701,7 @@ function renderTechDetailPane(key) {
         pane.innerHTML = '<div class="tech-detail-empty">Select a job to view full details.</div>';
         return;
     }
-    const statusLabel = { unassigned:'Unassigned', assigned:'Assigned', inprogress:'In Progress', waiting:'Waiting', resolved:'Resolved', closed:'Closed' };
-    const catIcons = { plumbing:'🚿', equipment:'⚙️', it:'💻', structural:'🧱', safety:'🛡️', other:'📎' };
+        const catIcons = { plumbing:'🚿', equipment:'⚙️', it:'💻', structural:'🧱', safety:'🛡️', other:'📎' };
     const notes = [
         'On site — troubleshooting now',
         'Part ordered — ETA pending',
@@ -5685,7 +5714,7 @@ function renderTechDetailPane(key) {
                 <div style="font-weight:700">${escHtml(t.id || t._key)}</div>
                 <div style="font-size:12px;color:var(--text-muted)">${escHtml((stores.find(s => s.code === t.storeCode) || {}).name || t.storeCode || '')}</div>
             </div>
-            <span class="ticket-status-badge status-${normalizeTicketStatus(t.status)}" style="font-size:11px">${statusLabel[normalizeTicketStatus(t.status)] || t.status}</span>
+            <span class="ticket-status-badge status-${getStatusColorClass(t.status)}" style="font-size:11px">${getStatusLabel(t.status)}</span>
         </div>
         <div style="font-size:13px;line-height:1.4;margin-bottom:8px">${catIcons[t.category] || '📎'} ${escHtml(t.description || '')}</div>
         <div class="tjc-fast-actions" style="margin-bottom:10px">
@@ -5716,10 +5745,10 @@ async function saveTechQuickUpdate(key, fallbackStatus) {
 }
 
 function renderTechDashboard() {
-    const active = techJobs.filter(t => t.status !== 'closed' && t.status !== 'resolved');
+    const active = techJobs.filter(t => isActiveStatus(t.status));
     const urgent = active.filter(t => t.priority === 'emergency' || t.priority === 'urgent');
-    const waiting = active.filter(t => t.status === 'waiting');
-    const completed = techJobs.filter(t => t.status === 'resolved' || t.status === 'closed');
+    const waiting = active.filter(t => normalizeTicketStatus(t.status) === 'waiting');
+    const completed = techJobs.filter(t => !isActiveStatus(t.status));
 
     document.getElementById('techStats').innerHTML = `
         <div class="tech-stat-card" onclick="filterTechJobs('active',null)">
@@ -5740,8 +5769,8 @@ function renderTechDashboard() {
         </div>`;
 
     let displayJobs = techFilter === 'completed'
-        ? techJobs.filter(t => t.status === 'resolved' || t.status === 'closed')
-        : techJobs.filter(t => t.status !== 'closed' && t.status !== 'resolved');
+        ? techJobs.filter(t => !isActiveStatus(t.status))
+        : techJobs.filter(t => isActiveStatus(t.status));
 
     displayJobs.sort((a, b) => {
         const p = { emergency: 0, urgent: 1, routine: 2 };
@@ -5762,8 +5791,7 @@ function renderTechDashboard() {
         return;
     }
 
-    const statusLabel = { unassigned:'Unassigned', assigned:'Assigned', inprogress:'In Progress', waiting:'Waiting', resolved:'Resolved', closed:'Closed' };
-    const catIcons = { plumbing:'🚿', equipment:'⚙️', it:'💻', structural:'🧱', safety:'🛡️', other:'📎' };
+        const catIcons = { plumbing:'🚿', equipment:'⚙️', it:'💻', structural:'🧱', safety:'🛡️', other:'📎' };
     const isClocked = activeClockIn !== null;
 
     listEl.innerHTML = displayJobs.map(t => {
@@ -5778,7 +5806,7 @@ function renderTechDashboard() {
         if (isActiveJob) {
             const mode = getExecutionModeState(activeClockIn.modeStatus || t.status);
             actionBtn = `<button class="btn-tech-primary" onclick="event.stopPropagation();techAdvanceExecutionMode()">${mode.label}</button>`;
-        } else if (!isClocked && t.status !== 'resolved' && t.status !== 'closed') {
+        } else if (!isClocked && isActiveStatus(t.status)) {
             actionBtn = `<button class="btn-clock-in" onclick="event.stopPropagation();clockIn('${t._key}','${escHtml(t.id)}','${escHtml(shortStore)}', '${t.priority || ''}')">▶ Clock In</button>`;
         } else if (isClocked && !isActiveJob) {
             actionBtn = `<button class="btn-clock-in" disabled title="Finish current job first">▶ Clock In</button>`;
@@ -5793,7 +5821,7 @@ function renderTechDashboard() {
                 </div>
                 <div class="tjc-desc">${catIcons[t.category] || ''} ${escHtml(desc)}</div>
                 <div class="tjc-meta">
-                    <span class="ticket-status-badge status-${normalizeTicketStatus(t.status)}" style="font-size:11px;padding:2px 8px">${statusLabel[normalizeTicketStatus(t.status)] || t.status}</span>
+                    <span class="ticket-status-badge status-${getStatusColorClass(t.status)}" style="font-size:11px;padding:2px 8px">${getStatusLabel(t.status)}</span>
                     <span style="color:var(--text-muted)">${time}</span>
                     <span style="color:#059669;font-weight:600">Assigned to you</span>
                 </div>
@@ -6025,37 +6053,26 @@ function loadAdminSummary() {
         const tickets = [];
         snap.forEach(child => { tickets.push({ _key: child.key, ...child.val() }); });
 
-        const statusCounts = { unassigned: 0, assigned: 0, inprogress: 0, waiting: 0, resolved: 0, closed: 0 };
+        const statusCounts = Object.fromEntries(STATUS_ORDER.map(status => [status, 0]));
         tickets.forEach(t => {
             const key = normalizeTicketStatus(t.status || '');
             if (Object.prototype.hasOwnProperty.call(statusCounts, key)) statusCounts[key]++;
         });
 
-        document.getElementById('adminSummaryGrid').innerHTML = `
-            <div class="admin-sum-card" onclick="selectBrand('all');setTimeout(()=>showAllTickets('unassigned'),200)">
-                <div class="asc-num red">${statusCounts.unassigned}</div>
-                <div class="asc-label" data-i18n="status_unassigned">Unassigned</div>
-            </div>
-            <div class="admin-sum-card" onclick="selectBrand('all');setTimeout(()=>showAllTickets('assigned'),200)">
-                <div class="asc-num purple">${statusCounts.assigned}</div>
-                <div class="asc-label" data-i18n="status_assigned">Assigned</div>
-            </div>
-            <div class="admin-sum-card" onclick="selectBrand('all');setTimeout(()=>showAllTickets('inprogress'),200)">
-                <div class="asc-num blue">${statusCounts.inprogress}</div>
-                <div class="asc-label" data-i18n="status_inprogress">In Progress</div>
-            </div>
-            <div class="admin-sum-card" onclick="selectBrand('all');setTimeout(()=>showAllTickets('waiting'),200)">
-                <div class="asc-num orange">${statusCounts.waiting}</div>
-                <div class="asc-label" data-i18n="status_waiting">Waiting</div>
-            </div>
-            <div class="admin-sum-card" onclick="selectBrand('all');setTimeout(()=>showAllTickets('resolved'),200)">
-                <div class="asc-num green">${statusCounts.resolved}</div>
-                <div class="asc-label" data-i18n="status_resolved">Resolved</div>
-            </div>
-            <div class="admin-sum-card" onclick="selectBrand('all');setTimeout(()=>showAllTickets('closed'),200)">
-                <div class="asc-num gray">${statusCounts.closed}</div>
-                <div class="asc-label" data-i18n="status_closed">Closed</div>
-            </div>`;
+        const numberClassByColor = {
+            unassigned: 'red',
+            assigned: 'purple',
+            inprogress: 'blue',
+            waiting: 'orange',
+            resolved: 'green',
+            closed: 'gray'
+        };
+
+        document.getElementById('adminSummaryGrid').innerHTML = STATUS_ORDER.map(status => `
+            <div class="admin-sum-card" onclick="selectBrand('all');setTimeout(()=>showAllTickets('${status}'),200)">
+                <div class="asc-num ${numberClassByColor[getStatusColorClass(status)] || 'blue'}">${statusCounts[status] || 0}</div>
+                <div class="asc-label">${getStatusLabel(status)}</div>
+            </div>`).join('');
 
         document.getElementById('adminSummary').classList.remove('hidden');
     });
@@ -6125,7 +6142,7 @@ function initNotificationCenter() {
             const normalizedStatus = normalizeTicketStatus(t.status);
 
             // Skip closed/resolved tickets
-            if (!normalizedStatus || normalizedStatus === 'closed' || normalizedStatus === 'resolved') return;
+            if (!isActiveStatus(normalizedStatus)) return;
 
             // Store access check
             let canSee = false;
@@ -6159,10 +6176,9 @@ function initNotificationCenter() {
         notifyTickets = dedupedTickets;
 
         // Sort: urgency, then status, then newest
-        const statusOrder = { unassigned: 0, assigned: 1, waiting: 2, inprogress: 3, resolved: 4, closed: 5 };
         notifyTickets.sort((a, b) =>
             (PRIORITY_ORDER[a.priority] ?? 2) - (PRIORITY_ORDER[b.priority] ?? 2) ||
-            (statusOrder[normalizeTicketStatus(a.status)] ?? 9) - (statusOrder[normalizeTicketStatus(b.status)] ?? 9) ||
+            getStatusOrder(a.status) - getStatusOrder(b.status) ||
             (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0)
         );
 
@@ -6322,9 +6338,7 @@ function filterAllTickets() {
     }
     
     // Status filter
-    if (status === 'unassigned') {
-        filtered = filtered.filter(t => normalizeTicketStatus(t.status) === 'unassigned');
-    } else if (status !== 'all') {
+    if (status !== 'all' && getStatusMeta(status)) {
         filtered = filtered.filter(t => normalizeTicketStatus(t.status) === status);
     }
     
@@ -6363,7 +6377,7 @@ function filterAllTickets() {
     }
     
     const title = document.getElementById('allTicketsTitle');
-    title.textContent = status === 'all' ? `All Tickets (${filtered.length})` : `${status === 'unassigned' ? 'Unassigned' : capitalize(status)} Tickets (${filtered.length})`;
+    title.textContent = status === 'all' ? `All Tickets (${filtered.length})` : `${getStatusLabel(status)} Tickets (${filtered.length})`;
     
     const listEl = document.getElementById('allTicketsList');
     if (filtered.length === 0) {
@@ -6376,14 +6390,14 @@ function filterAllTickets() {
         const timeAgo = getTimeAgo(t.createdAt);
         const photoCount = t.photos ? t.photos.length : 0;
         const shortDesc = (t.description || '').substring(0, 80) + ((t.description || '').length > 80 ? '...' : '');
-        const statusClass = (normalizeTicketStatus(t.status) || 'unassigned').toLowerCase().replace(/\s+/g, '');
+        const statusClass = getStatusColorClass(t.status);
         const prColor = t.priority === 'emergency' ? '#dc2626' : t.priority === 'urgent' ? '#d97706' : '#059669';
         const staleInProgress = normalizeTicketStatus(t.status) === 'inprogress' && ((Date.now() - (t.updatedAt || t.createdAt || 0)) >= 24 * 60 * 60 * 1000);
         
         return `<div class="ticket-card" onclick="openTicketFromAllByKey('${esc(t._key || t.id)}')">
             <div class="ticket-card-top">
                 <span class="ticket-id">${esc(t.id)}</span>
-                <span class="ticket-status s-${statusClass}">${getStatusLabel(normalizeTicketStatus(t.status))}</span>
+                <span class="ticket-status s-${statusClass}">${getStatusLabel(t.status)}</span>
             </div>
             <div class="ticket-card-desc">
                 <span class="cat-emoji">${getCategoryEmoji(t.category)}</span> ${esc(shortDesc)}
@@ -7025,7 +7039,7 @@ function renderTickets() {
     const listEl = document.getElementById('ticketsList');
     let tickets = currentTickets;
 
-    if (currentFilter !== 'all') {
+    if (currentFilter !== 'all' && getStatusMeta(currentFilter)) {
         tickets = tickets.filter(t => normalizeTicketStatus(t.status) === currentFilter);
     }
 
@@ -7033,18 +7047,13 @@ function renderTickets() {
         listEl.innerHTML = `
             <div class="empty-state">
                 <div class="empty-icon">${currentFilter === 'all' ? '📭' : '🔍'}</div>
-                <h3>${currentFilter === 'all' ? 'No tickets yet' : 'No ' + currentFilter + ' tickets'}</h3>
+                <h3>${currentFilter === 'all' ? 'No tickets yet' : 'No ' + getStatusLabel(currentFilter) + ' tickets'}</h3>
                 <p>${currentFilter === 'all' ? 'All clear at this location!' : 'Try a different filter.'}</p>
             </div>`;
         return;
     }
 
     listEl.innerHTML = tickets.map(t => {
-        const statusLabel = {
-            unassigned: 'Unassigned', assigned: 'Assigned', inprogress: 'In Progress',
-            waiting: 'Waiting', resolved: 'Resolved', closed: 'Closed'
-        }[normalizeTicketStatus(t.status)] || t.status;
-
         const catIcons = { plumbing:'🚿', equipment:'⚙️', it:'💻', structural:'🧱', safety:'🛡️', other:'📎' };
         const timeAgo = getTimeAgo(t.createdAt);
         const brandLogo = t.brand && BRAND_LOGOS[t.brand] ? `<img src="${BRAND_LOGOS[t.brand]}" alt="" style="width:16px;height:16px;object-fit:contain;border-radius:3px;opacity:.7;vertical-align:middle">` : '';
@@ -7053,11 +7062,11 @@ function renderTickets() {
         return `
         <div class="ticket-card" onclick="openTicketDetail('${t._key}')">
             <div class="ticket-card-inner">
-                <div class="ticket-status-bar" style="background: var(--status-${normalizeTicketStatus(t.status)})"></div>
+                <div class="ticket-status-bar" style="background: var(--status-${getStatusColorClass(t.status)})"></div>
                 <div class="ticket-body">
                     <div class="ticket-top-row">
                         <span class="ticket-id">${t.id || t._key}</span>
-                        <span class="ticket-status-badge status-${normalizeTicketStatus(t.status)}">${statusLabel}</span>
+                        <span class="ticket-status-badge status-${getStatusColorClass(t.status)}">${getStatusLabel(t.status)}</span>
                     </div>
                     <div class="ticket-title">${catIcons[t.category] || '📎'} ${escHtml(t.description.substring(0, 80))}${t.description.length > 80 ? '...' : ''}</div>
                     <div class="ticket-meta">
@@ -7084,18 +7093,14 @@ function openTicketDetail(key, forceModal = true) {
     document.getElementById('modalTicketId').textContent = t.id || key;
 
     const catIcons = { plumbing:'🚿', equipment:'⚙️', it:'💻', structural:'🧱', safety:'🛡️', other:'📎' };
-    const statusLabel = {
-        unassigned: 'Unassigned', assigned: 'Assigned', inprogress: 'In Progress',
-        waiting: 'Waiting', resolved: 'Resolved', closed: 'Closed'
-    };
 
     const canUpdateStatus = currentUser.role === 'Admin' || currentUser.role === 'Director' || currentUser.role === 'Area Coach' || currentUser.role === 'Technician';
     const canEditTicketMeta = canUpdateStatus || canEditUrgency();
 
     let html = `
         <div class="detail-section">
-            <span class="ticket-status-badge status-${normalizeTicketStatus(t.status)}" style="font-size: 13px; padding: 5px 14px;">
-                ${statusLabel[normalizeTicketStatus(t.status)] || t.status}
+            <span class="ticket-status-badge status-${getStatusColorClass(t.status)}" style="font-size: 13px; padding: 5px 14px;">
+                ${getStatusLabel(t.status)}
             </span>
             <span style="margin-left: 10px; font-size: 13px;">
                 <span class="priority-dot ${t.priority}"></span> ${capitalize(t.priority)} Priority
@@ -7132,7 +7137,7 @@ function openTicketDetail(key, forceModal = true) {
     // Status update
     if (canEditTicketMeta) {
         const normalizedStatus = normalizeTicketStatus(t.status);
-        const statuses = STATUS_ORDER.filter(s => canTransitionStatus(normalizedStatus, s, t));
+        const statuses = getNextStatusesByRole(normalizedStatus, currentUser, t);
         html += `
         <div class="status-update-section">
             <h4>Update Status</h4>
@@ -7142,7 +7147,7 @@ function openTicketDetail(key, forceModal = true) {
             <div class="status-select-grid">
                 ${statuses.map(s => `
                     <button class="status-option ${normalizedStatus === s ? 'active' : ''}" onclick="updateTicketStatus('${key}', '${s}', this)">
-                        ${statusLabel[s]}
+                        ${getStatusLabel(s)}
                     </button>`).join('')}
             </div>
             ${canAssignTickets() ? `<div style="margin-top:8px"><label class="form-label" style="font-size:12px">Assign / Reassign</label><select class="form-select form-select--modal-compact" id="reassignTo"><option value="">${t.assignedTo ? 'Keep current' : 'Unassigned'}</option></select></div>` : ''}
@@ -7695,39 +7700,54 @@ function normalizeTicketStatus(status) {
     return val === 'open' ? 'unassigned' : val;
 }
 
+function getStatusMeta(status) {
+    const key = normalizeTicketStatus(status);
+    return TICKET_STATUS_CONFIG[key] || null;
+}
+
+function getStatusOrder(status) {
+    return getStatusMeta(status)?.order ?? 999;
+}
+
+function isActiveStatus(status) {
+    return !!getStatusMeta(status)?.isActive;
+}
+
+function getStatusColorClass(status) {
+    return getStatusMeta(status)?.colorClass || 'unassigned';
+}
+
+function getNextStatusesByRole(status, user = currentUser, ticket = null) {
+    const from = normalizeTicketStatus(status);
+    const baseTransitions = getStatusMeta(from)?.allowedTransitions || [];
+    const role = normalizeRole(user?.role);
+
+    if (!role || role === 'Manager') return [from];
+    if (role === 'Admin' || role === 'Director') return [from, ...baseTransitions];
+    if (role === 'Area Coach') {
+        const allowed = baseTransitions.filter(to =>
+            (from === 'waiting' && to === 'inprogress') ||
+            (from === 'inprogress' && to === 'resolved')
+        );
+        return [from, ...allowed];
+    }
+    if (role === 'Technician') {
+        const allowed = baseTransitions.filter(to => to !== 'assigned');
+        return [from, ...allowed];
+    }
+    return [from];
+}
+
 function getStatusLabel(status) {
     const key = normalizeTicketStatus(status);
-    return {
-        unassigned: 'Unassigned',
-        assigned: 'Assigned',
-        inprogress: 'In Progress',
-        waiting: 'Waiting',
-        resolved: 'Resolved',
-        closed: 'Closed'
-    }[key] || capitalize(key || '');
+    return getStatusMeta(key)?.label || capitalize(key || '');
 }
 
 function canTransitionStatus(oldStatus, newStatus, ticket) {
     const from = normalizeTicketStatus(oldStatus);
     const to = normalizeTicketStatus(newStatus);
     if (from === to) return true;
-
-    const role = currentUser?.role;
-    if (!role) return false;
-
-    if (role === 'Admin' || role === 'Director') return true;
-
-    if (role === 'Area Coach') {
-        return (from === 'waiting' && to === 'inprogress') || (from === 'inprogress' && to === 'resolved');
-    }
-
-    if (role === 'Technician') {
-        if (from === 'unassigned' && to === 'assigned') return false;
-        if (to === 'assigned') return false;
-        return true;
-    }
-
-    return false;
+    return getNextStatusesByRole(from, currentUser, ticket).includes(to);
 }
 
 function goHome() {
