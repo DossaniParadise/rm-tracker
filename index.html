@@ -3170,9 +3170,8 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                     <div id="vendorRows"></div>
                     <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px">
                         <h4 style="font-size:13px;margin-bottom:8px;color:var(--text)">Add Vendor</h4>
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                        <div style="display:grid;grid-template-columns:1fr;gap:8px">
                             <input class="form-input" id="newVendorName" placeholder="Vendor name">
-                            <input class="form-input" id="newVendorAreas" placeholder="Service areas (e.g. East TX)">
                         </div>
                         <div style="margin-top:6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
                             <span style="font-size:12px;color:var(--text-muted)">Categories:</span>
@@ -4877,7 +4876,7 @@ function renderVendorRows() {
     container.innerHTML = vendorList.map(v => `
         <div class="vendor-row">
             <span class="vendor-name">${escHtml(v.name)}</span>
-            <span class="vendor-meta">${escHtml(v.areas || '')} · ${(v.categories || []).map(capitalize).join(', ')}</span>
+            <span class="vendor-meta">${(v.categories || []).map(capitalize).join(', ')}</span>
             <button class="btn btn-ghost" style="font-size:11px;color:var(--danger)" onclick="removeVendor('${v.id}')">Remove</button>
         </div>`).join('');
 }
@@ -4891,7 +4890,6 @@ function renderVendorCatCheckboxes() {
 
 async function addVendor() {
     const name = document.getElementById('newVendorName').value.trim();
-    const areas = document.getElementById('newVendorAreas').value.trim();
     const cats = [...document.querySelectorAll('.vendor-cat-cb:checked')].map(c => c.value);
     if (!name) { showToast('Enter vendor name', 'error'); return; }
     
@@ -4900,12 +4898,16 @@ async function addVendor() {
     if (!canEdit) { showToast('You don\'t have permission to edit vendors', 'error'); return; }
     
     try {
-        await db.ref('config/vendors').push({ name, areas, categories: cats });
+        const newVendorRef = db.ref('config/vendors').push();
+        await newVendorRef.set({ name, categories: cats });
+        vendorList.push({ id: newVendorRef.key, name, categories: cats });
         document.getElementById('newVendorName').value = '';
-        document.getElementById('newVendorAreas').value = '';
         document.querySelectorAll('.vendor-cat-cb').forEach(c => c.checked = false);
+        renderVendorRows();
+        renderVendorManagerRows();
+        populateAssignDropdown();
+        refreshAssignmentDropdowns();
         showToast('Vendor added', 'success');
-        loadVendors();
     } catch (err) {
         showToast('Error: ' + err.message, 'error');
     }
@@ -4936,9 +4938,8 @@ function showVendorManager() {
     overlay.innerHTML = `<div class="modal-card" style="max-width:760px">
         <h3>🏢 Approved Vendors</h3>
         <p style="font-size:13px;color:var(--text-mid);margin-bottom:10px">Add or remove vendors used in assignment dropdowns.</p>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div style="display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:10px">
             <input class="form-input" id="vmName" placeholder="Vendor name">
-            <input class="form-input" id="vmAreas" placeholder="Areas served (optional)">
         </div>
         <div id="vmCats" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px"></div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:10px">
@@ -4970,27 +4971,39 @@ function renderVendorManagerRows() {
     }
     container.innerHTML = vendorList.map(v => `<div class="vendor-row">
         <span class="vendor-name">${escHtml(v.name)}</span>
-        <span class="vendor-meta">${escHtml(v.areas || '')}${(v.categories || []).length ? ' · ' + (v.categories || []).map(capitalize).join(', ') : ''}</span>
+        <span class="vendor-meta">${(v.categories || []).map(capitalize).join(', ')}</span>
         <button class="btn btn-ghost" style="font-size:11px;color:var(--danger)" onclick="removeVendorFromManager('${v.id}')">Delete</button>
     </div>`).join('');
 }
 
 async function addVendorFromManager() {
     const name = (document.getElementById('vmName')?.value || '').trim();
-    const areas = (document.getElementById('vmAreas')?.value || '').trim();
     const cats = [...document.querySelectorAll('.vm-cat-cb:checked')].map(c => c.value);
     if (!name) { showToast('Enter vendor name', 'error'); return; }
     const canEdit = await checkVendorEditPermission();
     if (!canEdit) { showToast('No permission', 'error'); return; }
     try {
-        await db.ref('config/vendors').push({ name, areas, categories: cats });
+        const newVendorRef = db.ref('config/vendors').push();
+        await newVendorRef.set({ name, categories: cats });
+        vendorList.push({ id: newVendorRef.key, name, categories: cats });
+        renderVendorRows();
+        renderVendorManagerRows();
+        populateAssignDropdown();
+        refreshAssignmentDropdowns();
         showToast('Vendor added', 'success');
         document.getElementById('vmName').value = '';
-        document.getElementById('vmAreas').value = '';
         document.querySelectorAll('.vm-cat-cb').forEach(c => c.checked = false);
-        await loadVendors();
     } catch (err) {
         showToast('Error: ' + err.message, 'error');
+    }
+}
+
+function refreshAssignmentDropdowns() {
+    if (!document.getElementById('allTicketsScreen').classList.contains('hidden')) {
+        filterAllTickets();
+    }
+    if (currentMapView === 'list') {
+        renderStoreListView();
     }
 }
 
