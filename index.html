@@ -41,6 +41,15 @@
     --text-muted: #94a3b8;
     --border: #e2e8f0;
     --border-light: #f1f5f9;
+    --select-bg: #fafaf8;
+    --select-bg-hover: #ffffff;
+    --select-text: #1e293b;
+    --select-border: #cbd5e1;
+    --select-option-bg: #ffffff;
+    --select-option-text: #1e293b;
+    --select-option-placeholder: #64748b;
+    --select-option-disabled: #94a3b8;
+    --select-focus-ring: rgba(37,99,235,0.2);
     --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
     --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
     --shadow-lg: 0 10px 25px rgba(0,0,0,0.08);
@@ -74,6 +83,15 @@
     --text-muted: #64748b;
     --border: #2a3040;
     --border-light: #1e2433;
+    --select-bg: #141821;
+    --select-bg-hover: #1a1f2e;
+    --select-text: #e2e8f0;
+    --select-border: #374151;
+    --select-option-bg: #1a1f2e;
+    --select-option-text: #e2e8f0;
+    --select-option-placeholder: #94a3b8;
+    --select-option-disabled: #64748b;
+    --select-focus-ring: rgba(91,156,246,0.25);
     --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
     --shadow: 0 1px 3px rgba(0,0,0,0.3);
     --shadow-lg: 0 10px 25px rgba(0,0,0,0.3);
@@ -122,8 +140,7 @@
 /* Form elements */
 [data-theme="dark"] .form-input,
 [data-theme="dark"] .form-select,
-[data-theme="dark"] .form-textarea { background: #141821; color: var(--text); border-color: var(--border); color-scheme: dark; }
-[data-theme="dark"] .form-select option { background: #1a1f2e; color: #e2e8f0; }
+[data-theme="dark"] .form-textarea { background: var(--select-bg); color: var(--text); border-color: var(--select-border); color-scheme: dark; }
 [data-theme="dark"] .form-label { color: var(--text-mid); }
 [data-theme="dark"] ::placeholder { color: #64748b !important; }
 
@@ -669,7 +686,7 @@ body {
 }
 
 /* Vendor management */
-.vendor-manage-option { color: var(--accent); font-weight: 700; }
+.vendor-manage-option { font-weight: 700; }
 
 .vendor-row {
     display: flex;
@@ -761,11 +778,12 @@ body {
 .form-select {
     width: 100%;
     padding: 12px 14px;
-    border: 2px solid var(--border);
+    border: 2px solid var(--select-border);
     border-radius: var(--radius);
     font-size: 15px;
     font-family: inherit;
-    background: #fafaf8;
+    background: var(--select-bg);
+    color: var(--select-text);
     cursor: pointer;
     transition: all 0.2s;
     -webkit-appearance: none;
@@ -775,10 +793,50 @@ body {
     background-position: right 14px center;
 }
 
+.form-select:hover {
+    border-color: var(--primary);
+    background-color: var(--select-bg-hover);
+}
+
 .form-select:focus {
     outline: none;
     border-color: var(--primary);
-    background-color: #fff;
+    background-color: var(--select-bg-hover);
+    box-shadow: 0 0 0 3px var(--select-focus-ring);
+}
+
+.form-select option,
+.form-select optgroup {
+    background: var(--select-option-bg);
+    color: var(--select-option-text);
+}
+
+.form-select option[value=""],
+.form-select option:disabled {
+    color: var(--select-option-placeholder);
+}
+
+.form-select option:disabled {
+    color: var(--select-option-disabled);
+}
+
+.form-select--compact { max-width: 140px; }
+.form-select--modal { font-size: 14px; }
+.form-select--modal-compact { font-size: 12px; }
+.form-select--filter { width: auto; min-width: 130px; font-size: 13px; padding: 6px 30px 6px 10px; }
+.form-select--filter-store { min-width: 160px; }
+
+.inline-assign-select,
+#viewAsSelect,
+#reassignTo,
+#priorityUpdate {
+    background-color: var(--select-bg);
+    color: var(--select-text);
+    border-color: var(--select-border);
+}
+
+[data-theme="dark"] .form-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
 }
 
 /* ---- Action Cards ---- */
@@ -2934,7 +2992,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                     <div class="form-group">
                         <label class="form-label">Requested Date</label>
                         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-                            <select class="form-select" id="reqDateType" onchange="toggleDateFields()" style="max-width:140px">
+                            <select class="form-select form-select--compact" id="reqDateType" onchange="toggleDateFields()">
                                 <option value="">No date</option>
                                 <option value="specific">Specific date</option>
                                 <option value="before">Before date</option>
@@ -3102,7 +3160,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
             </div>
             <div id="allTicketsDrilldownBanner" class="desktop-insight-empty" style="display:none;margin-bottom:10px"></div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-                <select class="form-select" id="atFilterStatus" onchange="filterAllTickets()" style="width:auto;min-width:130px;font-size:13px;padding:6px 10px">
+                <select class="form-select form-select--filter" id="atFilterStatus" onchange="filterAllTickets()">
                     <option value="unassigned">Unassigned Tickets</option>
                     <option value="all">All Statuses</option>
                     <option value="assigned">Assigned</option>
@@ -3111,13 +3169,13 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                     <option value="resolved">Resolved</option>
                     <option value="closed">Closed</option>
                 </select>
-                <select class="form-select" id="atFilterType" onchange="filterAllTickets()" style="width:auto;min-width:130px;font-size:13px;padding:6px 10px">
+                <select class="form-select form-select--filter" id="atFilterType" onchange="filterAllTickets()">
                     <option value="">All Store Types</option>
                     <option value="fastfood">Fast Food</option>
                     <option value="cstore">C-Store</option>
                     <option value="carwash">Car Wash</option>
                 </select>
-                <select class="form-select" id="atFilterStore" onchange="filterAllTickets()" style="width:auto;min-width:160px;font-size:13px;padding:6px 10px">
+                <select class="form-select form-select--filter form-select--filter-store" id="atFilterStore" onchange="filterAllTickets()">
                     <option value="">All Stores</option>
                 </select>
             </div>
@@ -6292,7 +6350,7 @@ function showViewAsModal() {
             <h3>View As Another User</h3>
             <p style="font-size:13px;color:var(--text-mid);margin-bottom:14px">See the app exactly as this user would. IT-only controls are hidden while you're impersonating.</p>
             <div class="form-group">
-                <select class="form-select" id="viewAsSelect" style="font-size:14px">
+                <select class="form-select form-select--modal" id="viewAsSelect">
                     <option value="">Choose a user...</option>
                     ${entries.sort((a,b) => (a[1].name||'').localeCompare(b[1].name||'')).map(([uid, u]) =>
                         `<option value="${uid}">${esc(u.name || 'Unknown')} — ${esc(resolveViewAsOptionTitle(u))} (${esc(u.email || uid)})</option>`
@@ -6980,8 +7038,8 @@ function openTicketDetail(key, forceModal = true) {
                         ${statusLabel[s]}
                     </button>`).join('')}
             </div>
-            ${canAssignTickets() ? `<div style="margin-top:8px"><label class="form-label" style="font-size:12px">Assign / Reassign</label><select class="form-select" id="reassignTo" style="font-size:12px"><option value="">${t.assignedTo ? 'Keep current' : 'Unassigned'}</option></select></div>` : ''}
-            ${canEditUrgency() ? `<div style="margin-top:8px"><label class="form-label" style="font-size:12px">Urgency</label><select class="form-select" id="priorityUpdate" style="font-size:12px"><option value="routine" ${t.priority === 'routine' ? 'selected' : ''}>Routine</option><option value="urgent" ${t.priority === 'urgent' ? 'selected' : ''}>Urgent</option><option value="emergency" ${t.priority === 'emergency' ? 'selected' : ''}>Emergency</option></select><textarea class="form-textarea" id="priorityReason" placeholder="Reason for urgency change (required if changed)" style="min-height:56px;font-size:12px;margin-top:6px"></textarea></div>` : ''}
+            ${canAssignTickets() ? `<div style="margin-top:8px"><label class="form-label" style="font-size:12px">Assign / Reassign</label><select class="form-select form-select--modal-compact" id="reassignTo"><option value="">${t.assignedTo ? 'Keep current' : 'Unassigned'}</option></select></div>` : ''}
+            ${canEditUrgency() ? `<div style="margin-top:8px"><label class="form-label" style="font-size:12px">Urgency</label><select class="form-select form-select--modal-compact" id="priorityUpdate"><option value="routine" ${t.priority === 'routine' ? 'selected' : ''}>Routine</option><option value="urgent" ${t.priority === 'urgent' ? 'selected' : ''}>Urgent</option><option value="emergency" ${t.priority === 'emergency' ? 'selected' : ''}>Emergency</option></select><textarea class="form-textarea" id="priorityReason" placeholder="Reason for urgency change (required if changed)" style="min-height:56px;font-size:12px;margin-top:6px"></textarea></div>` : ''}
             <div style="margin-top: 8px;">
                 <textarea class="form-textarea" id="statusNote" placeholder="Add a note (optional)..." style="min-height: 60px; font-size: 13px;"></textarea>
             </div>
