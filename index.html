@@ -1843,11 +1843,112 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
 [data-theme="dark"] .selected-store-summary-name { color: #f8fafc; }
 [data-theme="dark"] .selected-store-summary-address { color: #bfdbfe; }
 
+@media (max-width: 768px) {
+    .app-header {
+        height: auto;
+        min-height: 64px;
+        padding: 8px 10px;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    .header-left,
+    .header-right {
+        width: 100%;
+    }
+    .header-right {
+        flex-wrap: wrap;
+        gap: 6px;
+        justify-content: flex-end;
+        align-items: center;
+    }
+    .impersonation-indicator {
+        order: -1;
+        margin-right: auto;
+        min-height: 32px;
+        padding: 6px 10px;
+        font-size: 11px;
+    }
+    .admin-btn,
+    .btn-logout,
+    .theme-toggle {
+        min-height: 36px;
+    }
+    .store-card-header { margin-bottom: 16px; }
+    .store-card-header h2 { font-size: 18px; line-height: 1.3; }
+    .store-card-header p { font-size: 13px; line-height: 1.4; }
+    .selected-store-summary {
+        padding: 14px;
+        margin-top: 12px;
+    }
+    .selected-store-summary-name { font-size: 17px; }
+    .selected-store-summary-address { font-size: 12px; line-height: 1.35; }
+    .notify-panel {
+        inset: auto 8px auto 8px;
+        top: 56px;
+        width: auto;
+        max-width: none;
+        max-height: min(70dvh, 520px);
+    }
+    .notify-panel-header {
+        padding: 12px 14px;
+        font-size: 13px;
+    }
+    .notify-panel-header button {
+        min-width: 36px;
+        min-height: 36px;
+    }
+    .notify-item {
+        padding: 12px 14px;
+        font-size: 12px;
+    }
+    .notify-item-title { line-height: 1.35; }
+    .notify-item-meta { font-size: 10px; }
+    .modal-overlay {
+        align-items: flex-start;
+        padding: 10px 8px max(10px, env(safe-area-inset-bottom));
+    }
+    .modal-content {
+        margin-top: 6px;
+        max-height: calc(100dvh - 20px);
+        overflow-x: hidden;
+    }
+    .admin-modal {
+        align-items: flex-start;
+        padding: 10px 8px max(10px, env(safe-area-inset-bottom));
+    }
+    .modal-card {
+        max-height: calc(100dvh - 20px);
+    }
+    .modal-card .modal-actions {
+        position: sticky;
+        bottom: 0;
+        background: var(--card);
+        padding-top: 10px;
+    }
+    .vendor-row {
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+    .vendor-row .vendor-name,
+    .vendor-row .vendor-meta {
+        width: 100%;
+    }
+    .vendor-row .btn {
+        min-height: 36px;
+    }
+    .view-as-select,
+    .vendor-modal-input {
+        font-size: 13px;
+        min-height: 40px;
+    }
+}
+
 /* Mobile */
 @media (max-width: 600px) {
     .theme-toggle { width: 28px; height: 28px; font-size: 14px; }
     .admin-btn { font-size: 11px; padding: 4px 8px; }
-    .notify-panel { right: 4px; width: calc(100vw - 8px); top: 50px; max-height: 60vh; }
+    .notify-panel { right: 4px; width: calc(100vw - 8px); top: 50px; max-height: min(65dvh, 60vh); }
     .notify-item { padding: 10px 12px; }
     .app-content { padding: 8px; }
     .store-card { padding: 14px; }
@@ -1891,7 +1992,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
     .issue-form-header h2 { font-size: 16px; }
     .photo-upload-area { padding: 16px; }
     .status-select-grid { grid-template-columns: repeat(2, 1fr); }
-    .modal-content { max-width: 100%; margin: 0 8px; max-height: 90vh; }
+    .modal-content { max-width: 100%; margin: 0 8px; max-height: calc(100dvh - 20px); }
     .modal-body { padding: 14px; }
     .modal-header { padding: 14px; }
     .modal-header h3 { font-size: 14px; }
@@ -1908,8 +2009,8 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
     .pending-form { grid-template-columns: 1fr; }
     .user-row { flex-wrap: wrap; gap: 8px; }
     .user-row-actions { width: 100%; justify-content: flex-end; }
-    .admin-modal { padding: 16px 8px 8px; }
-    .modal-card { padding: 16px; max-width: 100%; }
+    .admin-modal { padding: 12px 8px max(10px, env(safe-area-inset-bottom)); }
+    .modal-card { padding: 16px; max-width: 100%; max-height: calc(100dvh - 22px); }
     .modal-card h3 { font-size: 14px; }
     .leaflet-popup-content-wrapper { max-width: 240px !important; }
     .mp-btns { flex-direction: column; gap: 4px; }
@@ -2095,6 +2196,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
     display: inline-flex;
     align-items: center;
     gap: 5px;
+    min-height: 36px;
 }
 .admin-btn:hover { color: var(--primary); border-color: var(--primary); }
 .admin-btn .badge {
@@ -2260,6 +2362,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
     cursor: pointer;
     transition: background 0.1s;
     font-size: 13px;
+    min-height: 44px;
 }
 .notify-item:hover { background: var(--border-light); }
 .notify-item-title { font-weight: 600; margin-bottom: 2px; color: var(--text); }
@@ -2279,6 +2382,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
     justify-content: center;
     padding: 80px 20px 20px;
     overflow-y: auto;
+    overscroll-behavior: contain;
 }
 .modal-card {
     background: var(--card);
@@ -2288,6 +2392,9 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
     padding: 24px;
     max-width: 480px;
     width: 100%;
+    max-height: calc(100dvh - 100px);
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 .modal-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
 .modal-card .form-group { margin-bottom: 12px; }
@@ -5085,11 +5192,11 @@ function showVendorManager() {
     overlay.id = 'vendorManagerModal';
     overlay.style.zIndex = '220';
     overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
-    overlay.innerHTML = `<div class="modal-card" style="max-width:760px">
+    overlay.innerHTML = `<div class="modal-card vendor-manager-modal" style="max-width:760px">
         <h3>🏢 Approved Vendors</h3>
         <p style="font-size:13px;color:var(--text-mid);margin-bottom:10px">Add or remove vendors used in assignment dropdowns.</p>
         <div style="display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:10px">
-            <input class="form-input" id="vmName" placeholder="Vendor name">
+            <input class="form-input vendor-modal-input" id="vmName" placeholder="Vendor name">
         </div>
         <div id="vmCats" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px"></div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:10px">
@@ -6346,11 +6453,11 @@ function showViewAsModal() {
         overlay.id = 'viewAsModal';
         overlay.style.zIndex = '200';
         overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
-        overlay.innerHTML = `<div class="modal-card">
+        overlay.innerHTML = `<div class="modal-card view-as-modal">
             <h3>View As Another User</h3>
             <p style="font-size:13px;color:var(--text-mid);margin-bottom:14px">See the app exactly as this user would. IT-only controls are hidden while you're impersonating.</p>
             <div class="form-group">
-                <select class="form-select form-select--modal" id="viewAsSelect">
+                <select class="form-select form-select--modal view-as-select" id="viewAsSelect">
                     <option value="">Choose a user...</option>
                     ${entries.sort((a,b) => (a[1].name||'').localeCompare(b[1].name||'')).map(([uid, u]) =>
                         `<option value="${uid}">${esc(u.name || 'Unknown')} — ${esc(resolveViewAsOptionTitle(u))} (${esc(u.email || uid)})</option>`
