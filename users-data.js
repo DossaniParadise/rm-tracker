@@ -106,11 +106,7 @@ const USER_DIRECTORY = {
 
 function getDirectoryProfileByEmail(email) {
     if (!email) return null;
-    const target = String(email).toLowerCase().trim();
-    const direct = USER_DIRECTORY[target];
-    if (direct) return direct;
-    const matchKey = Object.keys(USER_DIRECTORY).find(k => String(k).toLowerCase().trim() === target);
-    return matchKey ? USER_DIRECTORY[matchKey] : null;
+    return USER_DIRECTORY[String(email).toLowerCase()] || null;
 }
 
 function getDirectoryTitleByEmail(email, fallback = '') {
