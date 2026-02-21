@@ -390,10 +390,6 @@ body {
 }
 .btn-danger:hover { background: #a93226; }
 
-/* Unassign CTA: always red + tidy */
-.btn-unassign{background:var(--danger);border-color:var(--danger);color:#fff;}
-.btn-unassign:hover{background:#a93226;}
-
 .btn-ghost {
     background: transparent;
     color: var(--text-mid);
@@ -563,6 +559,19 @@ body {
     #storeSelection .store-card .form-row { grid-template-columns: 1fr; gap: 8px; }
     #storeSelection .store-card .form-select { font-size: 13px; padding: 10px 12px; }
     #storeSelection #mapOverview { grid-column: 2; grid-row: 1 / -1; margin: 0; }
+
+    /* Map view is IT Support only */
+    body.no-map #mapOverview,
+    body.no-map .map-toggle,
+    body.no-map .map-view,
+    body.no-map #mapContainer,
+    body.no-map #storeSelection .map-card {
+        display: none !important;
+    }
+    body.no-map #storeSelection {
+        grid-template-columns: 1fr !important;
+    }
+
     #storeSelection #mapOverview .map-card { height: 100%; display: flex; flex-direction: column; }
     #storeSelection #mapOverview #overviewMap { flex: 1; min-height: 400px; }
     #storeSelection #mapOverview { display: block !important; }
@@ -853,6 +862,7 @@ body {
 
 .inline-assign-select,
 #viewAsSelect,
+#reassignTo,
 #priorityUpdate {
     background-color: var(--select-bg);
     color: var(--select-text);
@@ -3163,8 +3173,8 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                     <div class="map-header">
                         <h2 id="mapTitle">Store Overview</h2>
                         <div class="map-view-toggle" id="mapViewToggle">
-                            <button class="active" data-view="map" onclick="setMapView('map')">📍 Map</button>
-                            <button data-view="list" onclick="setMapView('list')">📋 List</button>
+                            <button class="active" onclick="setMapView('map')">📍 Map</button>
+                            <button onclick="setMapView('list')">📋 List</button>
                         </div>
                         <div class="map-legend">
                             <span><span class="dot dot-green"></span> No issues</span>
@@ -3639,7 +3649,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-<!-- Data files + Application logic (single-file build v6.0.8) -->
+<!-- Data files + Application logic (single-file build v5.9.0) -->
 <script>
 // ============================================================
 // STORES DATA - Dossani Paradise Management
@@ -3731,7 +3741,7 @@ const stores = [
 const USER_DIRECTORY = {
     // ADMINS
     "itsupport@dossaniparadise.com": { name: "IT Support", role: "Admin", stores: "all" },
-    "armaan@dossaniparadise.com": { name: "Armaan Dossani", role: "Admin", title: "Admin", stores: "all" },
+    "armaan@dossaniparadise.com": { name: "Armaan Dossani", role: "Admin", title: "VP", stores: "all" },
     "karim@dossaniparadise.com": { name: "Karim Dossani", role: "Director", title: "Dev", stores: "all" },
     "sam@dossaniparadise.com": { name: "Sam Merchant", role: "Director", title: "VP", stores: "all" },
 
@@ -4189,13 +4199,23 @@ function getExperienceProfile(role, viewport = getViewportHints()) {
         device = 'tablet';
     }
 
-    const rolePrefixRaw = (normalizedRole === 'area coach') ? 'manager' : normalizedRole;
+    const rolePrefixRaw = (normalizedRole === 'area coach' || normalizedRole === 'director coach') ? 'manager' : normalizedRole;
     const rolePrefix = rolePrefixRaw.replace(/\s+/g, '-');
     return `${rolePrefix}-${device}`;
 }
 
 function routeToProfileLanding() {
     const role = currentUser.role;
+
+    // ITSUPPORT ONLY: full admin overview w/ map + list
+    if (isItsupportUser(currentUser)) {
+        showScreen('storeSelection');
+        // Default to showing all brands on large screens
+        if (window.innerWidth >= 1100 || window.innerWidth > window.innerHeight) {
+            setTimeout(() => selectBrand('all'), 100);
+        }
+        return;
+    }
 
     // TECHNICIAN: job dashboard with clock in/out
     if (role === 'Technician') {
@@ -4240,32 +4260,11 @@ function routeToProfileLanding() {
         return;
     }
 
-    // AREA COACH: store grid + view all tickets
-    if (role === 'Area Coach') {
-        showScreen('coachLanding');
-        initCoachLanding();
-        return;
-    }
-
-    // DIRECTOR / ADMIN: use the SAME landing as Area Coach (store tiles + menus).
-    // Map view is IT Support only.
-    if (role === 'Director' || role === 'Admin') {
-        if (isITSupport(currentUser)) {
-            showScreen('storeSelection');
-            if (window.innerWidth >= 1100 || window.innerWidth > window.innerHeight) {
-                setTimeout(() => selectBrand('all'), 100);
-            }
-        } else {
-            showScreen('coachLanding');
-            initCoachLanding();
-        }
-        return;
-    }
-
-    // Fallback
+    // AREA COACH / DIRECTOR / ADMIN: same store-tile landing (no map)
     showScreen('coachLanding');
     initCoachLanding();
 }
+
 
 function initCoachLanding() {
     updateCoachStoresHeading();
@@ -4461,27 +4460,14 @@ function showAppScreen() {
     document.getElementById('appContainer').style.display = 'flex';
     const experienceProfile = getExperienceProfile(currentUser.role);
     applyExperienceClass(currentUser.role);
+    // Only IT Support should ever see map view
+    if (isItsupportUser(currentUser)) document.body.classList.remove('no-map');
+    else document.body.classList.add('no-map');
 
     // Populate header
     applyHeaderIdentity(currentUser, { impersonating: !!realUser });
 
     applyRoleScopedControls(currentUser, { impersonating: !!realUser });
-
-    // Map view is IT Support only.
-    if (!isITSupport(currentUser)) {
-        currentMapView = 'list';
-        localStorage.setItem('mapViewPref', 'list');
-        const toggle = document.getElementById('mapViewToggle');
-        if (toggle) toggle.style.display = 'none';
-        const mapEl = document.getElementById('overviewMap');
-        if (mapEl) mapEl.style.display = 'none';
-        const legend = document.querySelector('.map-legend');
-        if (legend) legend.style.display = 'none';
-    } else {
-        const toggle = document.getElementById('mapViewToggle');
-        if (toggle) toggle.style.display = '';
-    }
-
     if (canAccessAdminPanel(currentUser)) watchPendingUsers();
 
     selectedStore = null;
@@ -4678,8 +4664,7 @@ function filterStores() {
         else if (ti && ti.zone === 'east') filtered = filtered.filter(s => RAVAY_ONLY_STORES.includes(s.code));
     } else {
         const effRole = getEffectiveUserRole(currentUser);
-    const isGlobal = (currentUser.stores === 'all' || isITSupport(currentUser));
-    if (!isGlobal) {
+        if (effRole !== 'Admin' && effRole !== 'Director' && currentUser.stores !== 'all') {
             const userStores = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
             filtered = filtered.filter(s => userStores.includes(s.code));
         }
@@ -4760,8 +4745,7 @@ filterStores = function() {
             else if (ti && ti.zone === 'east') allStores = allStores.filter(s => RAVAY_ONLY_STORES.includes(s.code));
         } else {
             const effRole = getEffectiveUserRole(currentUser);
-    const isGlobal = (currentUser.stores === 'all' || isITSupport(currentUser));
-    if (!isGlobal) {
+            if (effRole !== 'Admin' && effRole !== 'Director' && currentUser.stores !== 'all') {
                 const us = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
                 allStores = allStores.filter(s => us.includes(s.code));
             }
@@ -5030,40 +5014,27 @@ let currentMapView = localStorage.getItem('mapViewPref') || 'map';
 let lastFilteredStores = [];
 
 function setMapView(view) {
-    // Map is IT Support only. Everyone else is forced to list view.
-    if (!isITSupport(currentUser)) view = 'list';
-
     currentMapView = view;
     localStorage.setItem('mapViewPref', view);
-
-    // Toggle button active state (guard if toggle isn't present in this layout)
-    const toggle = document.getElementById('mapViewToggle');
-    if (toggle) {
-        toggle.querySelectorAll('button').forEach(b => b.classList.remove('active'));
-        const btn = toggle.querySelector(`button[data-view="${view}"]`);
-        if (btn) btn.classList.add('active');
-    }
-
+    document.querySelectorAll('#mapViewToggle button').forEach(b => b.classList.remove('active'));
+    document.querySelector(`#mapViewToggle button[onclick="setMapView('${view}')"]`).classList.add('active');
+    
     const mapEl = document.getElementById('overviewMap');
     const listEl = document.getElementById('storeListView');
     const legend = document.querySelector('.map-legend');
-
-    if (!mapEl || !listEl) return;
-
+    
     if (view === 'list') {
         mapEl.style.display = 'none';
         listEl.style.display = '';
-        if (legend) legend.style.display = 'none';
+        if (legend) { legend.style.visibility = 'hidden'; legend.style.pointerEvents = 'none'; }
         renderStoreListView();
     } else {
         mapEl.style.display = '';
         listEl.style.display = 'none';
-        if (legend) legend.style.display = '';
+        if (legend) { legend.style.visibility = ''; legend.style.pointerEvents = ''; }
         if (overviewMap) setTimeout(() => overviewMap.invalidateSize(), 100);
-        loadMapOverview(document.getElementById('storeType')?.value || '');
     }
 }
-
 
 function renderStoreListView() {
     const listEl = document.getElementById('storeListView');
@@ -5977,7 +5948,7 @@ function renderInlineAssignControls(ticket, contextPrefix = 'inline') {
             <div class="inline-assigned-row" onclick="event.stopPropagation()">
                 <div class="inline-assigned-top">
                     <div class="inline-assigned-to">${currentLang === 'es' ? 'Asignado a:' : 'Assigned to:'} <b>${escHtml(assigneeLabel)}</b></div>
-                    <button class="btn btn-danger btn-sm btn-unassign" onclick="event.stopPropagation();unassignTicket('${escAttr(ticketKey)}')">
+                    <button class="btn btn-outline-danger btn-sm" onclick="event.stopPropagation();unassignTicket('${escAttr(ticketKey)}')">
                         ${currentLang === 'es' ? 'Quitar asignación' : 'Unassign'}
                     </button>
                 </div>
@@ -6007,7 +5978,7 @@ function renderModalAssignmentBlock(ticket, key) {
     const status = normalizeTicketStatus(ticket.status);
     const assignee = String(ticket.assignedTo || '').trim();
 
-    // Assigned: show assignee + unassign. No reassignment from modal.
+    // Assigned: show assignee + unassign. No reassign from modal.
     if (assignee && status !== 'unassigned') {
         return `<div style="margin-top:10px">
             <label class="form-label" style="font-size:12px">${currentLang === 'es' ? 'Asignado a' : 'Assigned to'}</label>
@@ -7027,47 +6998,33 @@ document.addEventListener('click', (e) => {
 let allTicketsData = [];
 let allTicketsDrilldown = null;
 
-async function showAllTickets(defaultStatus) {
+function showAllTickets(defaultStatus) {
     showScreen('allTicketsScreen');
     const statusSel = document.getElementById('atFilterStatus');
-    if (statusSel) statusSel.value = defaultStatus || 'unassigned';
-
+    statusSel.value = defaultStatus || 'unassigned';
     if (!allTicketsDrilldown) {
         const banner = document.getElementById('allTicketsDrilldownBanner');
         if (banner) banner.style.display = 'none';
     }
-
+    
     // Populate store filter
-    const type = document.getElementById('storeType')?.value || '';
-    const typeEl = document.getElementById('atFilterType');
-    if (typeEl) typeEl.value = type;
+    const type = document.getElementById('storeType').value;
+    document.getElementById('atFilterType').value = type || '';
     populateAllTicketsStoreFilter();
-
+    
+    // Load all tickets
     const listEl = document.getElementById('allTicketsList');
-    if (listEl) listEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted)"><span class="spinner spinner-dark"></span> Loading...</div>';
-
-    // Failsafe: clear spinner if something goes wrong / promise hangs
-    const failsafe = setTimeout(() => {
-        const el = document.getElementById('allTicketsList');
-        if (el && el.innerHTML.includes('spinner')) {
-            el.innerHTML = '<div class="empty-state" style="padding:24px">Unable to load tickets. Please try again.</div>';
-        }
-    }, 10000);
-
-    try {
-        const snap = await db.ref('tickets').once('value');
+    listEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted)"><span class="spinner spinner-dark"></span> Loading...</div>';
+    
+    db.ref('tickets').once('value', snap => {
         allTicketsData = [];
         snap.forEach(child => {
             allTicketsData.push({ _key: child.key, ...child.val() });
         });
+        // Sort newest first
         allTicketsData.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
         filterAllTickets();
-    } catch (err) {
-        console.error('All tickets load error:', err);
-        if (listEl) listEl.innerHTML = '<div class="empty-state" style="padding:24px">Error loading tickets.</div>';
-    } finally {
-        clearTimeout(failsafe);
-    }
+    });
 }
 
 function populateAllTicketsStoreFilter() {
@@ -7285,6 +7242,9 @@ function doViewAs() {
 
         // Apply experience CSS + route to correct landing
         applyExperienceClass(currentUser.role);
+    // Only IT Support should ever see map view
+    if (isItsupportUser(currentUser)) document.body.classList.remove('no-map');
+    else document.body.classList.add('no-map');
         routeToProfileLanding();
 
         initNotificationCenter();
@@ -7307,6 +7267,9 @@ function exitViewAs() {
     // Restore admin experience
     applyRoleScopedControls(currentUser, { impersonating: false });
     applyExperienceClass(currentUser.role);
+    // Only IT Support should ever see map view
+    if (isItsupportUser(currentUser)) document.body.classList.remove('no-map');
+    else document.body.classList.add('no-map');
     updateAllLocationsVisibility(currentUser);
     routeToProfileLanding();
 
@@ -7324,9 +7287,8 @@ const wizardTotalSteps = 6;
 
 function getAccessibleStores() {
     if (!currentUser) return [];
-    // Only global users (stores === 'all') or IT Support can see every location.
-    if (currentUser.stores === 'all' || isITSupport(currentUser)) return [...stores];
-    const allowed = Array.isArray(currentUser.stores) ? currentUser.stores : (currentUser.stores ? [currentUser.stores] : []);
+    if (currentUser.role === 'Admin' || currentUser.role === 'Director' || currentUser.stores === 'all') return [...stores];
+    const allowed = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
     return stores.filter(s => allowed.includes(s.code));
 }
 
@@ -7804,48 +7766,26 @@ function showExistingIssuesScreen() {
 
 function loadTickets() {
     const listEl = document.getElementById('ticketsList');
-    if (listEl) {
-        listEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted);"><span class="spinner spinner-dark"></span><br><br>Loading tickets...</div>';
-    }
+    listEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted);"><span class="spinner spinner-dark"></span><br><br>Loading tickets...</div>';
 
     // Detach previous listener
     if (activeTicketListener) { activeTicketListener(); }
 
-    const storeCode = getStoreCode(selectedStore);
-    const ref = db.ref('tickets').orderByChild('storeCode').equalTo(storeCode);
-
-    // Failsafe: if listener never fires, clear spinner
-    const failsafe = setTimeout(() => {
-        const el = document.getElementById('ticketsList');
-        if (el && el.innerHTML.includes('spinner')) {
-            el.innerHTML = '<div class="empty-state" style="padding:24px">Unable to load tickets for this store.</div>';
-        }
-    }, 10000);
+    // Real-time listener for this store's tickets
+    const ref = db.ref('tickets').orderByChild('storeCode').equalTo(getStoreCode(selectedStore));
 
     const handler = ref.on('value', (snap) => {
-        clearTimeout(failsafe);
-        try {
-            currentTickets = [];
-            snap.forEach(child => {
-                currentTickets.push({ ...child.val(), _key: child.key });
-            });
-            currentTickets.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-            renderTickets();
-        } catch (err) {
-            console.error('Render tickets error:', err);
-            const el = document.getElementById('ticketsList');
-            if (el) el.innerHTML = '<div class="empty-state" style="padding:24px">Error rendering tickets.</div>';
-        }
-    }, (err) => {
-        clearTimeout(failsafe);
-        console.error('Ticket listener error:', err);
-        const el = document.getElementById('ticketsList');
-        if (el) el.innerHTML = '<div class="empty-state" style="padding:24px">Error loading tickets.</div>';
+        currentTickets = [];
+        snap.forEach(child => {
+            currentTickets.push({ ...child.val(), _key: child.key });
+        });
+        // Sort newest first
+        currentTickets.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        renderTickets();
     });
 
-    activeTicketListener = () => { clearTimeout(failsafe); ref.off('value', handler); };
+    activeTicketListener = () => ref.off('value', handler);
 }
-
 
 function toggleCompactFilters(open) {
     const modal = document.getElementById('compactFilterModal');
@@ -8066,6 +8006,18 @@ function openTicketDetail(key, forceModal = true) {
     }
 
     document.getElementById('modalBody').innerHTML = html;
+    const reassignSel = document.getElementById('reassignTo');
+    if (reassignSel && canAssignTickets()) {
+        reassignSel.innerHTML = '<option value="">' + (t.assignedTo ? 'Keep current' : 'Unassigned') + '</option>';
+        const availTechs = getAvailableTechs(t.storeCode || (selectedStore && getStoreCode(selectedStore)) || '');
+        if (availTechs.length) {
+            reassignSel.innerHTML += '<optgroup label="Repair Technicians">' + availTechs.map(te => `<option value="tech:${te.email}">🔧 ${escHtml(te.name)}</option>`).join('') + '</optgroup>';
+        }
+        if (vendorList.length) {
+            reassignSel.innerHTML += '<optgroup label="Third-Party Vendors">' + vendorList.map(v => `<option value="vendor:${escHtml(v.name)}">🏢 ${escHtml(v.name)}</option>`).join('') + '</optgroup>';
+        }
+    }
+
     // Wire change tracking so save buttons appear only when edits are made
     captureTicketEditBaseline(t);
     wireModalChangeTracking(t);
@@ -8130,7 +8082,7 @@ function setModalSaveBusy(isBusy) {
 }
 
 function wireModalChangeTracking() {
-    ['statusNote', 'priorityUpdate', 'priorityReason'].forEach(id => {
+    ['statusNote', 'priorityUpdate', 'priorityReason', 'reassignTo'].forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
         el.addEventListener('input', setModalSaveVisibility);
@@ -8433,6 +8385,10 @@ async function saveStatusUpdate(key) {
                 waitingReason: pendingWaitingReason.reason,
                 waitingReasonNote: pendingWaitingReason.note || ''
             } : {}),
+            ...(assignmentChanged ? (() => {
+                const parsed = parseAssignmentValue(reassignVal);
+                return { assignedTo: parsed.assignedTo, assigneeType: parsed.assigneeType, status: (newStatus === 'unassigned' ? 'assigned' : newStatus) };
+            })() : {}),
             updatedAt: Date.now(),
             activity: currentActivity
         };
@@ -8937,7 +8893,7 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v6.0.8</span>
+    <span>R&M Tracker v6.0.9</span>
 </div>
 
 </body>
