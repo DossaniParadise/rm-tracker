@@ -690,6 +690,11 @@ body {
     border: 1px solid #f59e0b;
 }
 .inline-assign-row { display: flex; gap: 6px; align-items: center; margin-left: 8px; }
+.inline-assign-wrap { margin-top: 8px; }
+.inline-dispatch-row { margin-top: 6px; margin-left: 8px; padding: 8px 10px; border-radius: 12px; background: rgba(2,132,199,0.08); border: 1px solid rgba(2,132,199,0.18); display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+.inline-dispatch-q { font-size: 12px; color: var(--text-mid); line-height: 1.2; flex: 1 1 240px; }
+.inline-dispatch-btns { display:flex; gap:6px; flex: 0 0 auto; }
+[data-theme="dark"] .inline-dispatch-row { background: rgba(2,132,199,0.12); border-color: rgba(56,189,248,0.25); }
 .inline-assign-select { min-width: 180px; max-width: 260px; font-size: 12px; padding: 5px 8px; }
 [data-theme="dark"] .slv-store-name { background: #1a1f2e; }
 [data-theme="dark"] .slv-ticket:hover { background: rgba(91,156,246,0.1); }
@@ -2985,7 +2990,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                 </div>
                 <div class="tcb-timer" id="tcbTimer">00:00:00</div>
                 <div class="tech-banner-actions">
-                    <button class="btn-tech-primary" id="techPrimaryActionBtn" onclick="techAdvanceExecutionMode()">🚗 Start Travel</button>
+                    <button class="btn-tech-primary" id="techPrimaryActionBtn" onclick="techAdvanceExecutionMode()" data-i18n="tech_start_travel">🚗 Start Travel</button>
                     <button class="btn btn-sm" style="background:#dc2626;color:#fff;border:none" onclick="showClockOutPrompt()" data-i18n="tech_clock_out">Clock Out</button>
                 </div>
             </div>
@@ -3733,8 +3738,8 @@ const USER_DIRECTORY = {
     // AREA COACHES
     "rick@dossaniparadise.com": { name: "Rick Tharani", role: "Director", title: "Director", stores: ["PQS05","PQS06","PQS07","PQS08","PQS09","PQS10","PQS11","PQS12","PQS13","PQS15","PQS16","NASH01"] },
     "paul@dossaniparadise.com": { name: "Paul Fernandez", role: "Director", title: "Director", stores: ["BK22027","BK27082","BK27083","BK28626","BK28514","BK27084","BK26183","BK03675","BK27028","BK26924","BK28313","BK04851","BK09723","BK13192","BK06460","BK28174","BK24875","BK27958","BK25198","BK20671","BK28312","BK28683","BK27415","BK23086","BK11460","BK02390","BK24008","BK10358","BK26015","SUB22"] },
-    "vishal@dossaniparadise.com": { name: "Vishal Chhetri", role: "Area Coach", stores: ["7EL01","PQS01","PQS02","PQS03","PQS04","PQS14","CW001","CW002"] },
-    "jennifer@dossaniparadise.com": { name: "Jennifer Sanders", role: "Area Coach", stores: ["PQS05","PQS06","PQS07","PQS08","PQS09","PQS10","PQS11","PQS13","PQS15","PQS16"] },
+    "vishal@dossaniparadise.com": { name: "Vishal Chhetri", role: "Director Coach", stores: ["7EL01","PQS01","PQS02","PQS03","PQS04","PQS14","CW001","CW002"] },
+    "jennifer@dossaniparadise.com": { name: "Jennifer Sanders", role: "Director Coach", stores: ["PQS05","PQS06","PQS07","PQS08","PQS09","PQS10","PQS11","PQS13","PQS15","PQS16"] },
     "dane@dossaniparadise.com": { name: "Dane Martin", role: "Area Coach", stores: ["BK23086","BK11460","BK26015","BK10358","BK24008","BK02390","SUB22"] },
     "steve@dossaniparadise.com": { name: "Steve Cardone", role: "Area Coach", stores: ["BK28174","BK04851","BK09723"] },
     "claudia@dossaniparadise.com": { name: "Claudia Fernandez", role: "Area Coach", stores: ["BK20671","BK06460","BK13192","BK27958","BK24875","BK25198"] },
@@ -3916,7 +3921,8 @@ let selectedLocation = null;
 let selectedPriority = null;
 let uploadedPhotos = []; // { file, previewUrl }
 let currentTickets = [];
-let currentFilter = 'all';
+let const effRole = getEffectiveUserRole(currentUser);
+    currentFilter = (effRole === 'Manager' || effRole === 'Area Coach' || effRole === 'Director Coach') ? 'open' : 'all';
 let activeTicketListener = null;
 let vendorList = [];
 let desktopStoreData = [];
@@ -4225,8 +4231,8 @@ function routeToProfileLanding() {
         return;
     }
 
-    // AREA COACH: store grid + view all tickets
-    if (role === 'Area Coach') {
+    // AREA COACH / DIRECTOR COACH: store grid + view all tickets
+    if (role === 'Area Coach' || role === 'Director Coach') {
         showScreen('coachLanding');
         initCoachLanding();
         return;
@@ -4569,10 +4575,15 @@ function refreshSelectedStoreSummaryCounts() {
     selectedStoreSummaryListenerCallback = snap => {
         let open = 0;
         let total = 0;
+        const effRole = getEffectiveUserRole(currentUser);
         snap.forEach(child => {
             total++;
             const status = normalizeTicketStatus(child.val()?.status || '');
-            if (status === 'unassigned') open++;
+            if (effRole === 'Admin' || effRole === 'Director' || effRole === 'Director Coach') {
+                if (status === 'unassigned') open++;
+            } else {
+                if (status !== 'closed') open++;
+            }
         });
         selectedStoreSummaryCounts = { open, total };
         renderSelectedStoreSummary();
@@ -4594,14 +4605,17 @@ function renderSelectedStoreSummary() {
         summaryCard.classList.add('hidden');
         summaryName.textContent = '';
         summaryAddress.textContent = '';
-        summaryOpen.textContent = '0 unassigned';
+        summaryOpen.textContent = '0 open';
         summaryTotal.textContent = '0 total';
         return;
     }
 
     summaryName.textContent = selectedStore.name || selectedStore.code || 'Selected Store';
     summaryAddress.textContent = selectedStore.address || 'Address unavailable';
-    summaryOpen.textContent = `${selectedStoreSummaryCounts.open || 0} unassigned`;
+    const effRole = getEffectiveUserRole(currentUser);
+    summaryOpen.textContent = effRole === 'Admin' || effRole === 'Director' || effRole === 'Director Coach'
+        ? `${selectedStoreSummaryCounts.open || 0} unassigned`
+        : `${selectedStoreSummaryCounts.open || 0} open`;
     summaryTotal.textContent = `${selectedStoreSummaryCounts.total || 0} total`;
     summaryCard.classList.remove('hidden');
 }
@@ -4624,7 +4638,8 @@ function filterStores() {
         const ti = TECH_INFO.find(t => t.email === currentUser.email);
         if (ti && ti.zone === 'west') filtered = filtered.filter(s => !RAVAY_ONLY_STORES.includes(s.code));
         else if (ti && ti.zone === 'east') filtered = filtered.filter(s => RAVAY_ONLY_STORES.includes(s.code));
-    } else if (currentUser.role !== 'Admin' && currentUser.role !== 'Director' && currentUser.stores !== 'all') {
+    } else const effRole = getEffectiveUserRole(currentUser);
+    if (effRole !== 'Admin' && effRole !== 'Director' && effRole !== 'Director Coach' && currentUser.stores !== 'all') {
         const userStores = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
         filtered = filtered.filter(s => userStores.includes(s.code));
     }
@@ -4702,7 +4717,8 @@ filterStores = function() {
             const ti = TECH_INFO.find(t => t.email === currentUser.email);
             if (ti && ti.zone === 'west') allStores = allStores.filter(s => !RAVAY_ONLY_STORES.includes(s.code));
             else if (ti && ti.zone === 'east') allStores = allStores.filter(s => RAVAY_ONLY_STORES.includes(s.code));
-        } else if (currentUser.role !== 'Admin' && currentUser.role !== 'Director' && currentUser.stores !== 'all') {
+        } else const effRole = getEffectiveUserRole(currentUser);
+    if (effRole !== 'Admin' && effRole !== 'Director' && effRole !== 'Director Coach' && currentUser.stores !== 'all') {
             const us = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
             allStores = allStores.filter(s => us.includes(s.code));
         }
@@ -4719,7 +4735,8 @@ function loadMapOverview(type) {
         const ti = TECH_INFO.find(t => t.email === currentUser.email);
         if (ti && ti.zone === 'west') filtered = filtered.filter(s => !RAVAY_ONLY_STORES.includes(s.code));
         else if (ti && ti.zone === 'east') filtered = filtered.filter(s => RAVAY_ONLY_STORES.includes(s.code));
-    } else if (currentUser.role !== 'Admin' && currentUser.role !== 'Director' && currentUser.stores !== 'all') {
+    } else const effRole = getEffectiveUserRole(currentUser);
+    if (effRole !== 'Admin' && effRole !== 'Director' && effRole !== 'Director Coach' && currentUser.stores !== 'all') {
         const us = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
         filtered = filtered.filter(s => us.includes(s.code));
     }
@@ -5796,6 +5813,7 @@ function handleVendorManagerSelection(selectEl) {
     return true;
 }
 
+
 function renderInlineAssignControls(ticket, contextPrefix = 'inline') {
     if (!canAssignTickets()) return '';
     const status = normalizeTicketStatus(ticket.status);
@@ -5806,10 +5824,74 @@ function renderInlineAssignControls(ticket, contextPrefix = 'inline') {
     const actionLabel = status === 'unassigned' ? 'Assign' : 'Reassign';
 
     const ticketKey = ticket._key || ticket.id || '';
-    return `<div class="inline-assign-row" onclick="event.stopPropagation()">
-        <select class="form-select inline-assign-select" id="${selectId}">${getAssignmentOptionsHtml(ticket.storeCode)}</select>
-        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();quickAssignTicket('${ticketKey}', '${selectId}')">${actionLabel}</button>
+    const assigneeLabel = String(ticket.assignedTo || '').trim();
+
+    const dispatchPrompt = (status === 'assigned' && assigneeLabel) ? `
+        <div class="inline-dispatch-row" onclick="event.stopPropagation()">
+            <div class="inline-dispatch-q">${currentLang === 'es' ? '¿Ya contactaste al técnico asignado?' : 'Have you already contacted the assigned technician?'}</div>
+            <div class="inline-dispatch-btns">
+                <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();markAssignedContactedYes('${ticketKey}')">${currentLang === 'es' ? 'Sí' : 'Yes'}</button>
+                <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();markAssignedContactedNo('${ticketKey}')">${currentLang === 'es' ? 'No' : 'No'}</button>
+            </div>
+        </div>` : '';
+
+    const unassignBtn = (status !== 'unassigned' && assigneeLabel) ? `<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();unassignTicket('${ticketKey}')">${currentLang === 'es' ? 'Quitar asignación' : 'Unassign'}</button>` : '';
+
+    return `<div class="inline-assign-wrap" onclick="event.stopPropagation()">
+        <div class="inline-assign-row">
+            <select class="form-select inline-assign-select" id="${selectId}">${getAssignmentOptionsHtml(ticket.storeCode)}</select>
+            <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();quickAssignTicket('${ticketKey}', '${selectId}')">${actionLabel}</button>
+            ${unassignBtn}
+        </div>
+        ${dispatchPrompt}
     </div>`;
+}
+
+
+
+async function markAssignedContactedYes(ticketKey) {
+    if (!ticketKey) return;
+    if (!canAssignTickets()) { toast('You do not have assignment permissions', 'error'); return; }
+    try {
+        const snap = await db.ref(`tickets/${ticketKey}`).once('value');
+        const t = snap.val();
+        if (!t) return;
+        const oldStatus = normalizeTicketStatus(t.status);
+        if (oldStatus !== 'assigned') return;
+
+        const actSnap = await db.ref(`tickets/${ticketKey}/activity`).once('value');
+        const activity = actSnap.val() || [];
+        activity.push({ action:'status', by: currentUser.name, byEmail: currentUser.email, oldStatus:'assigned', newStatus:'dispatched', note:'Technician contacted', timestamp: Date.now() });
+
+        await db.ref().update({
+            [`tickets/${ticketKey}/status`]: 'dispatched',
+            [`tickets/${ticketKey}/updatedAt`]: firebase.database.ServerValue.TIMESTAMP,
+            [`tickets/${ticketKey}/activity`]: activity
+        });
+
+        syncAfterTicketMutation(ticketKey, { status:'dispatched', updatedAt: Date.now(), activity });
+        toast(currentLang === 'es' ? 'Movido a Despachado' : 'Moved to Dispatched', 'success');
+        filterAllTickets();
+    } catch (err) {
+        toast('Unable to update: ' + err.message, 'error');
+    }
+}
+
+async function markAssignedContactedNo(ticketKey) {
+    if (!ticketKey) return;
+    if (!canAssignTickets()) { toast('You do not have assignment permissions', 'error'); return; }
+
+    // Ask if they want the email draft
+    const t = allTicketsData.find(x => x._key === ticketKey || x.id === ticketKey) || currentTickets.find(x => x._key === ticketKey || x.id === ticketKey);
+    if (!t) return;
+
+    const label = String(t.assignedTo || '').trim() || 'the technician';
+    const want = await confirmBox(
+        currentLang === 'es' ? '¿Quieres el correo de ejemplo?' : 'Do you want the sample email?',
+        currentLang === 'es' ? 'Podemos generar un correo listo para copiar.' : 'We can generate a ready-to-copy email.',
+        { okText: currentLang === 'es' ? 'Sí, muéstrame' : 'Yes, show me', cancelText: currentLang === 'es' ? 'No' : 'No' }
+    );
+    if (want) openAssignEmailComposer({ ...t, _key: ticketKey }, label);
 }
 
 // ------------------------------------------------------------
@@ -5867,6 +5949,27 @@ function openAssignEmailComposer(ticket, partyLabel) {
     };
 }
 
+
+function confirmBox(title, message, opts = {}) {
+    return new Promise(resolve => {
+        const overlay = document.createElement('div');
+        overlay.className = 'confirm-overlay';
+        const okText = opts.okText || 'OK';
+        const cancelText = opts.cancelText || 'Cancel';
+        overlay.innerHTML = `<div class="confirm-box" style="max-width:520px">
+            <h4>${escHtml(title || 'Confirm')}</h4>
+            <p style="text-align:left">${escHtml(message || '')}</p>
+            <div class="confirm-btns">
+                <button class="btn btn-secondary" id="cbCancel">${escHtml(cancelText)}</button>
+                <button class="btn btn-primary" id="cbOk">${escHtml(okText)}</button>
+            </div>
+        </div>`;
+        document.body.appendChild(overlay);
+        overlay.querySelector('#cbCancel').onclick = () => { overlay.remove(); resolve(false); };
+        overlay.querySelector('#cbOk').onclick = () => { overlay.remove(); resolve(true); };
+    });
+}
+
 function showAssignReminder(ticket, partyLabel) {
     return new Promise(resolve => {
         const overlay = document.createElement('div');
@@ -5890,6 +5993,53 @@ function showAssignReminder(ticket, partyLabel) {
             resolve('email');
         };
     });
+}
+
+
+async function unassignTicket(ticketKey) {
+    if (!ticketKey) return;
+    if (!canAssignTickets()) { toast('You do not have assignment permissions', 'error'); return; }
+    try {
+        const ticketSnap = await db.ref(`tickets/${ticketKey}`).once('value');
+        const ticket = ticketSnap.val();
+        if (!ticket) { toast('Ticket not found. Please refresh.', 'error'); return; }
+
+        const actSnap = await db.ref(`tickets/${ticketKey}/activity`).once('value');
+        const activity = actSnap.val() || [];
+        activity.push({
+            action: 'assignment_change',
+            by: currentUser.name,
+            byEmail: currentUser.email,
+            timestamp: Date.now(),
+            assignedTo: null,
+            assigneeType: null,
+            note: 'Unassigned and returned to queue'
+        });
+
+        await db.ref().update({
+            [`tickets/${ticketKey}/assignedTo`]: '',
+            [`tickets/${ticketKey}/assigneeType`]: '',
+            [`tickets/${ticketKey}/status`]: 'unassigned',
+            [`tickets/${ticketKey}/updatedAt`]: firebase.database.ServerValue.TIMESTAMP,
+            [`tickets/${ticketKey}/activity`]: activity
+        });
+
+        syncAfterTicketMutation(ticketKey, {
+            assignedTo: '',
+            assigneeType: '',
+            status: 'unassigned',
+            updatedAt: Date.now(),
+            activity
+        });
+
+        toast('Ticket unassigned', 'success');
+        // If currently on assigned view, refresh list
+        if (document.getElementById('allTicketsScreen') && currentScreenId === 'allTicketsScreen') {
+            filterAllTickets();
+        }
+    } catch (err) {
+        toast('Unable to unassign: ' + err.message, 'error');
+    }
 }
 
 async function quickAssignTicket(ticketKey, selectId) {
@@ -5969,16 +6119,40 @@ function getAssignmentOptionsHtml(storeCode) {
     return html;
 }
 
+
 function renderInlineAssignControls(ticket, contextPrefix = 'inline') {
-    if (!canAssignTickets() || normalizeTicketStatus(ticket.status) !== 'unassigned') return '';
+    if (!canAssignTickets()) return '';
+    const status = normalizeTicketStatus(ticket.status);
+    if (status === 'closed') return '';
+
     const safeKey = String(ticket._key || ticket.id || '').replace(/[^a-zA-Z0-9_-]/g, '_');
     const selectId = `${contextPrefix}Assign_${safeKey}`;
+    const actionLabel = status === 'unassigned' ? 'Assign' : 'Reassign';
 
-    return `<div class="inline-assign-row" onclick="event.stopPropagation()">
-        <select class="form-select inline-assign-select" id="${selectId}">${getAssignmentOptionsHtml(ticket.storeCode)}</select>
-        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();quickAssignTicket('${ticket._key}', '${selectId}')">Assign</button>
+    const ticketKey = ticket._key || ticket.id || '';
+    const assigneeLabel = String(ticket.assignedTo || '').trim();
+
+    const dispatchPrompt = (status === 'assigned' && assigneeLabel) ? `
+        <div class="inline-dispatch-row" onclick="event.stopPropagation()">
+            <div class="inline-dispatch-q">${currentLang === 'es' ? '¿Ya contactaste al técnico asignado?' : 'Have you already contacted the assigned technician?'}</div>
+            <div class="inline-dispatch-btns">
+                <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();markAssignedContactedYes('${ticketKey}')">${currentLang === 'es' ? 'Sí' : 'Yes'}</button>
+                <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();markAssignedContactedNo('${ticketKey}')">${currentLang === 'es' ? 'No' : 'No'}</button>
+            </div>
+        </div>` : '';
+
+    const unassignBtn = (status !== 'unassigned' && assigneeLabel) ? `<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();unassignTicket('${ticketKey}')">${currentLang === 'es' ? 'Quitar asignación' : 'Unassign'}</button>` : '';
+
+    return `<div class="inline-assign-wrap" onclick="event.stopPropagation()">
+        <div class="inline-assign-row">
+            <select class="form-select inline-assign-select" id="${selectId}">${getAssignmentOptionsHtml(ticket.storeCode)}</select>
+            <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();quickAssignTicket('${ticketKey}', '${selectId}')">${actionLabel}</button>
+            ${unassignBtn}
+        </div>
+        ${dispatchPrompt}
     </div>`;
 }
+
 
 function toggleDateFields() {
     const type = document.getElementById('reqDateType').value;
@@ -6053,10 +6227,10 @@ function loadTechJobs() {
 
 function getExecutionModeState(status = 'inprogress') {
     const normalizedStatus = normalizeTicketStatus(status);
-    if (normalizedStatus === 'assigned' || normalizedStatus === 'unassigned') return { key: 'travel', label: '🚗 Start Travel', nextStatus: 'inprogress', note: 'Travel started to site' };
-    if (normalizedStatus === 'inprogress') return { key: 'arrived', label: '📍 Arrived', nextStatus: 'inprogress', note: 'Arrived onsite and began diagnosis' };
-    if (normalizedStatus === 'waiting') return { key: 'waiting', label: '📦 Waiting Parts', nextStatus: 'waiting', note: 'Waiting on parts / vendor support' };
-    return { key: 'complete', label: '✅ Complete', nextStatus: 'resolved', note: 'Work completed, ready to close out' };
+    if (normalizedStatus === 'assigned' || normalizedStatus === 'unassigned') return { key: 'travel', label: tr('tech_start_travel','🚗 Start Travel'), nextStatus: 'inprogress', note: 'Travel started to site' };
+    if (normalizedStatus === 'inprogress') return { key: 'arrived', label: tr('tech_arrived','📍 Arrived'), nextStatus: 'inprogress', note: 'Arrived onsite and began diagnosis' };
+    if (normalizedStatus === 'waiting') return { key: 'waiting', label: tr('tech_waiting_parts','📦 Waiting Parts'), nextStatus: 'waiting', note: 'Waiting on parts / vendor support' };
+    return { key: 'complete', label: tr('tech_complete','✅ Complete'), nextStatus: 'resolved', note: 'Work completed, ready to close out' };
 }
 
 function getTicketByKey(key) {
@@ -6334,7 +6508,7 @@ function showClockOutPrompt() {
         <div style="font-size:13px;color:var(--text-muted)">Execution mode active • time on job: ${mins} minute${mins !== 1 ? 's' : ''}</div>`;
 
     const statusOptions = ['inprogress', 'waiting', 'resolved'];
-    const statusLabels = { inprogress: 'Continue Working', waiting: 'Waiting', resolved: 'Resolved / Completed' };
+    const statusLabels = { inprogress: tr('tech_continue_working','Continue Working'), waiting: tr('tech_waiting','Waiting'), resolved: tr('tech_resolved_completed','Resolved / Completed') };
     document.getElementById('clockOutStatusGrid').innerHTML = statusOptions.map(s =>
         `<button class="status-option ${s === clockOutStatus ? 'active' : ''}" onclick="clockOutStatus='${s}';this.parentElement.querySelectorAll('.status-option').forEach(b=>b.classList.remove('active'));this.classList.add('active')">${statusLabels[s]}</button>`
     ).join('');
@@ -6732,7 +6906,8 @@ function populateAllTicketsStoreFilter() {
     let filtered = stores;
     if (type) filtered = stores.filter(s => s.type === type);
     // Permission filter
-    if (currentUser.role !== 'Admin' && currentUser.role !== 'Director' && currentUser.stores !== 'all') {
+    const effRole = getEffectiveUserRole(currentUser);
+    if (effRole !== 'Admin' && effRole !== 'Director' && effRole !== 'Director Coach' && currentUser.stores !== 'all') {
         const userStores = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
         filtered = filtered.filter(s => userStores.includes(s.code));
     }
@@ -6755,7 +6930,8 @@ function filterAllTickets() {
     let filtered = allTicketsData;
     
     // Permission filter
-    if (currentUser.role !== 'Admin' && currentUser.role !== 'Director' && currentUser.stores !== 'all') {
+    const effRole = getEffectiveUserRole(currentUser);
+    if (effRole !== 'Admin' && effRole !== 'Director' && effRole !== 'Director Coach' && currentUser.stores !== 'all') {
         const userStores = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
         filtered = filtered.filter(t => userStores.includes(t.storeCode));
     }
@@ -7416,7 +7592,8 @@ function showExistingIssuesScreen() {
     showScreen('existingIssuesScreen');
     document.getElementById('ticketStoreName').textContent = '— ' + selectedStore.name;
     currentFilter = 'all';
-    document.querySelectorAll('.filter-chip').forEach(c => c.classList.toggle('active', c.dataset.filter === 'all'));
+    configureStoreTicketFiltersForRole();
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.toggle('active', c.dataset.filter === currentFilter));
     loadTickets();
 }
 
@@ -7449,6 +7626,49 @@ function toggleCompactFilters(open) {
     modal.classList.toggle('open', !!open);
 }
 
+
+function configureStoreTicketFiltersForRole() {
+    const filtersWrap = document.getElementById('ticketFilters');
+    if (!filtersWrap) return;
+    const effRole = getEffectiveUserRole(currentUser);
+
+    const openBtn = filtersWrap.querySelector('[data-filter="unassigned"]');
+    if (openBtn) {
+        if (effRole === 'Manager' || effRole === 'Area Coach' || effRole === 'Director Coach') {
+            openBtn.dataset.filter = 'open';
+            openBtn.setAttribute('onclick', "filterTickets('open', this)");
+            openBtn.removeAttribute('data-i18n');
+            openBtn.textContent = (currentLang === 'es') ? 'Abiertos' : 'Open';
+        } else {
+            // Directors/Admin keep unassigned label
+            openBtn.dataset.filter = 'unassigned';
+            openBtn.setAttribute('onclick', "filterTickets('unassigned', this)");
+            openBtn.setAttribute('data-i18n', 'filter_open');
+            openBtn.textContent = 'Unassigned';
+        }
+    }
+
+    // Managers/Area Coaches should not see the granular assignment queues as primary.
+    const hideGranular = (effRole === 'Manager' || effRole === 'Area Coach' || effRole === 'Director Coach');
+    ['assigned','dispatched','waiting','inprogress','resolved'].forEach(k => {
+        const btn = filtersWrap.querySelector(`[data-filter="${k}"]`);
+        if (btn) btn.classList.toggle('hidden', hideGranular);
+    });
+
+    const allBtn = filtersWrap.querySelector('[data-filter="all"]');
+    if (allBtn) allBtn.classList.toggle('hidden', hideGranular);
+
+    const closedBtn = filtersWrap.querySelector('[data-filter="closed"]');
+    if (closedBtn) closedBtn.classList.remove('hidden');
+
+    if (hideGranular) {
+        // Ensure only Open + Closed show nicely
+        filtersWrap.classList.add('ticket-filters--simple');
+    } else {
+        filtersWrap.classList.remove('ticket-filters--simple');
+    }
+}
+
 function filterTickets(filter, chipEl) {
     currentFilter = filter;
     document.querySelectorAll('.filter-chip').forEach(c => c.classList.toggle('active', c.dataset.filter === filter));
@@ -7462,7 +7682,9 @@ function renderTickets() {
     const listEl = document.getElementById('ticketsList');
     let tickets = currentTickets;
 
-    if (currentFilter !== 'all' && getStatusMeta(currentFilter)) {
+    if (currentFilter === 'open') {
+        tickets = tickets.filter(t => normalizeTicketStatus(t.status) !== 'closed');
+    } else if (currentFilter !== 'all' && getStatusMeta(currentFilter)) {
         tickets = tickets.filter(t => normalizeTicketStatus(t.status) === currentFilter);
     }
 
@@ -7470,7 +7692,7 @@ function renderTickets() {
         listEl.innerHTML = `
             <div class="empty-state">
                 <div class="empty-icon">${currentFilter === 'all' ? '📭' : '🔍'}</div>
-                <h3>${currentFilter === 'all' ? 'No tickets yet' : 'No ' + getStatusLabel(currentFilter) + ' tickets'}</h3>
+                <h3>${currentFilter === 'all' ? 'No tickets yet' : (currentFilter === 'open' ? 'No open tickets' : 'No ' + getStatusLabel(currentFilter) + ' tickets')}</h3>
                 <p>${currentFilter === 'all' ? 'All clear at this location!' : 'Try a different filter.'}</p>
             </div>`;
         return;
@@ -7517,8 +7739,9 @@ function openTicketDetail(key, forceModal = true) {
 
     const catIcons = { plumbing:'🚿', equipment:'⚙️', it:'💻', structural:'🧱', safety:'🛡️', other:'📎' };
 
-    const canUpdateStatus = currentUser.role === 'Admin' || currentUser.role === 'Director' || currentUser.role === 'Area Coach' || currentUser.role === 'Technician';
-    const canEditTicketMeta = canUpdateStatus || canEditUrgency();
+    const effRole = getEffectiveUserRole(currentUser);
+    const canUpdateStatus = effRole === 'Admin' || effRole === 'Director' || effRole === 'Director Coach' || effRole === 'Area Coach' || effRole === 'Technician';
+    const canEditTicketMeta = canEditUrgency();
 
     let html = `
         <div class="detail-section">
@@ -7558,7 +7781,7 @@ function openTicketDetail(key, forceModal = true) {
             <div class="detail-value">${escHtml(t.createdByName || t.createdBy)} &middot; ${formatDate(t.createdAt)}</div>
         </div>`;
     // Status update
-    if (canEditTicketMeta) {
+    if (canUpdateStatus) {
         const normalizedStatus = normalizeTicketStatus(t.status);
         const statuses = getNextStatusesByRole(normalizedStatus, currentUser, t);
         html += `
@@ -7573,7 +7796,7 @@ function openTicketDetail(key, forceModal = true) {
                         ${getStatusLabel(s)}
                     </button>`).join('')}
             </div>
-            ${canAssignTickets() ? `<div style="margin-top:8px"><label class="form-label" style="font-size:12px">Assign / Reassign</label><select class="form-select form-select--modal-compact" id="reassignTo"><option value="">${t.assignedTo ? 'Keep current' : 'Unassigned'}</option></select></div>` : ''}
+            ${canAssignTickets() ? `<div style="margin-top:8px"><label class="form-label" style="font-size:12px">Assign / Reassign</label><div style="display:flex;gap:8px;align-items:center"><select class="form-select form-select--modal-compact" id="reassignTo" style="flex:1"><option value="">${t.assignedTo ? 'Keep current' : 'Unassigned'}</option></select>${(t.assignedTo ? `<button class=\"btn btn-danger btn-sm\" style=\"white-space:nowrap\" onclick=\"event.stopPropagation();unassignTicket('${key}')\">Unassign</button>` : '')}</div></div>` : ''}
             ${canEditUrgency() ? `<div style="margin-top:8px"><label class="form-label" style="font-size:12px">Urgency</label><select class="form-select form-select--modal-compact" id="priorityUpdate"><option value="routine" ${t.priority === 'routine' ? 'selected' : ''}>Routine</option><option value="urgent" ${t.priority === 'urgent' ? 'selected' : ''}>Urgent</option><option value="emergency" ${t.priority === 'emergency' ? 'selected' : ''}>Emergency</option></select><textarea class="form-textarea" id="priorityReason" placeholder="Reason for urgency change (required if changed)" style="min-height:56px;font-size:12px;margin-top:6px"></textarea></div>` : ''}
             <div style="margin-top: 8px;">
                 <textarea class="form-textarea" id="statusNote" placeholder="Add a note (optional)..." style="min-height: 60px; font-size: 13px;"></textarea>
@@ -8110,12 +8333,12 @@ function canAccessAdminPanel(user = currentUser) {
 
 function canAssignTickets(user = currentUser) {
     const role = getEffectiveUserRole(user);
-    return role === 'Admin' || role === 'Director';
+    return role === 'Admin' || role === 'Director' || role === 'Director Coach';
 }
 
 function canManageVendors(user = currentUser) {
     const role = getEffectiveUserRole(user);
-    return isItsupportUser(user) || role === 'Admin' || role === 'Director';
+    return isItsupportUser(user) || role === 'Admin' || role === 'Director' || role === 'Director Coach';
 }
 
 function canEditUrgency(user = currentUser) {
@@ -8150,7 +8373,7 @@ function getNextStatusesByRole(status, user = currentUser, ticket = null) {
     const role = normalizeRole(user?.role);
 
     if (!role || role === 'Manager') return [from];
-    if (role === 'Admin' || role === 'Director') return [from, ...baseTransitions];
+    if (role === 'Admin' || role === 'Director' || role === 'Director Coach') return [from, ...baseTransitions];
     if (role === 'Area Coach') {
         const allowed = baseTransitions.filter(to =>
             (from === 'waiting' && to === 'inprogress') ||
@@ -8310,6 +8533,13 @@ const TRANSLATIONS = {
         tech_waiting: 'En Espera',
         tech_clock_in: 'Registrar Entrada',
         tech_clock_out: 'Registrar Salida',
+        tech_start_travel: '🚗 Iniciar Viaje',
+        tech_arrived: '📍 Llegué',
+        tech_waiting_parts: '📦 Esperando Piezas',
+        tech_complete: '✅ Completar',
+        tech_continue_working: 'Seguir trabajando',
+        tech_waiting: 'En espera',
+        tech_resolved_completed: 'Resuelto / Completado',
         tech_clocked_in: '⏱️ Registrado',
         tech_view_details: 'Ver Detalles',
         tech_no_active: 'No hay trabajos asignados',
@@ -8338,6 +8568,13 @@ const TRANSLATIONS = {
         brand_carwash: 'Lavado de Autos',
         // Tech
         tech_clock_out: 'Registrar Salida',
+        tech_start_travel: '🚗 Iniciar Viaje',
+        tech_arrived: '📍 Llegué',
+        tech_waiting_parts: '📦 Esperando Piezas',
+        tech_complete: '✅ Completar',
+        tech_continue_working: 'Seguir trabajando',
+        tech_waiting: 'En espera',
+        tech_resolved_completed: 'Resuelto / Completado',
         tech_loading: 'Cargando trabajos...',
         tech_select_job: 'Selecciona un trabajo para ver detalles.',
         // Tickets / Filters
@@ -8367,6 +8604,12 @@ const TRANSLATIONS = {
         sign_out: 'Cerrar Sesión',
     }
 };
+
+
+function tr(key, fallback) {
+    if (currentLang === 'es' && TRANSLATIONS.es && TRANSLATIONS.es[key]) return TRANSLATIONS.es[key];
+    return fallback;
+}
 
 function toggleLang() {
     currentLang = currentLang === 'en' ? 'es' : 'en';
@@ -8504,7 +8747,7 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v6.1.0</span>
+    <span>R&M Tracker v6.0.2</span>
 </div>
 
 </body>
