@@ -128,6 +128,7 @@
 [data-theme="dark"] .modal-card { background: var(--card); border: 1px solid var(--border); }
 [data-theme="dark"] .modal-card h3 { color: var(--text); }
 [data-theme="dark"] .user-row-role.admin { background: rgba(91,156,246,0.15); }
+[data-theme="dark"] .user-row-role.overwatch { background: rgba(165,180,252,0.2); color: #c7d2fe; }
 [data-theme="dark"] .user-row-role.areacoach { background: rgba(139,92,246,0.15); }
 [data-theme="dark"] .user-row-role.manager { background: rgba(5,150,105,0.15); }
 [data-theme="dark"] .user-row-role.technician { background: rgba(217,119,6,0.15); }
@@ -1400,6 +1401,22 @@ body {
 
 .ticket-body { flex: 1; min-width: 0; }
 
+.ticket-card-delete-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 2px 4px;
+    border-radius: 4px;
+    opacity: 0.5;
+    transition: opacity 0.15s, background 0.15s;
+    line-height: 1;
+}
+.ticket-card-delete-btn:hover {
+    opacity: 1;
+    background: rgba(220,38,38,0.1);
+}
+
 .ticket-top-row {
     display: flex;
     justify-content: space-between;
@@ -1830,6 +1847,30 @@ body.exp-manager-mobile #existingIssuesScreen .mobile-primary-action-wrap .btn {
     width: 100%;
     box-shadow: var(--shadow-lg);
 }
+
+/* Manager Open/Closed tabs */
+.mgr-tab {
+    padding: 10px 24px;
+    font-size: 14px;
+    font-weight: 600;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: color 0.15s, border-color 0.15s;
+}
+.mgr-tab.mgr-tab-active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+}
+body.exp-manager-mobile #filtersBtn { display: none; }
+body.exp-manager-mobile #managerTabBar { display: flex !important; }
+body.exp-manager-mobile #ticketFilters { display: none; }
+body.exp-manager-desktop #managerTabBar { display: flex !important; }
+body.exp-manager-desktop #ticketFilters { display: none; }
+body.exp-manager-tablet #managerTabBar { display: flex !important; }
+body.exp-manager-tablet #ticketFilters { display: none; }
 
 /* Filter control variants: chip row vs compact modal */
 .compact-filter-trigger,
@@ -2391,6 +2432,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
     flex-shrink: 0;
 }
 .user-row-role.admin { background: #eff4ff; color: var(--primary); }
+.user-row-role.overwatch { background: #1e1b4b; color: #a5b4fc; font-weight: 800; }
 .user-row-role.areacoach { background: #f5f3ff; color: #8b5cf6; }
 .user-row-role.manager { background: #ecfdf5; color: #059669; }
 .user-row-role.technician { background: #fef3c7; color: #d97706; }
@@ -2634,6 +2676,40 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
 }
 .btn-clock-in:hover { background: #047857; }
 .btn-clock-in:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Delete button styles */
+.btn-delete-card {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 2px 5px;
+    opacity: 0.45;
+    transition: opacity 0.2s;
+    color: #dc2626;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+.btn-delete-card:hover { opacity: 1; }
+.btn-delete-modal {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #dc2626;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 10px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.btn-delete-modal:hover { background: #fee2e2; }
+.coach-edit-section {
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    background: var(--bg);
+    margin-top: 8px;
+}
 
 .btn-view-ticket {
     background: transparent;
@@ -2933,7 +3009,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
     <div class="app-header">
         <div class="header-left">
             <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle dark mode">🌙</button>
-            <button class="theme-toggle" id="langToggle" onclick="toggleLang()" title="Español / English">EN</button>
+            <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle dark mode">🌙</button>
             <a class="header-logo" href="#" onclick="goHome();return false" style="text-decoration:none;display:flex;align-items:center;gap:8px;cursor:pointer"><img src="logos/dpm-icon.png" alt="DPM" style="height:24px;vertical-align:middle"><span class="header-title">Repair &amp; Maintenance</span></a>
         </div>
         <div class="header-right">
@@ -2950,14 +3026,14 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
             <button class="admin-btn hidden" id="notifyBtn" onclick="toggleNotifyPanel()" style="position:relative">🔔 <span class="badge hidden" id="notifyBadge" style="background:#dc2626">0</span></button>
             <button class="admin-btn hidden" id="viewAsBtn" onclick="showViewAsModal()">👁 View As</button>
             <button class="admin-btn hidden" id="returnViewAsBtn" onclick="exitViewAs()">↩ Back to my profile</button>
-            <button class="btn-logout" onclick="logout()" data-i18n="sign_out">Sign Out</button>
+            <button class="btn-logout" onclick="logout()">Sign Out</button>
         </div>
     </div>
 
     <!-- Notification Panel (dropdown) -->
     <div class="notify-panel" id="notifyPanel">
         <div class="notify-panel-header">
-            <span data-i18n="notifications">Notifications</span>
+            <span>Notifications</span>
             <button onclick="toggleNotifyPanel()" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-muted)">✕</button>
         </div>
         <div class="notify-panel-body" id="notifyPanelBody">
@@ -2986,25 +3062,25 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
         <!-- ===== SCREEN: Tech Dashboard (Technicians only) ===== -->
         <div id="techDashboard" class="hidden">
             <div class="tech-dash-header">
-                <h2 data-i18n="tech_my_jobs">🔧 My Jobs</h2>
+                <h2>🔧 My Jobs</h2>
                 <div class="tech-dash-filters">
-                    <button class="filter-chip active" data-filter="active" onclick="filterTechJobs('active', this)" data-i18n="tech_active">Active</button>
-                    <button class="filter-chip" data-filter="completed" onclick="filterTechJobs('completed', this)" data-i18n="tech_completed">Completed</button>
+                    <button class="filter-chip active" data-filter="active" onclick="filterTechJobs('active', this)">Active</button>
+                    <button class="filter-chip" data-filter="completed" onclick="filterTechJobs('completed', this)">Completed</button>
                 </div>
             </div>
 
             <!-- Active clock-in banner -->
             <div id="techClockBanner" class="tech-clock-banner hidden">
                 <div class="tcb-info">
-                    <span class="tcb-status" data-i18n="tech_clocked_in">⏱️ Clocked In</span>
+                    <span class="tcb-status">⏱️ Clocked In</span>
                     <span class="tcb-ticket" id="tcbTicketId"></span>
                     <span class="tcb-store" id="tcbStoreName"></span>
                     <span class="tcb-emergency hidden" id="tcbEmergency">🚨 Emergency</span>
                 </div>
                 <div class="tcb-timer" id="tcbTimer">00:00:00</div>
                 <div class="tech-banner-actions">
-                    <button class="btn-tech-primary" id="techPrimaryActionBtn" onclick="techAdvanceExecutionMode()" data-i18n="tech_start_travel">🚗 Start Travel</button>
-                    <button class="btn btn-sm" style="background:#dc2626;color:#fff;border:none" onclick="showClockOutPrompt()" data-i18n="tech_clock_out">Clock Out</button>
+                    <button class="btn-tech-primary" id="techPrimaryActionBtn" onclick="techAdvanceExecutionMode()">⏸ Mark Waiting</button>
+                    <button class="btn btn-sm" style="background:#dc2626;color:#fff;border:none" onclick="showClockOutPrompt()">Clock Out</button>
                 </div>
             </div>
 
@@ -3015,17 +3091,17 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                 <div class="tech-list-pane">
                     <!-- Job list -->
                     <div class="tech-job-list" id="techJobList">
-                        <div class="empty-state" data-i18n="tech_loading">Loading jobs...</div>
+                        <div class="empty-state">Loading jobs...</div>
                     </div>
                 </div>
                 <div class="tech-detail-pane" id="techDetailPane">
-                    <div class="tech-detail-empty" data-i18n="tech_select_job">Select a job to view full details.</div>
+                    <div class="tech-detail-empty">Select a job to view full details.</div>
                 </div>
             </div>
 
             <div class="tech-mobile-footer hidden" id="techMobileFooter">
-                <button class="btn-tech-primary" id="techMobilePrimaryBtn" onclick="techAdvanceExecutionMode()">🚗 Start Travel</button>
-                <button class="btn" style="background:#dc2626;color:#fff;border:none" onclick="showClockOutPrompt()" data-i18n="tech_clock_out">Clock Out</button>
+                <button class="btn-tech-primary" id="techMobilePrimaryBtn" onclick="techAdvanceExecutionMode()">⏸ Mark Waiting</button>
+                <button class="btn" style="background:#dc2626;color:#fff;border:none" onclick="showClockOutPrompt()">Clock Out</button>
             </div>
         </div>
 
@@ -3044,13 +3120,13 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                 <div class="landing-actions">
                     <div class="action-card" onclick="showNewIssueScreen()">
                         <div class="action-icon">📝</div>
-                        <div class="action-title" data-i18n="report_issue">Report New Issue</div>
-                        <div class="action-desc" data-i18n="report_issue_desc">Submit a repair ticket</div>
+                        <div class="action-title">Report New Issue</div>
+                        <div class="action-desc">Submit a repair ticket</div>
                     </div>
                     <div class="action-card" onclick="showExistingIssuesScreen()">
                         <div class="action-icon">📋</div>
-                        <div class="action-title" data-i18n="view_tickets">Existing Tickets</div>
-                        <div class="action-desc" data-i18n="view_tickets_desc">View and track open tickets</div>
+                        <div class="action-title">Existing Tickets</div>
+                        <div class="action-desc">View and track open tickets</div>
                     </div>
                 </div>
             </div>
@@ -3060,11 +3136,11 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
         <div id="coachLanding" class="hidden">
             <div class="role-landing">
                 <div class="landing-header">
-                    <h2 id="coachStoresHeading" data-i18n="coach_my_stores">My Stores</h2>
+                    <h2 id="coachStoresHeading">My Stores</h2>
                 </div>
                 <div class="landing-actions" id="coachStoreGrid"></div>
                 <div style="text-align:center;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
-                    <button class="btn btn-primary" onclick="showCoachOpenTickets()" style="padding:14px 32px;font-size:15px;border-radius:12px;font-weight:600" data-i18n="view_all_tickets">🔍 View All Open Tickets</button>
+                    <button class="btn btn-primary" onclick="showCoachOpenTickets()" style="padding:14px 32px;font-size:15px;border-radius:12px;font-weight:600">🔍 View All Open Tickets</button>
                 </div>
             </div>
         </div>
@@ -3072,18 +3148,18 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
         <!-- ===== SCREEN: Coach Store View (2 buttons for selected store) ===== -->
         <div id="coachStoreView" class="hidden">
             <div class="role-landing">
-                <button class="btn-back" onclick="showScreen('coachLanding');initCoachLanding()" style="margin-bottom:12px" data-i18n="back_my_stores">← Back to My Stores</button>
+                <button class="btn-back" onclick="showScreen('coachLanding');initCoachLanding()" style="margin-bottom:12px">← Back to My Stores</button>
                 <div id="coachSelectedStoreName" class="landing-store-name"></div>
                 <div class="landing-actions">
                     <div class="action-card" onclick="showNewIssueScreen()">
                         <div class="action-icon">📝</div>
-                        <div class="action-title" data-i18n="report_issue">Report New Issue</div>
-                        <div class="action-desc" data-i18n="report_issue_desc">Submit a repair ticket</div>
+                        <div class="action-title">Report New Issue</div>
+                        <div class="action-desc">Submit a repair ticket</div>
                     </div>
                     <div class="action-card" onclick="showExistingIssuesScreen()">
                         <div class="action-icon">📋</div>
-                        <div class="action-title" data-i18n="view_tickets">Existing Tickets</div>
-                        <div class="action-desc" data-i18n="view_tickets_desc">View and track open tickets</div>
+                        <div class="action-title">Existing Tickets</div>
+                        <div class="action-desc">View and track open tickets</div>
                     </div>
                 </div>
             </div>
@@ -3093,7 +3169,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
         <!-- ===== SCREEN: Coach Open Tickets (grouped by store) ===== -->
         <div id="coachOpenTicketsScreen" class="hidden">
             <div class="role-landing" style="max-width:980px">
-                <button class="btn-back" onclick="showScreen('coachLanding');initCoachLanding()" style="margin-bottom:12px" data-i18n="back_my_stores">← Back to My Stores</button>
+                <button class="btn-back" onclick="showScreen('coachLanding');initCoachLanding()" style="margin-bottom:12px">← Back to My Stores</button>
                 <div class="landing-header" style="margin-bottom:10px">
                     <h2 id="coachOpenTicketsTitle">Tickets open for Coach's Stores</h2>
                     <p style="color:var(--text-muted);font-size:13px;margin-top:6px">Tap a ticket to add comments, attach photos, or change urgency.</p>
@@ -3106,33 +3182,33 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
         <div id="storeSelection">
             <div class="store-card">
                 <div class="store-card-header">
-                    <h2 data-i18n="select_store">Select Your Store</h2>
-                    <p data-i18n="select_store_sub">Choose a location to report or check issues</p>
+                    <h2>Select Your Store</h2>
+                    <p>Choose a location to report or check issues</p>
                 </div>
 
                 <!-- Brand buttons - clickable, trigger store type + map -->
                 <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:12px;padding:0 8px">
                     <button onclick="selectBrand('all')" class="brand-pill hidden" id="brandPill-all">
                         <span class="brand-pill-icon" style="background:var(--primary);color:#fff;font-size:14px;font-weight:700">📍</span>
-                        <span data-i18n="all_locations">All Locations</span>
+                        <span>All Locations</span>
                     </button>
                     <button onclick="selectBrand('fastfood')" class="brand-pill" id="brandPill-fastfood">
                         <span class="brand-pill-icon"><img src="logos/bk-logo.png" alt=""></span>
-                        <span data-i18n="brand_fastfood">Fast Food</span>
+                        <span>Fast Food</span>
                     </button>
                     <button onclick="selectBrand('cstore')" class="brand-pill" id="brandPill-cstore">
                         <span class="brand-pill-icon"><img src="logos/pqs-logo.png" alt=""></span>
-                        <span data-i18n="brand_cstore">C-Store</span>
+                        <span>C-Store</span>
                     </button>
                     <button onclick="selectBrand('carwash')" class="brand-pill" id="brandPill-carwash">
                         <span class="brand-pill-icon"><img src="logos/cw-logo.png" alt=""></span>
-                        <span data-i18n="brand_carwash">Car Wash</span>
+                        <span>Car Wash</span>
                     </button>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label" data-i18n="store_type">Store Type</label>
+                        <label class="form-label">Store Type</label>
                         <select class="form-select" id="storeType" onchange="filterStores()">
                             <option value="">Choose type...</option>
                             <option value="all" class="admin-only-opt hidden">All Locations</option>
@@ -3142,7 +3218,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                         </select>
                     </div>
                     <div class="form-group">
-                        <label class="form-label" data-i18n="form_location">Location</label>
+                        <label class="form-label">Location</label>
                         <select class="form-select" id="storeSelect" onchange="selectStore()">
                             <option value="">Choose store...</option>
                         </select>
@@ -3152,13 +3228,13 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                 <div id="actionButtons" class="action-grid hidden">
                     <div class="action-card" onclick="showNewIssueScreen()">
                         <div class="action-icon">📝</div>
-                        <div class="action-title" data-i18n="report_issue">Report New Issue</div>
-                        <div class="action-desc" data-i18n="report_issue_desc">Submit a repair ticket</div>
+                        <div class="action-title">Report New Issue</div>
+                        <div class="action-desc">Submit a repair ticket</div>
                     </div>
                     <div class="action-card" onclick="showExistingIssuesScreen()">
                         <div class="action-icon">📋</div>
-                        <div class="action-title" data-i18n="view_tickets">Existing Tickets</div>
-                        <div class="action-desc" data-i18n="view_tickets_desc">View and track open tickets</div>
+                        <div class="action-title">Existing Tickets</div>
+                        <div class="action-desc">View and track open tickets</div>
                     </div>
                 </div>
 
@@ -3192,12 +3268,12 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
         <!-- ===== SCREEN: New Issue Form ===== -->
         <div id="newIssueScreen" class="hidden">
             <div class="back-row">
-                <button class="btn-back" onclick="goBack()" data-i18n="back_store">← Back to store</button>
+                <button class="btn-back" onclick="goBack()">← Back to store</button>
             </div>
 
             <div class="issue-form-card">
                 <div class="issue-form-header">
-                    <h2 data-i18n="report_new">Report New Issue</h2>
+                    <h2>Report New Issue</h2>
                     <p id="newIssueStoreName">Store Name</p>
                 </div>
 
@@ -3205,78 +3281,78 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                     <div class="full-form-mode">
                     <!-- Category -->
                     <div class="form-group">
-                        <label class="form-label" data-i18n="form_category">Category</label>
+                        <label class="form-label">Category</label>
                         <div class="category-grid" id="categoryGrid">
                             <button class="category-btn" data-cat="plumbing" onclick="selectCategory(this)">
                                 <span class="cat-icon">🚿</span>
-                                <span class="cat-label" data-i18n="cat_plumbing">Plumbing</span>
+                                <span class="cat-label">Plumbing</span>
                             </button>
                             <button class="category-btn" data-cat="equipment" onclick="selectCategory(this)">
                                 <span class="cat-icon">⚙️</span>
-                                <span class="cat-label" data-i18n="cat_equipment">Equipment</span>
+                                <span class="cat-label">Equipment</span>
                             </button>
                             <button class="category-btn" data-cat="it" onclick="selectCategory(this)">
                                 <span class="cat-icon">💻</span>
-                                <span class="cat-label" data-i18n="cat_it">IT</span>
+                                <span class="cat-label">IT</span>
                             </button>
                             <button class="category-btn" data-cat="structural" onclick="selectCategory(this)">
                                 <span class="cat-icon">🧱</span>
-                                <span class="cat-label" data-i18n="cat_structural">Structural</span>
+                                <span class="cat-label">Structural</span>
                             </button>
                             <button class="category-btn" data-cat="safety" onclick="selectCategory(this)">
                                 <span class="cat-icon">🛡️</span>
-                                <span class="cat-label" data-i18n="cat_safety">Safety</span>
+                                <span class="cat-label">Safety</span>
                             </button>
                             <button class="category-btn" data-cat="other" onclick="selectCategory(this)">
                                 <span class="cat-icon">📎</span>
-                                <span class="cat-label" data-i18n="cat_other">Other</span>
+                                <span class="cat-label">Other</span>
                             </button>
                         </div>
                     </div>
 
                     <!-- Interior / Exterior -->
                     <div class="form-group">
-                        <label class="form-label" data-i18n="form_location">Location</label>
+                        <label class="form-label">Location</label>
                         <div class="priority-options" style="max-width:280px">
                             <button class="priority-btn" data-loc="interior" onclick="selectLocation(this)">
                                 <span class="priority-icon">🏠</span>
-                                <span class="priority-label" data-i18n="loc_interior">Interior</span>
+                                <span class="priority-label">Interior</span>
                             </button>
                             <button class="priority-btn" data-loc="exterior" onclick="selectLocation(this)">
                                 <span class="priority-icon">🏪</span>
-                                <span class="priority-label" data-i18n="loc_exterior">Exterior</span>
+                                <span class="priority-label">Exterior</span>
                             </button>
                         </div>
                     </div>
 
                     <!-- Contact Info -->
                     <div class="form-group">
-                        <label class="form-label" data-i18n="form_name">Your Name</label>
+                        <label class="form-label">Your Name</label>
                         <input class="form-input" type="text" id="contactName" placeholder="Name of person reporting issue" autocomplete="off" oninput="saveNewIssueDraft()">
                     </div>
                     <div class="form-group">
-                        <label class="form-label" data-i18n="form_phone">Your Contact Phone</label>
+                        <label class="form-label">Your Contact Phone</label>
                         <input class="form-input" type="tel" id="contactPhone" placeholder="555-123-4567" inputmode="tel" maxlength="12" oninput="formatPhone(this)">
                     </div>
 
                     <!-- Priority -->
                     <div class="form-group">
-                        <label class="form-label" data-i18n="form_priority">Priority</label>
+                        <label class="form-label">Priority</label>
                         <div class="priority-options">
                             <button class="priority-btn p-routine" data-priority="routine" onclick="selectPriority(this)">
                                 <span class="priority-icon">🟢</span>
-                                <span class="priority-label" data-i18n="p_routine">Routine</span>
-                                <span class="priority-desc" data-i18n="p_routine_desc">Up to 1 week</span>
+                                <span class="priority-label">Routine</span>
+                                <span class="priority-desc">Up to 1 week</span>
                             </button>
                             <button class="priority-btn p-urgent" data-priority="urgent" onclick="selectPriority(this)">
                                 <span class="priority-icon">🟡</span>
-                                <span class="priority-label" data-i18n="p_urgent">Urgent</span>
-                                <span class="priority-desc" data-i18n="p_urgent_desc">Within 72 hours</span>
+                                <span class="priority-label">Urgent</span>
+                                <span class="priority-desc">Within 72 hours</span>
                             </button>
                             <button class="priority-btn p-emergency" data-priority="emergency" onclick="selectPriority(this)">
                                 <span class="priority-icon">🔴</span>
-                                <span class="priority-label" data-i18n="p_emergency">Emergency</span>
-                                <span class="priority-desc" data-i18n="p_emergency_desc">Within 24 hours</span>
+                                <span class="priority-label">Emergency</span>
+                                <span class="priority-desc">Within 24 hours</span>
                             </button>
                         </div>
                     </div>
@@ -3298,93 +3374,26 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
 
                     <!-- Description -->
                     <div class="form-group">
-                        <label class="form-label" data-i18n="form_description">Description</label>
+                        <label class="form-label">Description</label>
                         <textarea class="form-textarea" id="issueDescription" placeholder="Describe the issue in detail. What's broken? Where exactly? When did it start?" oninput="saveNewIssueDraft()"></textarea>
                     </div>
 
                     <!-- Photos -->
                     <div class="form-group">
-                        <label class="form-label" data-i18n="form_photos">Photos <span style="font-weight:400; color: var(--text-muted);" data-i18n="form_photos_hint">(optional, up to 3)</span></label>
+                        <label class="form-label">Photos <span style="font-weight:400; color: var(--text-muted);">(optional, up to 3)</span></label>
                         <div class="photo-upload-area" id="photoUploadArea" onclick="document.getElementById('photoInput').click()">
                             <div class="upload-icon">📷</div>
-                            <div class="upload-text" data-i18n="tap_photos">Tap to add photos</div>
-                            <div class="upload-hint" data-i18n="photo_hint">JPG or PNG, max 5MB each</div>
+                            <div class="upload-text">Tap to add photos</div>
+                            <div class="upload-hint">JPG or PNG, max 5MB each</div>
                         </div>
                         <input type="file" id="photoInput" accept="image/*" capture="environment" multiple style="display:none" onchange="handlePhotos(this)">
                         <div class="photo-preview-grid" id="photoPreviewGrid"></div>
                     </div>
                     </div>
 
-                    <div class="wizard-container" id="newIssueWizard">
-                        <div class="wizard-step-chip-row" id="wizardStepChips"></div>
-
-                        <div class="wizard-step" data-step="1">
-                            <div class="wizard-title">Step 1: Pick location</div>
-                            <div class="wizard-subtitle">Choose the store where the issue is happening.</div>
-                            <div id="wizardStoreList" class="wizard-store-list"></div>
-                        </div>
-
-                        <div class="wizard-step" data-step="2">
-                            <div class="wizard-title">Step 2: Pick category</div>
-                            <div class="wizard-subtitle">Tap the issue type.</div>
-                            <div class="wizard-touch-grid" id="wizardCategoryGrid"></div>
-                        </div>
-
-                        <div class="wizard-step" data-step="3">
-                            <div class="wizard-title">Step 3: Add photo first</div>
-                            <div class="wizard-subtitle">Take a picture now so the repair team can quickly triage.</div>
-                            <div class="photo-upload-area" onclick="document.getElementById('photoInput').click()">
-                                <div class="upload-icon">📸</div>
-                                <div class="upload-text">Open camera / photos</div>
-                                <div class="upload-hint">Tip: Include the full area and close-up detail.</div>
-                            </div>
-                            <div class="wizard-photo-hint">You can submit without a photo, but adding one improves first-time fix rates.</div>
-                            <div class="photo-preview-grid" id="wizardPhotoPreviewGrid"></div>
-                        </div>
-
-                        <div class="wizard-step" data-step="4">
-                            <div class="wizard-title">Step 4: Describe issue</div>
-                            <div class="wizard-subtitle">Dictation friendly: tap the mic on your keyboard and speak naturally.</div>
-                            <textarea class="form-textarea" id="wizardIssueDescription" placeholder="Try: 'Ice machine leaking behind left panel since this morning.'" oninput="saveNewIssueDraft()"></textarea>
-                            <div class="wizard-dictation-row">
-                                <button class="btn btn-secondary" type="button" onclick="copyWizardDescriptionToMain()">Use this description</button>
-                            </div>
-                        </div>
-
-                        <div class="wizard-step" data-step="5">
-                            <div class="wizard-title">Step 5: Priority</div>
-                            <div class="wizard-subtitle">How urgent is this for operations or safety?</div>
-                            <div class="priority-options">
-                                <button class="priority-btn p-routine" data-priority="routine" onclick="selectPriority(this)">
-                                    <span class="priority-icon">🟢</span>
-                                    <span class="priority-label">Routine</span>
-                                    <span class="wizard-priority-hint">Still usable. Can wait up to a week.</span>
-                                </button>
-                                <button class="priority-btn p-urgent" data-priority="urgent" onclick="selectPriority(this)">
-                                    <span class="priority-icon">🟡</span>
-                                    <span class="priority-label">Urgent</span>
-                                    <span class="wizard-priority-hint">Impacts service. Needs attention in 72h.</span>
-                                </button>
-                                <button class="priority-btn p-emergency" data-priority="emergency" onclick="selectPriority(this)">
-                                    <span class="priority-icon">🔴</span>
-                                    <span class="priority-label">Emergency</span>
-                                    <span class="wizard-priority-hint">Safety/compliance risk or outage. Act in 24h.</span>
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="wizard-step" data-step="6">
-                            <div class="wizard-title">Step 6: Review + submit</div>
-                            <div class="wizard-subtitle">Confirm details, then submit the ticket.</div>
-                            <div class="wizard-review-card" id="wizardReviewCard"></div>
-                        </div>
-                    </div>
-
                     <!-- Submit -->
                     <div class="form-actions">
                         <button class="btn btn-secondary" onclick="goBack()">Cancel</button>
-                        <button class="btn btn-secondary hidden" id="wizardPrevBtn" onclick="wizardPrevStep()">Back</button>
-                        <button class="btn btn-secondary hidden" id="wizardNextBtn" onclick="wizardNextStep()">Next</button>
                         <button class="btn btn-primary" onclick="submitTicket()" id="submitBtn">Submit Ticket</button>
                     </div>
                 </div>
@@ -3398,21 +3407,27 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
             </div>
 
             <div class="tickets-header">
-                <h2 data-i18n="tickets_title">Tickets <span id="ticketStoreName" style="font-weight:400; color: var(--text-muted); font-size: 15px;"></span></h2>
+                <h2>Tickets <span id="ticketStoreName" style="font-weight:400; color: var(--text-muted); font-size: 15px;"></span></h2>
                 <div style="display:flex; gap:8px; align-items:center;">
-                    <button class="btn btn-secondary btn-sm compact-filter-trigger" onclick="toggleCompactFilters(true)">Filters</button>
+                    <button class="btn btn-secondary btn-sm compact-filter-trigger" id="filtersBtn" onclick="toggleCompactFilters(true)">Filters</button>
                     <button class="btn btn-primary btn-sm" onclick="showNewIssueScreen()">+ New Ticket</button>
                 </div>
             </div>
 
+            <!-- Tab bar for Manager role; full filters for others -->
+            <div id="managerTabBar" class="hidden" style="display:none;gap:0;margin-bottom:12px;border-bottom:2px solid var(--border)">
+                <button id="tabOpen" class="mgr-tab mgr-tab-active" onclick="switchManagerTab('open')">Open</button>
+                <button id="tabClosed" class="mgr-tab" onclick="switchManagerTab('closed')">Closed</button>
+            </div>
+
             <div class="ticket-filters" id="ticketFilters">
-                <button class="filter-chip active" data-filter="all" onclick="filterTickets('all', this)" data-i18n="filter_all">All</button>
-                <button class="filter-chip" data-filter="unassigned" onclick="filterTickets('unassigned', this)" data-i18n="filter_open">Unassigned</button>
-                <button class="filter-chip" data-filter="assigned" onclick="filterTickets('assigned', this)" data-i18n="filter_assigned">Assigned</button>
-                <button class="filter-chip" data-filter="inprogress" onclick="filterTickets('inprogress', this)" data-i18n="filter_inprogress">In Progress</button>
-                <button class="filter-chip" data-filter="waiting" onclick="filterTickets('waiting', this)" data-i18n="filter_waiting">Waiting</button>
-                <button class="filter-chip" data-filter="resolved" onclick="filterTickets('resolved', this)" data-i18n="filter_resolved">Resolved</button>
-                <button class="filter-chip" data-filter="closed" onclick="filterTickets('closed', this)" data-i18n="filter_closed">Closed</button>
+                <button class="filter-chip active" data-filter="all" onclick="filterTickets('all', this)">All</button>
+                <button class="filter-chip" data-filter="unassigned" onclick="filterTickets('unassigned', this)">Unassigned</button>
+                <button class="filter-chip" data-filter="assigned" onclick="filterTickets('assigned', this)">Assigned</button>
+                <button class="filter-chip" data-filter="inprogress" onclick="filterTickets('inprogress', this)">In Progress</button>
+                <button class="filter-chip" data-filter="waiting" onclick="filterTickets('waiting', this)">Waiting</button>
+                <button class="filter-chip" data-filter="resolved" onclick="filterTickets('resolved', this)">Resolved</button>
+                <button class="filter-chip" data-filter="closed" onclick="filterTickets('closed', this)">Closed</button>
             </div>
 
             <div class="tickets-list" id="ticketsList">
@@ -3448,7 +3463,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                 <button class="btn-back" onclick="goHome()">← Back to overview</button>
             </div>
             <div class="tickets-header">
-                <h2 id="allTicketsTitle" data-i18n="all_tickets_title">All Tickets</h2>
+                <h2 id="allTicketsTitle">All Tickets</h2>
             </div>
             <div id="allTicketsDrilldownBanner" class="desktop-insight-empty" style="display:none;margin-bottom:10px"></div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
@@ -3479,7 +3494,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
         <div id="adminScreen" class="hidden">
             <div class="back-row">
                 <button class="btn btn-ghost" onclick="goBackFromAdmin()">← Back</button>
-                <h2 data-i18n="admin_panel">Admin Panel</h2>
+                <h2>Admin Panel</h2>
             </div>
 
             <!-- Pending Users -->
@@ -3521,7 +3536,9 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                             <label class="form-label">Role</label>
                             <select class="form-select" id="newUserRole">
                                 <option value="">Choose role...</option>
+                                <option value="Overwatch">Overwatch</option>
                                 <option value="Admin">Admin</option>
+                                <option value="Director">Director</option>
                                 <option value="Area Coach">Area Coach</option>
                                 <option value="Manager">Manager</option>
                                 <option value="Technician">Technician</option>
@@ -3626,7 +3643,10 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
     <div class="modal-content">
         <div class="modal-header">
             <h3 id="modalTicketId">Ticket #---</h3>
-            <button class="modal-close" onclick="closeModal()">✕</button>
+            <div style="display:flex;align-items:center;gap:8px">
+                <button id="modalDeleteBtn" class="hidden" style="background:#dc2626;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer" onclick="deleteTicketFromModal()">🗑 Delete</button>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            </div>
         </div>
         <div class="modal-body" id="modalBody">
             <!-- Populated by JS -->
@@ -3740,10 +3760,10 @@ const stores = [
 
 const USER_DIRECTORY = {
     // ADMINS
-    "itsupport@dossaniparadise.com": { name: "IT Support", role: "Admin", stores: "all" },
+    "itsupport@dossaniparadise.com": { name: "IT Support", role: "Overwatch", stores: "all" },
     "armaan@dossaniparadise.com": { name: "Armaan Dossani", role: "Admin", title: "COO", stores: ["all"] },
     "karim@dossaniparadise.com": { name: "Karim Dossani", role: "Admin", title: "Dev", stores: "all" },
-    "sam@dossaniparadise.com": { name: "Sam Merchant", role: "Admin", title: "VP", stores: ["all"] },
+    "sam@dossaniparadise.com": { name: "Sam Merchant", role: "Director", title: "Director", stores: ["all"] },
 
     // REPAIR TECHNICIANS
     "rmtech1@dossaniparadise.com": { name: "Ronny Gossett", role: "Technician", stores: "all" },
@@ -3754,7 +3774,7 @@ const USER_DIRECTORY = {
     "rick@dossaniparadise.com": { name: "Rick Tharani", role: "Director", title: "Director", stores: ["PQS05","PQS06","PQS07","PQS08","PQS09","PQS10","PQS11","PQS12","PQS13","PQS15","PQS16","NASH01"] },
     "paul@dossaniparadise.com": { name: "Paul Fernandez", role: "Director", title: "Director", stores: ["BK22027","BK27082","BK27083","BK28626","BK28514","BK27084","BK26183","BK03675","BK27028","BK26924","BK28313","BK04851","BK09723","BK13192","BK06460","BK28174","BK24875","BK27958","BK25198","BK20671","BK28312","BK28683","BK27415","BK23086","BK11460","BK02390","BK24008","BK10358","BK26015","SUB22"] },
     "vishal@dossaniparadise.com": { name: "Vishal Chhetri", role: "Director", title: "Director", stores: ["7EL01","PQS01","PQS02","PQS03","PQS04","PQS14","CW001","CW002"] },
-    "jennifer@dossaniparadise.com": { name: "Jennifer Sanders", role: "Director", title: "Director", stores: ["PQS05","PQS06","PQS07","PQS08","PQS09","PQS10","PQS11","PQS13","PQS15","PQS16"] },
+    "jennifer@dossaniparadise.com": { name: "Jennifer Sanders", role: "Director", title: "Director", stores: ["PQS05","PQS06","PQS07","PQS08","PQS09","PQS10","PQS11","PQS12","PQS13","PQS15","PQS16"] },
     "dane@dossaniparadise.com": { name: "Dane Martin", role: "Area Coach", stores: ["BK23086","BK11460","BK26015","BK10358","BK24008","BK02390","SUB22"] },
     "steve@dossaniparadise.com": { name: "Steve Cardone", role: "Area Coach", stores: ["BK28174","BK04851","BK09723"] },
     "claudia@dossaniparadise.com": { name: "Claudia Fernandez", role: "Area Coach", stores: ["BK20671","BK06460","BK13192","BK27958","BK24875","BK25198"] },
@@ -3951,11 +3971,12 @@ let adminSummaryListenerCallback = null;
 
 const SUMMARY_LAYOUT_RULES = {
     adminSummary: {
-        roles: new Set(['Admin', 'Director']),
+        roles: new Set(['Overwatch', 'Admin', 'Director']),
         screens: new Set(['storeSelection','allTicketsScreen'])
     },
     selectedStoreSummary: {
         screensByRole: {
+            Overwatch: new Set(['storeSelection', 'newIssueScreen', 'existingIssuesScreen', 'allTicketsScreen']),
             Admin: new Set(['storeSelection', 'newIssueScreen', 'existingIssuesScreen', 'allTicketsScreen']),
             Director: new Set(['storeSelection', 'newIssueScreen', 'existingIssuesScreen', 'allTicketsScreen']),
             Manager: new Set(['managerLanding', 'newIssueScreen', 'existingIssuesScreen', 'allTicketsScreen']),
@@ -4005,9 +4026,7 @@ function syncStatusFilterUIFromConfig() {
 // ============================================================
 // AUTH
 // ============================================================
-if (typeof currentLang === 'undefined') { var currentLang = localStorage.getItem('lang') || 'en'; }
-
-function t(en, es) { return (currentLang === 'es' ? es : en); }
+// Language: English only
 
 syncStatusFilterUIFromConfig();
 
@@ -4199,7 +4218,7 @@ function getExperienceProfile(role, viewport = getViewportHints()) {
         device = 'tablet';
     }
 
-    const rolePrefixRaw = (normalizedRole === 'area coach' || normalizedRole === 'director coach') ? 'manager' : normalizedRole;
+    const rolePrefixRaw = (normalizedRole === 'area coach' || normalizedRole === 'director coach') ? 'manager' : (normalizedRole === 'overwatch' ? 'admin' : normalizedRole);
     const rolePrefix = rolePrefixRaw.replace(/\s+/g, '-');
     return `${rolePrefix}-${device}`;
 }
@@ -4207,7 +4226,7 @@ function getExperienceProfile(role, viewport = getViewportHints()) {
 function routeToProfileLanding() {
     const role = currentUser.role;
 
-    // ITSUPPORT ONLY: full admin overview w/ map + list
+    // OVERWATCH: full admin overview w/ map + list
     if (isItsupportUser(currentUser)) {
         showScreen('storeSelection');
         // Default to showing all brands on large screens
@@ -4292,7 +4311,6 @@ function initCoachLanding() {
                         : '<div class="csb-tickets no-issues">✓ No issues</div>') +
                 '</div>';
             }).join('');
-        applyLang();
     });
 }
 
@@ -4306,8 +4324,9 @@ function sanitizeDisplayName(name) {
 function getCoachStoresHeadingText() {
     const role = getEffectiveUserRole();
     const displayName = sanitizeDisplayName(currentUser?.name);
-    if (role === 'Area Coach' && displayName) {
-        return `${displayName}'s Stores`;
+    const firstName = displayName ? displayName.split(' ')[0] : '';
+    if ((role === 'Area Coach' || role === 'Director' || role === 'Admin') && firstName) {
+        return `${firstName}'s Stores`;
     }
     return 'My Stores';
 }
@@ -4452,7 +4471,8 @@ function updateHeaderIdentity(user, opts = {}) {
 }
 
 function updateAllLocationsVisibility(user) {
-    const showAllLocations = !!(user && (user.role === 'Admin' || user.stores === 'all'));
+    const role = getEffectiveUserRole(user);
+    const showAllLocations = !!(user && (role === 'Overwatch' || role === 'Admin' || role === 'Director' || user.stores === 'all'));
     document.getElementById('brandPill-all')?.classList.toggle('hidden', !showAllLocations);
     document.querySelectorAll('.admin-only-opt').forEach(el => el.classList.toggle('hidden', !showAllLocations));
 }
@@ -4462,7 +4482,7 @@ function showAppScreen() {
     document.getElementById('appContainer').style.display = 'flex';
     const experienceProfile = getExperienceProfile(currentUser.role);
     applyExperienceClass(currentUser.role);
-    // Only IT Support should ever see map view
+    // Only Overwatch should ever see map view
     if (isItsupportUser(currentUser)) document.body.classList.remove('no-map');
     else document.body.classList.add('no-map');
 
@@ -4496,7 +4516,7 @@ function showAppScreen() {
         const types = [...new Set(userStoreList.map(s => s.type))];
         if (types.length === 1) {
             setTimeout(() => selectBrand(types[0]), 100);
-        } else if (currentUser.role === 'Admin' || currentUser.role === 'Technician') {
+        } else if (currentUser.role === 'Admin' || currentUser.role === 'Overwatch' || currentUser.role === 'Technician') {
             setTimeout(() => selectBrand('all'), 100);
         }
     }
@@ -4570,8 +4590,8 @@ function goBack() {
     if (effRole === 'Technician') { showScreen('techDashboard'); loadTechJobs(); return; }
     if (effRole === 'Manager') { showScreen('managerLanding'); return; }
 
-    // Coach-style landing (Area Coach / Director / Admin in this build)
-    if (effRole === 'Area Coach' || effRole === 'Director' || effRole === 'Admin') {
+    // Coach-style landing (Overwatch / Area Coach / Director / Admin in this build)
+    if (effRole === 'Overwatch' || effRole === 'Area Coach' || effRole === 'Director' || effRole === 'Admin') {
         // If we are viewing the grouped open tickets list, go back to coach landing
         if (currentScreenId === 'coachOpenTicketsScreen') { showScreen('coachLanding'); initCoachLanding(); return; }
         // If we came from a specific store, go back to coach store view
@@ -5142,7 +5162,7 @@ function watchPendingUsers() {
 }
 
 function showAdminPanel() {
-    if (!canAccessAdminPanel()) { showToast('Only IT Support can access user controls', 'error'); return; }
+    if (!canAccessAdminPanel()) { showToast('Only Admins can access user controls', 'error'); return; }
     showScreen('adminScreen');
     renderPendingUsers();
     loadActiveUsers();
@@ -5187,12 +5207,13 @@ function renderPendingUsers() {
             <div class="pending-form">
                 <input type="text" class="form-input" placeholder="Full name" id="pname-${uid}" value="${esc(guessedName)}">
                 <select class="form-select" id="prole-${uid}">
-                    <option value="Manager" ${guessedRole === 'Manager' ? 'selected' : ''}>Manager</option>
-                    <option value="Area Coach" ${guessedRole === 'Area Coach' ? 'selected' : ''}>Area Coach</option>
-                    <option value="Director" ${guessedRole === 'Director' ? 'selected' : ''}>Director</option>
-                    <option value="Admin" ${guessedRole === 'Admin' ? 'selected' : ''}>Admin</option>
-                    <option value="Technician" ${guessedRole === 'Technician' ? 'selected' : ''}>Technician</option>
-                </select>
+                                    <option value="Overwatch" ${guessedRole === 'Overwatch' ? 'selected' : ''}>Overwatch</option>
+                                    <option value="Admin" ${guessedRole === 'Admin' ? 'selected' : ''}>Admin</option>
+                                    <option value="Director" ${guessedRole === 'Director' ? 'selected' : ''}>Director</option>
+                                    <option value="Area Coach" ${guessedRole === 'Area Coach' ? 'selected' : ''}>Area Coach</option>
+                                    <option value="Manager" ${guessedRole === 'Manager' ? 'selected' : ''}>Manager</option>
+                                    <option value="Technician" ${guessedRole === 'Technician' ? 'selected' : ''}>Technician</option>
+                                </select>
                 <div class="full">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
                         <label class="form-label" style="margin:0">Store Access</label>
@@ -5223,7 +5244,7 @@ async function approveUser(uid) {
     if (!name) { showToast('Enter a name', 'error'); return; }
 
     let storeVal;
-    if (role === 'Admin') {
+    if (role === 'Admin' || role === 'Overwatch') {
         storeVal = 'all';
     } else if (selectedStores.length === 0) {
         showToast('Select at least one store', 'error');
@@ -5276,7 +5297,7 @@ async function loadActiveUsers() {
 
         container.innerHTML = entries.map(([uid, u]) => {
             const initials = (u.name || '?').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-            const roleClass = u.role === 'Admin' ? 'admin' : u.role === 'Director' ? 'director' : u.role === 'Area Coach' ? 'areacoach' : u.role === 'Technician' ? 'technician' : 'manager';
+            const roleClass = u.role === 'Overwatch' ? 'overwatch' : u.role === 'Admin' ? 'admin' : u.role === 'Director' ? 'director' : u.role === 'Area Coach' ? 'areacoach' : u.role === 'Technician' ? 'technician' : 'manager';
             const storeStr = u.stores === 'all' ? 'All stores' :
                 Array.isArray(u.stores) ? u.stores.length + ' stores' :
                 u.stores || 'None';
@@ -5332,6 +5353,7 @@ function editUser(uid) {
                     <option value="Area Coach" ${u.role === 'Area Coach' ? 'selected' : ''}>Area Coach</option>
                     <option value="Director" ${u.role === 'Director' ? 'selected' : ''}>Director</option>
                     <option value="Admin" ${u.role === 'Admin' ? 'selected' : ''}>Admin</option>
+                    <option value="Overwatch" ${u.role === 'Overwatch' ? 'selected' : ''}>Overwatch</option>
                     <option value="Technician" ${u.role === 'Technician' ? 'selected' : ''}>Technician</option>
                 </select>
             </div>
@@ -5365,7 +5387,7 @@ async function saveEditUser(uid) {
     if (!name) { showToast('Name required', 'error'); return; }
 
     let storeVal;
-    if (role === 'Admin') {
+    if (role === 'Admin' || role === 'Overwatch') {
         storeVal = 'all';
     } else if (selected.length === 0) {
         showToast('Select at least one store', 'error');
@@ -5441,7 +5463,7 @@ async function addNewUser() {
 
     // Determine stores value
     let storesVal;
-    if (role === 'Admin') {
+    if (role === 'Admin' || role === 'Overwatch') {
         storesVal = 'all';
     } else if (selectedStores.length === 1) {
         storesVal = selectedStores[0];
@@ -5934,15 +5956,15 @@ function renderInlineAssignControls(ticket, contextPrefix = 'inline') {
         return `
             <div class="inline-assign-row" onclick="event.stopPropagation()">
                 <div class="inline-assign-left">
-                    <div class="inline-assign-label">${currentLang === 'es' ? 'Asignar a' : 'Assign to'}</div>
+                    <div class="inline-assign-label">${'Assign to'}</div>
                     <select id="${selectId}" class="form-select form-select-sm inline-assign-select" onchange="event.stopPropagation()">
-                        <option value="">${currentLang === 'es' ? 'Selecciona…' : 'Select…'}</option>
+                        <option value="">${'Select…'}</option>
                         ${buildAssigneeOptionsHtml()}
                     </select>
                 </div>
                 <div class="inline-assign-right">
                     <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();assignTicketFromSelect('${escAttr(ticketKey)}','${selectId}')">
-                        ${currentLang === 'es' ? 'Asignar' : 'Assign'}
+                        ${'Assign'}
                     </button>
                 </div>
             </div>
@@ -5954,20 +5976,20 @@ function renderInlineAssignControls(ticket, contextPrefix = 'inline') {
         return `
             <div class="inline-assigned-row" onclick="event.stopPropagation()">
                 <div class="inline-assigned-top">
-                    <div class="inline-assigned-to">${currentLang === 'es' ? 'Asignado a:' : 'Assigned to:'} <b>${escHtml(assigneeLabel)}</b></div>
+                    <div class="inline-assigned-to">${'Assigned to:'} <b>${escHtml(assigneeLabel)}</b></div>
                     <button class="btn btn-outline-danger btn-sm" onclick="event.stopPropagation();unassignTicket('${escAttr(ticketKey)}')">
-                        ${currentLang === 'es' ? 'Quitar asignación' : 'Unassign'}
+                        ${'Unassign'}
                     </button>
                 </div>
 
                 <div class="inline-dispatch-row">
-                    <div class="inline-dispatch-q">${currentLang === 'es' ? '¿Ya contactaste al técnico asignado?' : 'Have you already contacted the assigned technician?'}</div>
+                    <div class="inline-dispatch-q">${'Have you already contacted the assigned technician?'}</div>
                     <div class="inline-dispatch-btns">
                         <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();markAssignedContactedYes('${escAttr(ticketKey)}')">
-                            ${currentLang === 'es' ? 'Sí' : 'Yes'}
+                            ${'Yes'}
                         </button>
                         <button class="btn btn-outline-secondary btn-sm" onclick="event.stopPropagation();markAssignedContactedNo('${escAttr(ticketKey)}')">
-                            ${currentLang === 'es' ? 'No' : 'No'}
+                            ${'No'}
                         </button>
                     </div>
                 </div>
@@ -5988,12 +6010,12 @@ function renderModalAssignmentBlock(ticket, key) {
     // Assigned: show assignee + unassign. No reassign from modal.
     if (assignee && status !== 'unassigned') {
         return `<div style="margin-top:10px">
-            <label class="form-label" style="font-size:12px">${currentLang === 'es' ? 'Asignado a' : 'Assigned to'}</label>
+            <label class="form-label" style="font-size:12px">${'Assigned to'}</label>
             <div style="display:flex;gap:8px;align-items:center">
                 <div class="form-input" style="flex:1;min-height:36px;display:flex;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 10px;overflow:hidden">
                     <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700">${escHtml(assignee)}</span>
                 </div>
-                <button class="btn btn-danger btn-sm" style="white-space:nowrap" onclick="event.stopPropagation();unassignTicket('${key}')">${currentLang === 'es' ? 'Quitar asignación' : 'Unassign'}</button>
+                <button class="btn btn-danger btn-sm" style="white-space:nowrap" onclick="event.stopPropagation();unassignTicket('${key}')">${'Unassign'}</button>
             </div>
         </div>`;
     }
@@ -6002,10 +6024,10 @@ function renderModalAssignmentBlock(ticket, key) {
     const safeKey = String(key).replace(/[^a-zA-Z0-9_-]/g, '_');
     const selectId = `modalAssign_${safeKey}`;
     return `<div style="margin-top:10px">
-        <label class="form-label" style="font-size:12px">${currentLang === 'es' ? 'Asignar' : 'Assign'}</label>
+        <label class="form-label" style="font-size:12px">${'Assign'}</label>
         <div style="display:flex;gap:8px;align-items:center">
             <select class="form-select form-select--modal-compact" id="${selectId}" style="flex:1">${getAssignmentOptionsHtml(ticket.storeCode)}</select>
-            <button class="btn btn-primary btn-sm" style="white-space:nowrap" onclick="event.stopPropagation();quickAssignTicket('${key}','${selectId}')">${currentLang === 'es' ? 'Asignar' : 'Assign'}</button>
+            <button class="btn btn-primary btn-sm" style="white-space:nowrap" onclick="event.stopPropagation();quickAssignTicket('${key}','${selectId}')">${'Assign'}</button>
         </div>
     </div>`;
 }
@@ -6033,7 +6055,7 @@ async function markAssignedContactedYes(ticketKey) {
         });
 
         syncAfterTicketMutation(ticketKey, { status:'dispatched', updatedAt: Date.now(), activity });
-        toast(currentLang === 'es' ? 'Movido a Despachado' : 'Moved to Dispatched', 'success');
+        toast('Moved to Dispatched', 'success');
         filterAllTickets();
     } catch (err) {
         toast('Unable to update: ' + err.message, 'error');
@@ -6050,9 +6072,9 @@ async function markAssignedContactedNo(ticketKey) {
 
     const label = String(t.assignedTo || '').trim() || 'the technician';
     const want = await confirmBox(
-        currentLang === 'es' ? '¿Quieres el correo de ejemplo?' : 'Do you want the sample email?',
-        currentLang === 'es' ? 'Podemos generar un correo listo para copiar.' : 'We can generate a ready-to-copy email.',
-        { okText: currentLang === 'es' ? 'Sí, muéstrame' : 'Yes, show me', cancelText: currentLang === 'es' ? 'No' : 'No' }
+        'Do you want the sample email?',
+        'We can generate a ready-to-copy email.',
+        { okText: 'Yes, show me', cancelText: 'No' }
     );
     if (want) openAssignEmailComposer({ ...t, _key: ticketKey }, label);
 }
@@ -6362,10 +6384,10 @@ function loadTechJobs() {
 
 function getExecutionModeState(status = 'inprogress') {
     const normalizedStatus = normalizeTicketStatus(status);
-    if (normalizedStatus === 'assigned' || normalizedStatus === 'unassigned') return { key: 'travel', label: tr('tech_start_travel','🚗 Start Travel'), nextStatus: 'inprogress', note: 'Travel started to site' };
-    if (normalizedStatus === 'inprogress') return { key: 'arrived', label: tr('tech_arrived','📍 Arrived'), nextStatus: 'inprogress', note: 'Arrived onsite and began diagnosis' };
-    if (normalizedStatus === 'waiting') return { key: 'waiting', label: tr('tech_waiting_parts','📦 Waiting Parts'), nextStatus: 'waiting', note: 'Waiting on parts / vendor support' };
-    return { key: 'complete', label: tr('tech_complete','✅ Complete'), nextStatus: 'resolved', note: 'Work completed, ready to close out' };
+    if (normalizedStatus === 'assigned' || normalizedStatus === 'unassigned') return { key: 'travel', label: '🚗 Start Travel', nextStatus: 'inprogress', note: 'Travel started to site' };
+    if (normalizedStatus === 'inprogress') return { key: 'arrived', label: '📍 Arrived', nextStatus: 'inprogress', note: 'Arrived onsite and began diagnosis' };
+    if (normalizedStatus === 'waiting') return { key: 'waiting', label: '📦 Waiting Parts', nextStatus: 'waiting', note: 'Waiting on parts / vendor support' };
+    return { key: 'complete', label: '✅ Complete', nextStatus: 'resolved', note: 'Work completed, ready to close out' };
 }
 
 function getTicketByKey(key) {
@@ -6432,19 +6454,19 @@ function renderTechDashboard() {
     document.getElementById('techStats').innerHTML = `
         <div class="tech-stat-card" onclick="filterTechJobs('active',null)">
             <div class="tsc-num" style="color:#d97706">${active.length}</div>
-            <div class="tsc-label" data-i18n="tech_active">Active Jobs</div>
+            <div class="tsc-label">Active Jobs</div>
         </div>
         <div class="tech-stat-card">
             <div class="tsc-num" style="color:#dc2626">${urgent.length}</div>
-            <div class="tsc-label" data-i18n="tech_urgent">Urgent</div>
+            <div class="tsc-label">Urgent</div>
         </div>
         <div class="tech-stat-card">
             <div class="tsc-num" style="color:#ea580c">${waiting.length}</div>
-            <div class="tsc-label" data-i18n="tech_waiting">Waiting</div>
+            <div class="tsc-label">Waiting</div>
         </div>
         <div class="tech-stat-card" onclick="filterTechJobs('completed',null)">
             <div class="tsc-num" style="color:#059669">${completed.length}</div>
-            <div class="tsc-label" data-i18n="tech_completed">Completed</div>
+            <div class="tsc-label">Completed</div>
         </div>`;
 
     let displayJobs = techFilter === 'completed'
@@ -6484,8 +6506,9 @@ function renderTechDashboard() {
 
         let actionBtn = '';
         if (isActiveJob) {
-            const mode = getExecutionModeState(activeClockIn.modeStatus || t.status);
-            actionBtn = `<button class="btn-tech-primary" onclick="event.stopPropagation();techAdvanceExecutionMode()">${mode.label}</button>`;
+            const modeStatus = activeClockIn.modeStatus || 'inprogress';
+            const btnLabel = modeStatus === 'inprogress' ? '📦 Mark Waiting' : '▶ Resume Work';
+            actionBtn = `<button class="btn-tech-primary" onclick="event.stopPropagation();techAdvanceExecutionMode()">${btnLabel}</button>`;
         } else if (!isClocked && isActiveStatus(t.status)) {
             actionBtn = `<button class="btn-clock-in" onclick="event.stopPropagation();clockIn('${t._key}','${escHtml(t.id)}','${escHtml(shortStore)}', '${t.priority || ''}')">▶ Clock In</button>`;
         } else if (isClocked && !isActiveJob) {
@@ -6551,6 +6574,33 @@ function techOpenTicket(key) {
 function clockIn(ticketKey, ticketId, storeName, priority = 'routine') {
     if (activeClockIn) { toast('Already clocked into a job. Clock out first.', 'error'); return; }
 
+    // Show confirmation modal
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay open';
+    overlay.id = 'clockInConfirmModal';
+    overlay.innerHTML = `
+        <div class="modal-container" style="max-width:360px">
+            <div class="modal-header">
+                <h3>Clock In</h3>
+                <button class="modal-close" onclick="document.getElementById('clockInConfirmModal').remove()">✕</button>
+            </div>
+            <div class="modal-body" style="padding:20px">
+                <div style="font-size:15px;font-weight:700;margin-bottom:6px">${escHtml(ticketId)}</div>
+                <div style="font-size:13px;color:var(--text-muted);margin-bottom:20px">${escHtml(storeName)}</div>
+                <p style="font-size:13px;margin:0 0 20px 0">Clocking in will set this ticket to <strong>In Progress</strong> and start your timer.</p>
+                <div style="display:flex;gap:10px">
+                    <button class="btn btn-primary" style="flex:1" onclick="confirmClockIn('${ticketKey}','${escHtml(ticketId)}','${escHtml(storeName)}','${priority}')">✅ Clock In</button>
+                    <button class="btn btn-secondary" onclick="document.getElementById('clockInConfirmModal').remove()">Cancel</button>
+                </div>
+            </div>
+        </div>`;
+    document.body.appendChild(overlay);
+}
+
+function confirmClockIn(ticketKey, ticketId, storeName, priority = 'routine') {
+    const modal = document.getElementById('clockInConfirmModal');
+    if (modal) modal.remove();
+
     const now = Date.now();
     const entry = {
         techEmail: currentUser.email,
@@ -6560,43 +6610,53 @@ function clockIn(ticketKey, ticketId, storeName, priority = 'routine') {
         storeName,
         startTime: now,
         endTime: null,
-        modeStatus: 'assigned',
+        modeStatus: 'inprogress',
         emergency: priority === 'emergency'
     };
 
     const ref = db.ref('timeEntries').push();
     ref.set(entry).then(() => {
-        activeClockIn = { entryKey: ref.key, ticketKey, ticketId, storeName, startTime: now, modeStatus: 'assigned', emergency: priority === 'emergency' };
-        db.ref('tickets/' + ticketKey + '/status').set('assigned');
-        db.ref('tickets/' + ticketKey + '/assignedTo').set(currentUser.email);
-        db.ref('tickets/' + ticketKey + '/assigneeType').set('tech');
+        activeClockIn = { entryKey: ref.key, ticketKey, ticketId, storeName, startTime: now, modeStatus: 'inprogress', emergency: priority === 'emergency' };
+        db.ref('tickets/' + ticketKey + '/status').set('inprogress');
         db.ref('tickets/' + ticketKey + '/activity').push({
-            action: 'status', by: currentUser.name, oldStatus: 'assigned', newStatus: 'assigned', note: 'Clocked in and preparing travel', timestamp: now
+            action: 'status_change', by: currentUser.name, byEmail: currentUser.email,
+            oldStatus: 'assigned', newStatus: 'inprogress',
+            note: 'Tech clocked in — on site', timestamp: now
         });
         showClockBanner();
-        toast('Clocked in! Execution mode enabled.', 'success');
+        toast('Clocked in! Ticket set to In Progress.', 'success');
         loadTechJobs();
     }).catch(err => { toast('Failed to clock in: ' + err.message, 'error'); });
 }
 
 async function techAdvanceExecutionMode() {
     if (!activeClockIn) return;
-    const mode = getExecutionModeState(activeClockIn.modeStatus || 'assigned');
     const now = Date.now();
+    const currentStatus = activeClockIn.modeStatus || 'inprogress';
+    let nextStatus = null;
+    let note = '';
+
+    if (currentStatus === 'inprogress') {
+        nextStatus = 'waiting';
+        note = 'Tech marked as waiting on parts/info';
+    } else if (currentStatus === 'waiting') {
+        nextStatus = 'inprogress';
+        note = 'Tech resumed work';
+    }
+
+    if (!nextStatus) return;
+
     try {
-        await db.ref('tickets/' + activeClockIn.ticketKey + '/status').set(mode.nextStatus);
+        await db.ref('tickets/' + activeClockIn.ticketKey + '/status').set(nextStatus);
         await db.ref('tickets/' + activeClockIn.ticketKey + '/activity').push({
-            action: 'status', by: currentUser.name, oldStatus: activeClockIn.modeStatus || 'assigned', newStatus: mode.nextStatus, note: mode.note, timestamp: now
+            action: 'status_change', by: currentUser.name, byEmail: currentUser.email,
+            oldStatus: currentStatus, newStatus: nextStatus, note, timestamp: now
         });
-        activeClockIn.modeStatus = mode.nextStatus === 'resolved' ? 'resolved' : (mode.key === 'travel' ? 'inprogress' : mode.nextStatus);
-        if (mode.nextStatus === 'resolved') {
-            showClockOutPrompt();
-            return;
-        }
+        activeClockIn.modeStatus = nextStatus;
         showClockBanner();
         loadTechJobs();
     } catch (err) {
-        toast('Unable to update execution mode: ' + err.message, 'error');
+        toast('Unable to update status: ' + err.message, 'error');
     }
 }
 
@@ -6606,10 +6666,14 @@ function showClockBanner() {
     banner.classList.remove('hidden');
     document.getElementById('tcbTicketId').textContent = activeClockIn.ticketId;
     document.getElementById('tcbStoreName').textContent = activeClockIn.storeName;
-    const mode = getExecutionModeState(activeClockIn.modeStatus || 'assigned');
-    document.getElementById('techPrimaryActionBtn').textContent = mode.label;
+
+    // Simple two-state toggle: In Progress ↔ Waiting
+    const modeStatus = activeClockIn.modeStatus || 'inprogress';
+    const btnLabel = modeStatus === 'inprogress' ? '📦 Mark Waiting' : '▶ Resume Work';
+    document.getElementById('techPrimaryActionBtn').textContent = btnLabel;
     const mobileBtn = document.getElementById('techMobilePrimaryBtn');
-    if (mobileBtn) mobileBtn.textContent = mode.label;
+    if (mobileBtn) mobileBtn.textContent = btnLabel;
+
     const emergency = document.getElementById('tcbEmergency');
     emergency.classList.toggle('hidden', !activeClockIn.emergency);
     const mobileFooter = document.getElementById('techMobileFooter');
@@ -6640,10 +6704,11 @@ function showClockOutPrompt() {
 
     document.getElementById('clockOutInfo').innerHTML = `
         <div style="font-size:14px;margin-bottom:4px"><strong>${escHtml(activeClockIn.ticketId)}</strong> at ${escHtml(activeClockIn.storeName)}</div>
-        <div style="font-size:13px;color:var(--text-muted)">Execution mode active • time on job: ${mins} minute${mins !== 1 ? 's' : ''}</div>`;
+        <div style="font-size:13px;color:var(--text-muted)">Time on job: ${mins} minute${mins !== 1 ? 's' : ''}</div>
+        <div style="font-size:12px;color:#ef4444;font-weight:600;margin-top:6px">📷 Photo required to clock out</div>`;
 
     const statusOptions = ['inprogress', 'waiting', 'resolved'];
-    const statusLabels = { inprogress: tr('tech_continue_working','Continue Working'), waiting: tr('tech_waiting','Waiting'), resolved: tr('tech_resolved_completed','Resolved / Completed') };
+    const statusLabels = { inprogress: 'Continue Working', waiting: 'Waiting on Parts/Info', resolved: 'Resolved / Completed' };
     document.getElementById('clockOutStatusGrid').innerHTML = statusOptions.map(s =>
         `<button class="status-option ${s === clockOutStatus ? 'active' : ''}" onclick="clockOutStatus='${s}';this.parentElement.querySelectorAll('.status-option').forEach(b=>b.classList.remove('active'));this.classList.add('active')">${statusLabels[s]}</button>`
     ).join('');
@@ -6653,28 +6718,15 @@ function showClockOutPrompt() {
     document.getElementById('clockOutModal').classList.add('open');
 }
 
-function handleClockOutPhotos(input) {
-    const files = Array.from(input.files).slice(0, 3 - clockOutPhotos.length);
-    files.forEach(file => {
-        if (file.size > 5 * 1024 * 1024) { toast('File too large (max 5MB)', 'error'); return; }
-        clockOutPhotos.push(file);
-        const reader = new FileReader();
-        reader.onload = e => {
-            const preview = document.getElementById('clockOutPhotoPreview');
-            const idx = clockOutPhotos.length - 1;
-            preview.innerHTML += `<div style="position:relative;display:inline-block">
-                <img src="${e.target.result}" style="width:56px;height:56px;border-radius:8px;object-fit:cover;border:1px solid var(--border)">
-                <button onclick="clockOutPhotos.splice(${idx},1);this.parentElement.remove()" style="position:absolute;top:-4px;right:-4px;background:#dc2626;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;line-height:18px">✕</button>
-            </div>`;
-        };
-        reader.readAsDataURL(file);
-    });
-    input.value = '';
-}
-
 async function confirmClockOut() {
     if (!activeClockIn) return;
-    
+
+    // MANDATORY PHOTO CHECK
+    if (clockOutPhotos.length === 0) {
+        toast('A photo is required to clock out', 'error');
+        return;
+    }
+
     const btn = document.getElementById('clockOutBtn');
     btn.innerHTML = '<span class="spinner"></span> Saving...';
     btn.disabled = true;
@@ -6682,37 +6734,32 @@ async function confirmClockOut() {
     try {
         const now = Date.now();
         const notes = document.getElementById('clockOutNotes').value.trim();
-        
-        // Convert photos
+
         const photoUrls = [];
         for (const f of clockOutPhotos) {
             const dataUrl = await fileToBase64(f);
             photoUrls.push(dataUrl);
         }
-        
-        // Update time entry
+
         await db.ref('timeEntries/' + activeClockIn.entryKey).update({ endTime: now });
-        
-        // Update ticket status
         await db.ref('tickets/' + activeClockIn.ticketKey + '/status').set(clockOutStatus);
-        
-        // Add activity
+
         const activity = {
-            action: 'status',
+            action: 'status_change',
             by: currentUser.name,
-            oldStatus: 'inprogress',
+            byEmail: currentUser.email,
+            oldStatus: activeClockIn.modeStatus || 'inprogress',
             newStatus: clockOutStatus,
             note: notes ? 'Clocked out — "' + notes + '"' : 'Clocked out',
-            timestamp: now
+            timestamp: now,
+            photos: photoUrls
         };
-        if (photoUrls.length) activity.photos = photoUrls;
         await db.ref('tickets/' + activeClockIn.ticketKey + '/activity').push(activity);
-        
-        // Clear clock-in state
+
         if (clockTimerInterval) clearInterval(clockTimerInterval);
         activeClockIn = null;
         clockOutPhotos = [];
-        
+
         document.getElementById('techClockBanner').classList.add('hidden');
         document.getElementById('techMobileFooter')?.classList.add('hidden');
         document.getElementById('clockOutModal').classList.remove('open');
@@ -6952,17 +6999,16 @@ function toggleNotifyPanel() {
 function renderNotifyPanel() {
     const body = document.getElementById('notifyPanelBody');
     if (notifyTickets.length === 0) {
-        const lang = currentLang === 'es' ? 'No hay tickets abiertos' : 'No unassigned tickets';
+        const lang = 'No unassigned tickets';
         body.innerHTML = '<div class="notify-empty">' + lang + '</div>';
         return;
     }
-    const lang = currentLang === 'es';
     body.innerHTML = notifyTickets.map(t => {
         const priClass = t.priority === 'emergency' ? 'pri-emergency' : t.priority === 'urgent' ? 'pri-urgent' : '';
         const timeAgo = getTimeAgo(t.createdAt);
         const store = stores.find(s => s.code === t.storeCode);
         const storeName = store ? store.name.replace(/^Burger King /, 'BK ').replace(/^Paradise QS /, 'PQS ') : t.storeCode;
-        const priLabel = lang ? ({routine:'Rutina',urgent:'Urgente',emergency:'Emergencia'}[t.priority]||t.priority) : capitalize(t.priority || 'routine');
+        const priLabel = capitalize(t.priority || 'routine');
         return `<div class="notify-item" onclick="notifyGoToTicket('${esc(t._key || t.id)}', '${esc(t.storeCode)}')">
             <div class="notify-item-title">${getCategoryEmoji(t.category)} ${esc((t.description || '').substring(0, 60))}${(t.description||'').length > 60 ? '...' : ''}</div>
             <div class="notify-item-meta">
@@ -7288,144 +7334,26 @@ function exitViewAs() {
 // NEW ISSUE FORM
 // ============================================================
 const NEW_ISSUE_DRAFT_KEY = 'rm_new_issue_draft_v1';
-let wizardModeEnabled = false;
-let wizardStep = 1;
-const wizardTotalSteps = 6;
 
 function getAccessibleStores() {
     if (!currentUser) return [];
-    if (currentUser.role === 'Admin' || currentUser.stores === 'all') return [...stores];
+    const role = normalizeRole(currentUser.role);
+    if (role === 'Overwatch' || role === 'Admin' || currentUser.stores === 'all') return [...stores];
     const allowed = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
     return stores.filter(s => allowed.includes(s.code));
 }
-
 
 function getStoreCode(store) {
     if (!store) return '';
     return store.code || store.storeCode || store.id || '';
 }
 
-
 function showNewIssueScreen() {
     if (!selectedStore) return;
     resetNewIssueForm();
-    wizardModeEnabled = getExperienceProfile(currentUser.role) === 'manager-mobile';
-    const screen = document.getElementById('newIssueScreen');
-    screen.classList.toggle('wizard-mode', wizardModeEnabled);
     document.getElementById('newIssueStoreName').textContent = selectedStore.name;
-    initWizardMode();
     restoreNewIssueDraft();
     showScreen('newIssueScreen');
-}
-
-function initWizardMode() {
-    if (!wizardModeEnabled) return;
-    initWizardCategoryCards();
-    renderWizardStoreOptions();
-    wizardStep = 1;
-    syncWizardView();
-}
-
-function initWizardCategoryCards() {
-    const host = document.getElementById('wizardCategoryGrid');
-    if (!host || host.childElementCount) return;
-    document.querySelectorAll('#categoryGrid .category-btn').forEach(btn => {
-        const cat = btn.dataset.cat;
-        const icon = btn.querySelector('.cat-icon')?.textContent || '📎';
-        const label = btn.querySelector('.cat-label')?.textContent || cat;
-        const card = document.createElement('button');
-        card.className = 'wizard-touch-card';
-        card.dataset.cat = cat;
-        card.type = 'button';
-        card.innerHTML = `<span class="cat-icon">${icon}</span><span>${label}</span>`;
-        card.onclick = () => selectCategory(card);
-        host.appendChild(card);
-    });
-}
-
-function renderWizardStoreOptions() {
-    const host = document.getElementById('wizardStoreList');
-    if (!host) return;
-    host.innerHTML = '';
-    const available = getAccessibleStores();
-    if (!selectedStore && available.length === 1) {
-        selectedStore = available[0];
-        refreshSelectedStoreSummaryCounts();
-        document.getElementById('newIssueStoreName').textContent = selectedStore.name;
-        document.getElementById('storeSelect').value = selectedStore.id;
-    }
-    available.forEach(store => {
-        const btn = document.createElement('button');
-        btn.className = 'wizard-store-btn';
-        btn.type = 'button';
-        btn.textContent = store.name;
-        btn.dataset.storeId = store.id;
-        btn.classList.toggle('selected', selectedStore && selectedStore.id === store.id);
-        btn.onclick = () => {
-            selectedStore = store;
-            refreshSelectedStoreSummaryCounts();
-            document.getElementById('newIssueStoreName').textContent = store.name;
-            document.getElementById('storeSelect').value = store.id;
-            renderWizardStoreOptions();
-            saveNewIssueDraft();
-        };
-        host.appendChild(btn);
-    });
-}
-
-function syncWizardView() {
-    document.querySelectorAll('.wizard-step').forEach(step => {
-        step.classList.toggle('active', Number(step.dataset.step) === wizardStep);
-    });
-    const chips = document.getElementById('wizardStepChips');
-    if (chips) {
-        chips.innerHTML = '';
-        for (let i = 1; i <= wizardTotalSteps; i++) {
-            const chip = document.createElement('div');
-            chip.className = 'wizard-step-chip' + (i <= wizardStep ? ' active' : '');
-            chips.appendChild(chip);
-        }
-    }
-    const prevBtn = document.getElementById('wizardPrevBtn');
-    const nextBtn = document.getElementById('wizardNextBtn');
-    const submitBtn = document.getElementById('submitBtn');
-    prevBtn.classList.toggle('hidden', wizardStep === 1);
-    nextBtn.classList.toggle('hidden', wizardStep >= wizardTotalSteps);
-    submitBtn.classList.toggle('hidden', wizardStep < wizardTotalSteps);
-    if (wizardStep === wizardTotalSteps) renderWizardReview();
-}
-
-function wizardNextStep() {
-    if (!wizardModeEnabled) return;
-    if (wizardStep < wizardTotalSteps) wizardStep += 1;
-    syncWizardView();
-    saveNewIssueDraft();
-}
-
-function wizardPrevStep() {
-    if (!wizardModeEnabled) return;
-    if (wizardStep > 1) wizardStep -= 1;
-    syncWizardView();
-    saveNewIssueDraft();
-}
-
-function copyWizardDescriptionToMain() {
-    const wizardDesc = document.getElementById('wizardIssueDescription')?.value || '';
-    document.getElementById('issueDescription').value = wizardDesc;
-    saveNewIssueDraft();
-}
-
-function renderWizardReview() {
-    const review = document.getElementById('wizardReviewCard');
-    if (!review) return;
-    const categoryLabel = document.querySelector(`#categoryGrid .category-btn[data-cat="${selectedCategory || ''}"] .cat-label`)?.textContent || 'Not selected';
-    review.innerHTML = `
-        <div class="wizard-review-row"><strong>Store</strong><span>${selectedStore ? selectedStore.name : 'Not selected'}</span></div>
-        <div class="wizard-review-row"><strong>Category</strong><span>${categoryLabel}</span></div>
-        <div class="wizard-review-row"><strong>Photos</strong><span>${uploadedPhotos.length}</span></div>
-        <div class="wizard-review-row"><strong>Description</strong><span>${(document.getElementById('issueDescription').value || '').trim().slice(0, 64) || 'Not provided'}</span></div>
-        <div class="wizard-review-row"><strong>Priority</strong><span>${capitalize(selectedPriority || 'not selected')}</span></div>
-    `;
 }
 
 function saveNewIssueDraft() {
@@ -7439,9 +7367,6 @@ function saveNewIssueDraft() {
         contactName: document.getElementById('contactName')?.value || '',
         contactPhone: document.getElementById('contactPhone')?.value || '',
         description: document.getElementById('issueDescription')?.value || '',
-        wizardDescription: document.getElementById('wizardIssueDescription')?.value || '',
-        wizardStep,
-        wizardModeEnabled,
         updatedAt: Date.now()
     };
     localStorage.setItem(NEW_ISSUE_DRAFT_KEY, JSON.stringify(draft));
@@ -7462,11 +7387,10 @@ function restoreNewIssueDraft() {
             refreshSelectedStoreSummaryCounts();
             document.getElementById('storeSelect').value = store.id;
             document.getElementById('newIssueStoreName').textContent = store.name;
-            renderWizardStoreOptions();
         }
     }
     if (draft.category) {
-        const btn = document.querySelector(`.category-btn[data-cat="${draft.category}"]`) || document.querySelector(`.wizard-touch-card[data-cat="${draft.category}"]`);
+        const btn = document.querySelector(`.category-btn[data-cat="${draft.category}"]`);
         if (btn) selectCategory(btn);
     }
     if (draft.location) {
@@ -7480,11 +7404,9 @@ function restoreNewIssueDraft() {
     document.getElementById('contactName').value = draft.contactName || '';
     document.getElementById('contactPhone').value = draft.contactPhone || '';
     document.getElementById('issueDescription').value = draft.description || '';
-    document.getElementById('wizardIssueDescription').value = draft.wizardDescription || draft.description || '';
-    if (wizardModeEnabled) {
-        wizardStep = Math.min(Math.max(draft.wizardStep || 1, 1), wizardTotalSteps);
-        syncWizardView();
-    }
+}
+    };
+    localStorage.setItem(NEW_ISSUE_DRAFT_KEY, JSON.stringify(draft));
 }
 
 function clearNewIssueDraft() {
@@ -7495,18 +7417,13 @@ function resetNewIssueForm() {
     selectedCategory = null;
     selectedPriority = null;
     selectedLocation = null;
-    wizardStep = 1;
     uploadedPhotos = [];
-    document.querySelectorAll('.category-btn,.wizard-touch-card').forEach(b => b.classList.remove('selected'));
+    document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('selected'));
     document.querySelectorAll('.priority-btn').forEach(b => b.classList.remove('selected'));
     document.getElementById('issueDescription').value = '';
-    const wizardDesc = document.getElementById('wizardIssueDescription');
-    if (wizardDesc) wizardDesc.value = '';
     document.getElementById('contactName').value = '';
     document.getElementById('contactPhone').value = '';
     document.getElementById('photoPreviewGrid').innerHTML = '';
-    const wizardGrid = document.getElementById('wizardPhotoPreviewGrid');
-    if (wizardGrid) wizardGrid.innerHTML = '';
     document.getElementById('photoUploadArea').classList.remove('has-photos');
     const reqDateType = document.getElementById('reqDateType');
     if (reqDateType) { reqDateType.value = ''; toggleDateFields(); }
@@ -7517,10 +7434,7 @@ function resetNewIssueForm() {
 
 function selectCategory(el) {
     const cat = el.dataset.cat;
-    document.querySelectorAll(`.category-btn[data-cat="${cat}"], .wizard-touch-card[data-cat="${cat}"]`).forEach(b => b.classList.add('selected'));
-    document.querySelectorAll('.category-btn, .wizard-touch-card').forEach(b => {
-        if (b.dataset.cat !== cat) b.classList.remove('selected');
-    });
+    document.querySelectorAll(`.category-btn`).forEach(b => b.classList.toggle('selected', b.dataset.cat === cat));
     selectedCategory = cat;
     saveNewIssueDraft();
 }
@@ -7565,23 +7479,14 @@ function handlePhotos(input) {
 
 function renderPhotoPreview() {
     const grid = document.getElementById('photoPreviewGrid');
-    const wizardGrid = document.getElementById('wizardPhotoPreviewGrid');
     grid.innerHTML = '';
-    if (wizardGrid) wizardGrid.innerHTML = '';
     document.getElementById('photoUploadArea').classList.toggle('has-photos', uploadedPhotos.length > 0);
 
     uploadedPhotos.forEach((p, i) => {
-        const html = `<img src="${p.previewUrl}" alt="Photo"><button class="photo-remove" onclick="removePhoto(${i})">✕</button>`;
         const div = document.createElement('div');
         div.className = 'photo-preview';
-        div.innerHTML = html;
+        div.innerHTML = `<img src="${p.previewUrl}" alt="Photo"><button class="photo-remove" onclick="removePhoto(${i})">✕</button>`;
         grid.appendChild(div);
-        if (wizardGrid) {
-            const wdiv = document.createElement('div');
-            wdiv.className = 'photo-preview';
-            wdiv.innerHTML = html;
-            wizardGrid.appendChild(wdiv);
-        }
     });
 }
 
@@ -7656,16 +7561,12 @@ function showVendorContactConfirm({ missingPhone, missingEmail }) {
 }
 async function submitTicket() {
     if (!selectedStore) { toast('Select a store', 'error'); return; }
-    if (wizardModeEnabled) copyWizardDescriptionToMain();
     // Validate
     if (!selectedCategory) { toast('Select a category', 'error'); return; }
-    if (!selectedLocation) { toast('Select interior or exterior', 'error'); return; }
     let contactName = document.getElementById('contactName').value.trim();
-    if (!contactName && wizardModeEnabled) contactName = currentUser?.name || '';
     if (!contactName) { toast('Enter your name', 'error'); return; }
     let contactPhone = document.getElementById('contactPhone').value.trim();
-    if (!contactPhone && wizardModeEnabled) contactPhone = '';
-    if (!wizardModeEnabled && (!contactPhone || contactPhone.replace(/\D/g,'').length < 10)) { toast('Enter a valid phone number', 'error'); return; }
+    if (!contactPhone || contactPhone.replace(/\D/g,'').length < 10) { toast('Enter a valid phone number', 'error'); return; }
     if (!selectedPriority) { toast('Select a priority', 'error'); return; }
     // Photos optional but encouraged
     if (uploadedPhotos.length === 0) {
@@ -7765,10 +7666,29 @@ function showExistingIssuesScreen() {
     if (!selectedStore) return;
     showScreen('existingIssuesScreen');
     document.getElementById('ticketStoreName').textContent = '— ' + selectedStore.name;
-    currentFilter = 'all';
-    configureStoreTicketFiltersForRole();
-    document.querySelectorAll('.filter-chip').forEach(c => c.classList.toggle('active', c.dataset.filter === currentFilter));
+    const effRole = getEffectiveUserRole(currentUser);
+    const isManager = effRole === 'Manager';
+    currentFilter = isManager ? 'mgr-open' : 'all';
+    document.getElementById('managerTabBar').style.display = isManager ? 'flex' : 'none';
+    document.getElementById('ticketFilters').style.display = isManager ? 'none' : '';
+    if (isManager) {
+        document.getElementById('tabOpen').classList.add('mgr-tab-active');
+        document.getElementById('tabClosed').classList.remove('mgr-tab-active');
+    } else {
+        configureStoreTicketFiltersForRole();
+        document.querySelectorAll('.filter-chip').forEach(c => c.classList.toggle('active', c.dataset.filter === currentFilter));
+    }
     loadTickets();
+}
+
+let managerTab = 'open'; // 'open' or 'closed'
+
+function switchManagerTab(tab) {
+    managerTab = tab;
+    currentFilter = tab === 'open' ? 'mgr-open' : 'mgr-closed';
+    document.getElementById('tabOpen').classList.toggle('mgr-tab-active', tab === 'open');
+    document.getElementById('tabClosed').classList.toggle('mgr-tab-active', tab === 'closed');
+    renderTickets();
 }
 
 function loadTickets() {
@@ -7812,7 +7732,7 @@ function configureStoreTicketFiltersForRole() {
             openBtn.dataset.filter = 'open';
             openBtn.setAttribute('onclick', "filterTickets('open', this)");
             openBtn.removeAttribute('data-i18n');
-            openBtn.textContent = (currentLang === 'es') ? 'Abiertos' : 'Open';
+            openBtn.textContent = 'Open';
         } else {
             // Directors/Admin keep unassigned label
             openBtn.dataset.filter = 'unassigned';
@@ -7855,8 +7775,14 @@ function filterTickets(filter, chipEl) {
 function renderTickets() {
     const listEl = document.getElementById('ticketsList');
     let tickets = currentTickets;
+    const OPEN_STATUSES = new Set(['unassigned','assigned','dispatched','inprogress','waiting','dispatched']);
+    const CLOSED_STATUSES = new Set(['resolved','closed']);
 
-    if (currentFilter === 'open') {
+    if (currentFilter === 'mgr-open') {
+        tickets = tickets.filter(t => !CLOSED_STATUSES.has(normalizeTicketStatus(t.status)));
+    } else if (currentFilter === 'mgr-closed') {
+        tickets = tickets.filter(t => CLOSED_STATUSES.has(normalizeTicketStatus(t.status)));
+    } else if (currentFilter === 'open') {
         tickets = tickets.filter(t => normalizeTicketStatus(t.status) !== 'closed');
     } else if (currentFilter !== 'all' && getStatusMeta(currentFilter)) {
         tickets = tickets.filter(t => normalizeTicketStatus(t.status) === currentFilter);
@@ -7877,6 +7803,8 @@ function renderTickets() {
         const timeAgo = getTimeAgo(t.createdAt);
         const brandLogo = t.brand && BRAND_LOGOS[t.brand] ? `<img src="${BRAND_LOGOS[t.brand]}" alt="" style="width:16px;height:16px;object-fit:contain;border-radius:3px;opacity:.7;vertical-align:middle">` : '';
         const staleInProgress = normalizeTicketStatus(t.status) === 'inprogress' && ((Date.now() - (t.updatedAt || t.createdAt || 0)) >= 24 * 60 * 60 * 1000);
+        const showDelete = canDeleteTickets();
+        const deleteBtn = showDelete ? `<button class="ticket-card-delete-btn" title="Delete ticket" onclick="event.stopPropagation();deleteTicket('${t._key}','${escHtml(t.id || t._key)}')">🗑</button>` : '';
 
         return `
         <div class="ticket-card" onclick="openTicketDetail('${t._key}')">
@@ -7885,7 +7813,10 @@ function renderTickets() {
                 <div class="ticket-body">
                     <div class="ticket-top-row">
                         <span class="ticket-id">${t.id || t._key}</span>
-                        <span class="ticket-status-badge status-${getStatusColorClass(t.status)}">${getStatusLabel(t.status)}</span>
+                        <div style="display:flex;align-items:center;gap:6px">
+                            <span class="ticket-status-badge status-${getStatusColorClass(t.status)}">${getStatusLabel(t.status)}</span>
+                            ${deleteBtn}
+                        </div>
                     </div>
                     <div class="ticket-title">${catIcons[t.category] || '📎'} ${escHtml(t.description.substring(0, 80))}${t.description.length > 80 ? '...' : ''}</div>
                     <div class="ticket-meta">
@@ -7903,19 +7834,43 @@ function renderTickets() {
 }
 
 // ============================================================
+// DELETE TICKET
+// ============================================================
+async function deleteTicket(key, ticketId) {
+    if (!canDeleteTickets()) { toast('No permission to delete tickets', 'error'); return; }
+    if (!confirm(`Delete ticket ${ticketId}? This cannot be undone.`)) return;
+
+    try {
+        await db.ref(`tickets/${key}`).remove();
+        toast(`Ticket ${ticketId} deleted`, 'success');
+        closeModal();
+        // Remove from local array
+        currentTickets = currentTickets.filter(t => t._key !== key);
+        renderTickets();
+    } catch (err) {
+        toast('Delete failed: ' + err.message, 'error');
+    }
+}
+
+// ============================================================
 // TICKET DETAIL MODAL
 // ============================================================
 function openTicketDetail(key, forceModal = true) {
     const t = currentTickets.find(x => x._key === key);
     if (!t) return;
 
+    currentModalTicketKey = key;
     document.getElementById('modalTicketId').textContent = t.id || key;
+    const modalDeleteBtn = document.getElementById('modalDeleteBtn');
+    if (modalDeleteBtn) modalDeleteBtn.classList.toggle('hidden', !canDeleteTickets());
 
     const catIcons = { plumbing:'🚿', equipment:'⚙️', it:'💻', structural:'🧱', safety:'🛡️', other:'📎' };
 
     const effRole = getEffectiveUserRole(currentUser);
-    const canUpdateStatus = effRole === 'Admin' || effRole === 'Director' || effRole === 'Area Coach' || effRole === 'Technician';
+    const canUpdateStatus = effRole === 'Overwatch' || effRole === 'Admin' || effRole === 'Director' || effRole === 'Area Coach' || effRole === 'Technician';
     const canEditTicketMeta = canEditUrgency();
+    const canCoachEdit = (effRole === 'Area Coach') && isTicketInUsersStores(t);
+    const canFullEdit = effRole === 'Overwatch' || effRole === 'Admin' || effRole === 'Director';
 
     let html = `
         <div class="detail-section">
@@ -8006,6 +7961,30 @@ function openTicketDetail(key, forceModal = true) {
         </div>`;
     }
 
+    // Area Coach: add note / update description / attach photos
+    if (canCoachEdit || canFullEdit) {
+        html += `
+        <div class="status-update-section" style="margin-top:16px">
+            <h4>✏️ Edit Ticket Info</h4>
+            <div style="margin-bottom:10px">
+                <label class="form-label" style="font-size:12px">Update Description</label>
+                <textarea class="form-textarea" id="editDescriptionField" style="min-height:70px;font-size:13px">${escHtml(t.description)}</textarea>
+            </div>
+            <div style="margin-bottom:10px">
+                <label class="form-label" style="font-size:12px">Add a Note</label>
+                <textarea class="form-textarea" id="editNoteField" placeholder="Add a note or observation..." style="min-height:56px;font-size:13px"></textarea>
+            </div>
+            <div style="margin-bottom:10px">
+                <label style="font-size:12px;color:var(--text-muted);cursor:pointer;display:inline-flex;align-items:center;gap:4px">
+                    📷 <span>Attach additional photos</span>
+                    <input type="file" id="editPhotoInput" accept="image/*" multiple style="display:none" onchange="handleEditPhotos(this)">
+                </label>
+                <div id="editPhotoPreview" style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap"></div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="saveTicketEdits('${key}')">Save Changes</button>
+        </div>`;
+    }
+
     const profile = currentUser ? getExperienceProfile(currentUser.role) : '';
     if (profile.startsWith('tech-') && profile.endsWith('tablet') && !forceModal) {
         renderTechDetailPane(key);
@@ -8037,6 +8016,91 @@ let pendingStatusUpdate = null;
 let pendingWaitingReason = null;
 let statusPhotos = [];
 let ticketEditBaseline = null;
+let currentModalTicketKey = null;
+
+function deleteTicketFromModal() {
+    if (!currentModalTicketKey) return;
+    const t = currentTickets.find(x => x._key === currentModalTicketKey);
+    deleteTicket(currentModalTicketKey, t ? (t.id || currentModalTicketKey) : currentModalTicketKey);
+}
+
+function isTicketInUsersStores(ticket) {
+    if (!currentUser || !ticket) return false;
+    const storeCode = ticket.storeCode;
+    if (!storeCode) return false;
+    if (currentUser.stores === 'all') return true;
+    const stores = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
+    return stores.includes(storeCode);
+}
+
+let editPhotos = [];
+
+function handleEditPhotos(input) {
+    const files = Array.from(input.files).slice(0, 5 - editPhotos.length);
+    files.forEach(file => {
+        if (file.size > 5 * 1024 * 1024) { toast('File too large (max 5MB)', 'error'); return; }
+        editPhotos.push(file);
+        const reader = new FileReader();
+        reader.onload = e => {
+            const preview = document.getElementById('editPhotoPreview');
+            if (!preview) return;
+            const idx = editPhotos.length - 1;
+            preview.innerHTML += `<div style="position:relative;display:inline-block">
+                <img src="${e.target.result}" style="width:56px;height:56px;border-radius:8px;object-fit:cover;border:1px solid var(--border)">
+                <button onclick="editPhotos.splice(${idx},1);this.parentElement.remove()" style="position:absolute;top:-4px;right:-4px;background:#dc2626;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;line-height:18px">✕</button>
+            </div>`;
+        };
+        reader.readAsDataURL(file);
+    });
+    input.value = '';
+}
+
+async function saveTicketEdits(key) {
+    const descField = document.getElementById('editDescriptionField');
+    const noteField = document.getElementById('editNoteField');
+    if (!descField) return;
+    const newDesc = descField.value.trim();
+    const newNote = noteField ? noteField.value.trim() : '';
+    if (!newDesc) { toast('Description cannot be empty', 'error'); return; }
+
+    const btn = document.querySelector(`button[onclick="saveTicketEdits('${key}')"]`);
+    if (btn) { btn.innerHTML = '<span class="spinner"></span>'; btn.disabled = true; }
+
+    try {
+        const updates = { description: newDesc, updatedAt: firebase.database.ServerValue.TIMESTAMP };
+        // Convert new photos to base64 and append
+        const photoUrls = [];
+        for (const f of editPhotos) {
+            photoUrls.push(await fileToBase64(f));
+        }
+        const t = currentTickets.find(x => x._key === key);
+        if (photoUrls.length && t) {
+            const existing = Array.isArray(t.photos) ? t.photos : [];
+            updates.photos = [...existing, ...photoUrls];
+        }
+        await db.ref(`tickets/${key}`).update(updates);
+        // Add activity log entry if note or description changed
+        const activityEntries = [];
+        if (t && t.description !== newDesc) {
+            activityEntries.push({ action: 'edit', by: currentUser.name, note: 'Updated description', timestamp: Date.now() });
+        }
+        if (newNote) {
+            activityEntries.push({ action: 'note', by: currentUser.name, note: newNote, timestamp: Date.now(), ...(photoUrls.length ? { photos: photoUrls } : {}) });
+        } else if (photoUrls.length) {
+            activityEntries.push({ action: 'note', by: currentUser.name, note: 'Added photos', photos: photoUrls, timestamp: Date.now() });
+        }
+        for (const entry of activityEntries) {
+            await db.ref(`tickets/${key}/activity`).push(entry);
+        }
+        editPhotos = [];
+        toast('Ticket updated', 'success');
+        closeModal();
+    } catch (err) {
+        toast('Error: ' + err.message, 'error');
+    } finally {
+        if (btn) { btn.innerHTML = 'Save Changes'; btn.disabled = false; }
+    }
+}
 
 // ------------------------------------------------------------
 // Ticket detail modal change tracking (for save button visibility)
@@ -8460,6 +8524,7 @@ const esc = escHtml;
 function normalizeRole(r) {
     if (!r) return 'Manager';
     const lower = r.toLowerCase().trim();
+    if (lower === 'overwatch') return 'Overwatch';
     if (lower === 'admin') return 'Admin';
     if (lower === 'director' || lower === 'vp' || lower === 'dev') return 'Director';
     if (lower === 'areacoach' || lower === 'area coach') return 'Area Coach';
@@ -8473,7 +8538,15 @@ function getRoleTitle(user = currentUser) {
 }
 
 function isItsupportUser(user = currentUser) {
-    return !!user && String(user.email || '').toLowerCase() === 'itsupport@dossaniparadise.com';
+    if (!user) return false;
+    const role = normalizeRole(user.role);
+    if (role === 'Overwatch') return true;
+    return String(user.email || '').toLowerCase() === 'itsupport@dossaniparadise.com';
+}
+
+function canDeleteTickets(user = currentUser) {
+    const role = getEffectiveUserRole(user);
+    return role === 'Overwatch' || role === 'Admin' || role === 'Director';
 }
 
 function getEffectiveUserRole(user = currentUser) {
@@ -8481,17 +8554,18 @@ function getEffectiveUserRole(user = currentUser) {
 }
 
 function canAccessAdminPanel(user = currentUser) {
-    return isItsupportUser(user);
+    const role = getEffectiveUserRole(user);
+    return role === 'Overwatch' || role === 'Admin';
 }
 
 function canAssignTickets(user = currentUser) {
     const role = getEffectiveUserRole(user);
-    return role === 'Admin' || role === 'Director';
+    return role === 'Overwatch' || role === 'Admin' || role === 'Director';
 }
 
 function canManageVendors(user = currentUser) {
     const role = getEffectiveUserRole(user);
-    return isItsupportUser(user) || role === 'Admin' || role === 'Director';
+    return role === 'Overwatch' || role === 'Admin' || role === 'Director';
 }
 
 function canEditUrgency(user = currentUser) {
@@ -8526,13 +8600,11 @@ function getNextStatusesByRole(status, user = currentUser, ticket = null) {
     const role = normalizeRole(user?.role);
 
     if (!role || role === 'Manager') return [from];
-    if (role === 'Admin' || role === 'Director') return [from, ...baseTransitions];
+    if (role === 'Overwatch' || role === 'Admin' || role === 'Director') return [from, ...baseTransitions];
     if (role === 'Area Coach') {
-        const allowed = baseTransitions.filter(to =>
-            (from === 'waiting' && to === 'inprogress') ||
-            (from === 'inprogress' && to === 'resolved')
-        );
-        return [from, ...allowed];
+        // Can only change status if ticket is already assigned (not unassigned)
+        if (from === 'unassigned') return [from];
+        return [from, ...baseTransitions];
     }
     if (role === 'Technician') {
         const allowed = baseTransitions.filter(to => to !== 'assigned');
@@ -8543,17 +8615,11 @@ function getNextStatusesByRole(status, user = currentUser, ticket = null) {
 
 function getStatusLabel(status) {
     const key = normalizeTicketStatus(status);
-
-    // Status label (EN/ES)
-    const ES = { unassigned:'No asignado', assigned:'Asignado', dispatched:'Despachado', waiting:'En espera', inprogress:'En progreso', resolved:'Resuelto', closed:'Cerrado' };
-    if (currentLang === 'es' && ES[key]) return ES[key];
-
     return getStatusMeta(key)?.label || capitalize(key || '');
 }
 
 function getStatusDescriptor(status) {
     const key = normalizeTicketStatus(status);
-
     const EN = {
         unassigned: "You submitted a ticket for the issue",
         assigned: "We've decided who will take care of this",
@@ -8563,18 +8629,7 @@ function getStatusDescriptor(status) {
         resolved: "Your issue has been solved",
         closed: "This ticket requires no more follow up"
     };
-
-    const ES = {
-        unassigned: "Enviaste un ticket por el problema",
-        assigned: "Ya decidimos quién lo atenderá",
-        dispatched: "El problema ya fue comunicado",
-        waiting: "Por varias razones",
-        inprogress: "El técnico está trabajando",
-        resolved: "Tu problema fue resuelto",
-        closed: "Este ticket no requiere más seguimiento"
-    };
-
-    return (currentLang === 'es' ? ES[key] : EN[key]) || '';
+    return EN[key] || '';
 }
 
 function canTransitionStatus(oldStatus, newStatus, ticket) {
@@ -8630,13 +8685,7 @@ function toggleTheme() {
     }
 })();
 
-// ============================================================
-// LANGUAGE / i18n
-// ============================================================
-currentLang = localStorage.getItem('lang') || 'en';
-
-const TRANSLATIONS = {
-    es: {
+function getCategoryEmoji(cat) {
         // Store selection
         select_store: 'Selecciona Tu Tienda',
         select_store_sub: 'Elige una ubicación para reportar o ver problemas',
@@ -8754,72 +8803,6 @@ const TRANSLATIONS = {
         no_open_tickets: 'No hay tickets sin asignar',
         view_as: 'Ver Como',
         admin_panel: 'Panel de Admin',
-        sign_out: 'Cerrar Sesión',
-    }
-};
-
-
-function tr(key, fallback) {
-    if (currentLang === 'es' && TRANSLATIONS.es && TRANSLATIONS.es[key]) return TRANSLATIONS.es[key];
-    return fallback;
-}
-
-function toggleLang() {
-    currentLang = currentLang === 'en' ? 'es' : 'en';
-    localStorage.setItem('lang', currentLang);
-    applyLang();
-}
-
-function applyLang() {
-    const btn = document.getElementById('langToggle');
-    if (btn) btn.textContent = currentLang === 'en' ? 'EN' : 'ES';
-
-    document.querySelectorAll('[data-i18n]').forEach(el => {
-        const key = el.getAttribute('data-i18n');
-        if (currentLang === 'es' && TRANSLATIONS.es[key]) {
-            if (!el.getAttribute('data-orig')) {
-                el.setAttribute('data-orig', el.textContent);
-            }
-            el.textContent = TRANSLATIONS.es[key];
-        } else if (currentLang === 'en' && el.getAttribute('data-orig')) {
-            el.textContent = el.getAttribute('data-orig');
-        }
-    });
-
-    // Update placeholders
-    const nameInput = document.getElementById('contactName');
-    if (nameInput) nameInput.placeholder = currentLang === 'es' ? 'Nombre de la persona reportando' : 'Name of person reporting issue';
-    const phoneInput = document.getElementById('contactPhone');
-    if (phoneInput) phoneInput.placeholder = currentLang === 'es' ? '555-123-4567' : '555-123-4567';
-    const descInput = document.getElementById('issueDescription');
-    if (descInput) descInput.placeholder = currentLang === 'es'
-        ? 'Describe el problema en detalle. ¿Qué está roto? ¿Dónde exactamente? ¿Cuándo empezó?'
-        : "Describe the issue in detail. What's broken? Where exactly? When did it start?";
-
-    // Submit button
-    const submitBtn = document.getElementById('submitBtn');
-    if (submitBtn && !submitBtn.disabled) {
-        submitBtn.textContent = currentLang === 'es' ? 'Enviar Ticket' : 'Submit Ticket';
-    }
-
-    // Store select placeholder
-    const storeSel = document.getElementById('storeSelect');
-    if (storeSel && storeSel.options[0]) {
-        storeSel.options[0].textContent = currentLang === 'es' ? 'Elige tienda...' : 'Choose store...';
-    }
-    const typeSel = document.getElementById('storeType');
-    if (typeSel && typeSel.options[0]) {
-        typeSel.options[0].textContent = currentLang === 'es' ? 'Elige tipo...' : 'Choose type...';
-    }
-
-    updateCoachStoresHeading();
-}
-
-// Apply saved language on load
-(function() {
-    setTimeout(applyLang, 100);
-})();
-
 function getCategoryEmoji(cat) {
     const map = {plumbing:'🚿',equipment:'⚙️',it:'💻',structural:'🧱',safety:'🛡️',other:'📎'};
     return map[cat] || '📎';
@@ -8900,7 +8883,7 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v6.3</span>
+    <span>R&M Tracker v7.0</span>
 </div>
 
 </body>
