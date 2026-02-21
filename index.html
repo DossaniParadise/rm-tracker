@@ -3639,7 +3639,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-<!-- Data files + Application logic (single-file build v5.9.0) -->
+<!-- Data files + Application logic (single-file build v6.0.7) -->
 <script>
 // ============================================================
 // STORES DATA - Dossani Paradise Management
@@ -4012,7 +4012,7 @@ auth.onAuthStateChanged(async (user) => {
     }
 });
 
-async function sendSignInLink() {
+async async function sendSignInLink() {
     const email = document.getElementById('loginEmail').value.trim().toLowerCase();
     if (!email) { showError('Enter your email address.'); return; }
 
@@ -8941,7 +8941,7 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v6.0.6</span>
+    <span>R&M Tracker v6.0.7</span>
 </div>
 
 </body>
