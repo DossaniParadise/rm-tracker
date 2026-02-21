@@ -3827,7 +3827,7 @@ function getDirectoryTitleByEmail(email, fallback = '') {
 }
 
 function resolveRuntimeProfile(authUser, dbUser = {}, opts = {}) {
-    const email = String(dbUser?.email || authUser?.email || '').toLowerCase();
+    const email = String(dbUser?.email || authUser?.email || '').trim().toLowerCase();
     const name = dbUser?.name || authUser?.displayName || (email ? email.split('@')[0] : 'Unknown');
     const byEmail = getDirectoryProfileByEmail(email);
     const byName = !byEmail ? getDirectoryProfileByName(name) : null;
@@ -4186,7 +4186,8 @@ function getExperienceProfile(role, viewport = getViewportHints()) {
         device = 'tablet';
     }
 
-    const rolePrefix = normalizedRole === 'area coach' ? 'manager' : normalizedRole;
+    const rolePrefixRaw = (normalizedRole === 'area coach' || normalizedRole === 'director coach') ? 'manager' : normalizedRole;
+    const rolePrefix = rolePrefixRaw.replace(/\s+/g, '-');
     return `${rolePrefix}-${device}`;
 }
 
@@ -4576,7 +4577,7 @@ function refreshSelectedStoreSummaryCounts() {
         return;
     }
 
-    selectedStoreSummaryListenerRef = db.ref('tickets').orderByChild('storeCode').equalTo(selectedStore.code);
+    selectedStoreSummaryListenerRef = db.ref('tickets').orderByChild('storeCode').equalTo(getStoreCode(selectedStore));
     selectedStoreSummaryListenerCallback = snap => {
         let open = 0;
         let total = 0;
@@ -4615,7 +4616,7 @@ function renderSelectedStoreSummary() {
         return;
     }
 
-    summaryName.textContent = selectedStore.name || selectedStore.code || 'Selected Store';
+    summaryName.textContent = selectedStore.name || getStoreCode(selectedStore) || 'Selected Store';
     summaryAddress.textContent = selectedStore.address || 'Address unavailable';
     const effRole = getEffectiveUserRole(currentUser);
     summaryOpen.textContent = effRole === 'Admin' || effRole === 'Director' || effRole === 'Director Coach'
@@ -4960,7 +4961,7 @@ function renderDesktopStoreList() {
         displayList.forEach(s => {
             const shortName = s.name.replace(/^Burger King /, 'BK ').replace(/^Paradise QS /, 'PQS ');
             const badgeCls = s.counts.open > 0 ? 'has-issues' : 'no-issues';
-            const isSelected = selectedStore && selectedStore.code === s.code;
+            const isSelected = selectedStore && getStoreCode(selectedStore) === s.code;
             html += `<div class="store-list-item ${isSelected ? 'active' : ''}" onclick="desktopSelectStore('${s.id}')">
                 <span class="sli-name">${shortName}</span>
                 <span class="sli-badge ${badgeCls}">${s.counts.open} unassigned</span>
@@ -5826,7 +5827,7 @@ function populateAssignDropdown() {
     sel.innerHTML = '<option value="">Unassigned</option>';
     
     // Internal techs - filtered by store geography
-    const storeCode = selectedStore ? selectedStore.code : '';
+    const storeCode = getStoreCode(selectedStore);
     const availTechs = getAvailableTechs(storeCode);
     
     if (availTechs.length) {
@@ -5892,17 +5893,16 @@ function handleVendorManagerSelection(selectEl) {
 }
 
 
+
 function renderInlineAssignControls(ticket, contextPrefix = 'inline') {
     if (!canAssignTickets()) return '';
     const status = normalizeTicketStatus(ticket.status);
     if (status === 'closed') return '';
 
-    const safeKey = String(ticket._key || ticket.id || '').replace(/[^a-zA-Z0-9_-]/g, '_');
-    const selectId = `${contextPrefix}Assign_${safeKey}`;
-    const actionLabel = status === 'unassigned' ? 'Assign' : 'Reassign';
-
     const ticketKey = ticket._key || ticket.id || '';
     const assigneeLabel = String(ticket.assignedTo || '').trim();
+    const safeKey = String(ticketKey).replace(/[^a-zA-Z0-9_-]/g, '_');
+    const selectId = `${contextPrefix}Assign_${safeKey}`;
 
     const dispatchPrompt = (status === 'assigned' && assigneeLabel) ? `
         <div class="inline-dispatch-row" onclick="event.stopPropagation()">
@@ -5913,15 +5913,57 @@ function renderInlineAssignControls(ticket, contextPrefix = 'inline') {
             </div>
         </div>` : '';
 
-    const unassignBtn = (status !== 'unassigned' && assigneeLabel) ? `<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();unassignTicket('${ticketKey}')">${currentLang === 'es' ? 'Quitar asignación' : 'Unassign'}</button>` : '';
+    // If already assigned, show assignee + unassign. No "reassign" flow (unassign -> assign).
+    if (assigneeLabel && status !== 'unassigned') {
+        const unassignBtn = `<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();unassignTicket('${ticketKey}')">${currentLang === 'es' ? 'Quitar asignación' : 'Unassign'}</button>`;
+        return `<div class="inline-assign-wrap" onclick="event.stopPropagation()">
+            <div class="inline-assign-row" style="align-items:center">
+                <div style="flex:1;min-width:0">
+                    <div style="font-size:12px;color:var(--text-muted)">${currentLang === 'es' ? 'Asignado a' : 'Assigned to'}</div>
+                    <div style="font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(assigneeLabel)}</div>
+                </div>
+                ${unassignBtn}
+            </div>
+            ${dispatchPrompt}
+        </div>`;
+    }
 
+    // Unassigned: allow assigning
     return `<div class="inline-assign-wrap" onclick="event.stopPropagation()">
         <div class="inline-assign-row">
             <select class="form-select inline-assign-select" id="${selectId}">${getAssignmentOptionsHtml(ticket.storeCode)}</select>
-            <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();quickAssignTicket('${ticketKey}', '${selectId}')">${actionLabel}</button>
-            ${unassignBtn}
+            <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();quickAssignTicket('${ticketKey}', '${selectId}')">${currentLang === 'es' ? 'Asignar' : 'Assign'}</button>
         </div>
-        ${dispatchPrompt}
+    </div>`;
+}
+
+function renderModalAssignmentBlock(ticket, key) {
+    if (!canAssignTickets()) return '';
+    const status = normalizeTicketStatus(ticket.status);
+    const assignee = String(ticket.assignedTo || '').trim();
+
+    // Assigned: show assignee + unassign. No reassign from modal.
+    if (assignee && status !== 'unassigned') {
+        return `<div style="margin-top:10px">
+            <label class="form-label" style="font-size:12px">${currentLang === 'es' ? 'Asignado a' : 'Assigned to'}</label>
+            <div style="display:flex;gap:8px;align-items:center">
+                <div class="form-input" style="flex:1;min-height:36px;display:flex;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 10px;overflow:hidden">
+                    <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700">${escHtml(assignee)}</span>
+                </div>
+                <button class="btn btn-danger btn-sm" style="white-space:nowrap" onclick="event.stopPropagation();unassignTicket('${key}')">${currentLang === 'es' ? 'Quitar asignación' : 'Unassign'}</button>
+            </div>
+        </div>`;
+    }
+
+    // Unassigned: allow assignment
+    const safeKey = String(key).replace(/[^a-zA-Z0-9_-]/g, '_');
+    const selectId = `modalAssign_${safeKey}`;
+    return `<div style="margin-top:10px">
+        <label class="form-label" style="font-size:12px">${currentLang === 'es' ? 'Asignar' : 'Assign'}</label>
+        <div style="display:flex;gap:8px;align-items:center">
+            <select class="form-select form-select--modal-compact" id="${selectId}" style="flex:1">${getAssignmentOptionsHtml(ticket.storeCode)}</select>
+            <button class="btn btn-primary btn-sm" style="white-space:nowrap" onclick="event.stopPropagation();quickAssignTicket('${key}','${selectId}')">${currentLang === 'es' ? 'Asignar' : 'Assign'}</button>
+        </div>
     </div>`;
 }
 
@@ -7236,6 +7278,13 @@ function getAccessibleStores() {
     return stores.filter(s => allowed.includes(s.code));
 }
 
+
+function getStoreCode(store) {
+    if (!store) return '';
+    return store.code || store.storeCode || store.id || '';
+}
+
+
 function showNewIssueScreen() {
     if (!selectedStore) return;
     resetNewIssueForm();
@@ -7625,10 +7674,10 @@ async function submitTicket() {
         }[selectedCategory] || 'GEN';
         
         // Get next number from counter
-        const counterRef = db.ref(`counters/${selectedStore.code}/${catPrefix}`);
+        const counterRef = db.ref(`counters/${getStoreCode(selectedStore)}/${catPrefix}`);
         const counterSnap = await counterRef.transaction(val => (val || 0) + 1);
         const num = String(counterSnap.snapshot.val()).padStart(4, '0');
-        const ticketId = `${selectedStore.code}-${catPrefix}-${num}`;
+        const ticketId = `${getStoreCode(selectedStore)}-${catPrefix}-${num}`;
 
         const assignedTo = '';
         const assigneeType = 'unassigned';
@@ -7646,7 +7695,7 @@ async function submitTicket() {
         // Create ticket in Firebase
         const ticket = {
             id: ticketId,
-            storeCode: selectedStore.code,
+            storeCode: getStoreCode(selectedStore),
             storeName: selectedStore.name,
             brand: selectedStore.brand || '',
             category: selectedCategory,
@@ -7709,7 +7758,7 @@ function loadTickets() {
     if (activeTicketListener) { activeTicketListener(); }
 
     // Real-time listener for this store's tickets
-    const ref = db.ref('tickets').orderByChild('storeCode').equalTo(selectedStore.code);
+    const ref = db.ref('tickets').orderByChild('storeCode').equalTo(getStoreCode(selectedStore));
 
     const handler = ref.on('value', (snap) => {
         currentTickets = [];
@@ -7900,7 +7949,7 @@ function openTicketDetail(key, forceModal = true) {
                         ${getStatusLabel(s)}
                     </button>`).join('')}
             </div>
-            ${canAssignTickets() ? `<div style="margin-top:8px"><label class="form-label" style="font-size:12px">Assign / Reassign</label><div style="display:flex;gap:8px;align-items:center"><select class="form-select form-select--modal-compact" id="reassignTo" style="flex:1"><option value="">${t.assignedTo ? 'Keep current' : 'Unassigned'}</option></select>${(t.assignedTo ? `<button class=\"btn btn-danger btn-sm\" style=\"white-space:nowrap\" onclick=\"event.stopPropagation();unassignTicket('${key}')\">Unassign</button>` : '')}</div></div>` : ''}
+            ${canAssignTickets() ? renderModalAssignmentBlock(t, key) : ''}
             ${canEditUrgency() ? `<div style="margin-top:8px"><label class="form-label" style="font-size:12px">Urgency</label><select class="form-select form-select--modal-compact" id="priorityUpdate"><option value="routine" ${t.priority === 'routine' ? 'selected' : ''}>Routine</option><option value="urgent" ${t.priority === 'urgent' ? 'selected' : ''}>Urgent</option><option value="emergency" ${t.priority === 'emergency' ? 'selected' : ''}>Emergency</option></select><textarea class="form-textarea" id="priorityReason" placeholder="Reason for urgency change (required if changed)" style="min-height:56px;font-size:12px;margin-top:6px"></textarea></div>` : ''}
             <div style="margin-top: 8px;">
                 <textarea class="form-textarea" id="statusNote" placeholder="Add a note (optional)..." style="min-height: 60px; font-size: 13px;"></textarea>
@@ -7946,7 +7995,7 @@ function openTicketDetail(key, forceModal = true) {
     const reassignSel = document.getElementById('reassignTo');
     if (reassignSel && canAssignTickets()) {
         reassignSel.innerHTML = '<option value="">' + (t.assignedTo ? 'Keep current' : 'Unassigned') + '</option>';
-        const availTechs = getAvailableTechs(t.storeCode || (selectedStore && selectedStore.code) || '');
+        const availTechs = getAvailableTechs(t.storeCode || (selectedStore && getStoreCode(selectedStore)) || '');
         if (availTechs.length) {
             reassignSel.innerHTML += '<optgroup label="Repair Technicians">' + availTechs.map(te => `<option value="tech:${te.email}">🔧 ${escHtml(te.name)}</option>`).join('') + '</optgroup>';
         }
@@ -7988,14 +8037,12 @@ function hasTicketEditChanges() {
     if (!ticketEditBaseline) return false;
     const nextStatus = pendingStatusUpdate ? pendingStatusUpdate.status : ticketEditBaseline.status;
     const priority = document.getElementById('priorityUpdate')?.value || ticketEditBaseline.priority;
-    const reassign = document.getElementById('reassignTo')?.value || '';
     const note = (document.getElementById('statusNote')?.value || '').trim();
     const priorityReason = (document.getElementById('priorityReason')?.value || '').trim();
 
     return (
         nextStatus !== ticketEditBaseline.status ||
         priority !== ticketEditBaseline.priority ||
-        reassign !== '' ||
         note.length > 0 ||
         priorityReason.length > 0 ||
         statusPhotos.length > 0 ||
@@ -8219,8 +8266,7 @@ async function saveStatusUpdate(key) {
     const nextPriority = document.getElementById('priorityUpdate')?.value || t.priority;
     const priorityChanged = nextPriority !== (t.priority || 'routine');
     const priorityReason = (document.getElementById('priorityReason')?.value || '').trim();
-    const reassignVal = document.getElementById('reassignTo')?.value || '';
-    const assignmentChanged = canAssignTickets() && reassignVal !== '';
+    const assignmentChanged = false;
 
     if (!canTransitionStatus(currentStatus, newStatus, t)) {
         toast('You do not have permission for this status change', 'error');
@@ -8269,14 +8315,6 @@ async function saveStatusUpdate(key) {
             updates[`tickets/${key}/waitingReasonNote`] = '';
         }
 
-        if (assignmentChanged) {
-            const parsed = parseAssignmentValue(reassignVal);
-            updates[`tickets/${key}/assignedTo`] = parsed.assignedTo;
-            updates[`tickets/${key}/assigneeType`] = parsed.assigneeType;
-            if (newStatus === 'unassigned' && parsed.assignedTo) {
-                updates[`tickets/${key}/status`] = 'assigned';
-            }
-        }
 
         const statusPhotoUrls = [];
         for (const f of statusPhotos) {
@@ -8322,17 +8360,6 @@ async function saveStatusUpdate(key) {
             });
         }
 
-        if (assignmentChanged) {
-            const parsed = parseAssignmentValue(reassignVal);
-            currentActivity.push({
-                action: 'assignment_change',
-                by: currentUser.name,
-                byEmail: currentUser.email,
-                timestamp: Date.now(),
-                assignedTo: parsed.assignedTo,
-                assigneeType: parsed.assigneeType
-            });
-        }
 
         updates[`tickets/${key}/activity`] = currentActivity;
         await db.ref().update(updates);
@@ -8852,7 +8879,7 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v6.0.3</span>
+    <span>R&M Tracker v6.0.4</span>
 </div>
 
 </body>
