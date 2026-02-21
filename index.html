@@ -3741,9 +3741,9 @@ const stores = [
 const USER_DIRECTORY = {
     // ADMINS
     "itsupport@dossaniparadise.com": { name: "IT Support", role: "Admin", stores: "all" },
-    "armaan@dossaniparadise.com": { name: "Armaan Dossani", role: "Admin", title: "VP", stores: "all" },
+    "armaan@dossaniparadise.com": { name: "Armaan Dossani", role: "Admin", title: "VP", stores: ["BK02390","PQS16","PQS15","BK24008","PQS11","BK26015","PQS13","BK23086","BK10358","PQS06","PQS08","SUB22","PQS07","PQS09","PQS12","PQS10","PQS05","NASH01"] },
     "karim@dossaniparadise.com": { name: "Karim Dossani", role: "Director", title: "Dev", stores: "all" },
-    "sam@dossaniparadise.com": { name: "Sam Merchant", role: "Director", title: "VP", stores: "all" },
+    "sam@dossaniparadise.com": { name: "Sam Merchant", role: "Director", title: "VP", stores: ["BK02390","PQS16","PQS15","BK24008","PQS11","BK26015","PQS13","BK23086","BK10358","PQS06","PQS08","SUB22","PQS07","PQS09","PQS12","PQS10","PQS05","NASH01"] },
 
     // REPAIR TECHNICIANS
     "rmtech1@dossaniparadise.com": { name: "Ronny Gossett", role: "Technician", stores: "all" },
@@ -4450,7 +4450,7 @@ function updateHeaderIdentity(user, opts = {}) {
 }
 
 function updateAllLocationsVisibility(user) {
-    const showAllLocations = !!(user && (user.role === 'Admin' || user.role === 'Director' || user.role === 'Technician' || user.stores === 'all'));
+    const showAllLocations = !!(user && (user.role === 'Admin' || user.stores === 'all'));
     document.getElementById('brandPill-all')?.classList.toggle('hidden', !showAllLocations);
     document.querySelectorAll('.admin-only-opt').forEach(el => el.classList.toggle('hidden', !showAllLocations));
 }
@@ -7287,7 +7287,7 @@ const wizardTotalSteps = 6;
 
 function getAccessibleStores() {
     if (!currentUser) return [];
-    if (currentUser.role === 'Admin' || currentUser.role === 'Director' || currentUser.stores === 'all') return [...stores];
+    if (currentUser.role === 'Admin' || currentUser.stores === 'all') return [...stores];
     const allowed = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
     return stores.filter(s => allowed.includes(s.code));
 }
@@ -8893,7 +8893,7 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v6.0.9</span>
+    <span>R&M Tracker v6.1.0</span>
 </div>
 
 </body>
