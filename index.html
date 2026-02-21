@@ -1864,7 +1864,10 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
 }
 
 .role-landing { max-width: 720px; margin: 0 auto; padding: 24px 12px; }
-.landing-store-name { font-size: 20px; font-weight: 700; color: var(--text); text-align: center; margin-bottom: 20px; padding: 14px 20px; background: var(--card); border-radius: var(--radius-lg); border: 1px solid var(--border); line-height: 1.3; }
+.landing-store-name { font-size: 22px; font-weight: 800; color: var(--text); text-align: center; margin-bottom: 6px; padding: 0; background: transparent; border-radius: 0; border: none; line-height: 1.2; }
+.landing-store-card { text-align: center; margin-bottom: 18px; padding: 16px 18px; background: var(--card); border-radius: var(--radius-lg); border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+.landing-store-address { margin-top: 6px; font-size: 14px; color: var(--text-mid); line-height: 1.35; overflow-wrap: anywhere; }
+@media (max-width: 600px) { .landing-store-name { font-size: 20px; } .landing-store-address { font-size: 13px; } }
 .landing-header { text-align: center; margin-bottom: 20px; }
 .landing-header h2 { font-size: 20px; font-weight: 700; color: var(--text); margin: 0; }
 .landing-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
@@ -1878,7 +1881,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
 .coach-store-btn .csb-tickets.no-issues { color: #059669; }
 [data-theme="dark"] .coach-store-btn { background: var(--card); border-color: var(--border); }
 [data-theme="dark"] .coach-store-btn:hover { border-color: var(--primary); }
-[data-theme="dark"] .landing-store-name { background: var(--card); border-color: var(--border); }
+[data-theme="dark"] .landing-store-card { background: var(--card); border-color: var(--border); }
 [data-theme="dark"] .selected-store-summary {
     background: linear-gradient(135deg, #1e293b 0%, #172554 100%);
     border-color: #60a5fa;
@@ -3016,7 +3019,10 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
         <!-- ===== SCREEN: Manager Landing ===== -->
         <div id="managerLanding" class="hidden">
             <div class="role-landing">
-                <div id="mgrStoreName" class="landing-store-name"></div>
+                <div class="landing-store-card">
+                    <div id="mgrStoreName" class="landing-store-name"></div>
+                    <div id="mgrStoreAddress" class="landing-store-address"></div>
+                </div>
                 <div class="landing-actions">
                     <div class="action-card" onclick="showNewIssueScreen()">
                         <div class="action-icon">📝</div>
@@ -3026,7 +3032,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                     <div class="action-card" onclick="showExistingIssuesScreen()">
                         <div class="action-icon">📋</div>
                         <div class="action-title" data-i18n="view_tickets">Existing Tickets</div>
-                        <div class="action-desc" data-i18n="view_tickets_desc">View and track unassigned issues</div>
+                        <div class="action-desc" data-i18n="view_tickets_desc">View and track open tickets</div>
                     </div>
                 </div>
             </div>
@@ -3059,7 +3065,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                     <div class="action-card" onclick="showExistingIssuesScreen()">
                         <div class="action-icon">📋</div>
                         <div class="action-title" data-i18n="view_tickets">Existing Tickets</div>
-                        <div class="action-desc" data-i18n="view_tickets_desc">View and track unassigned issues</div>
+                        <div class="action-desc" data-i18n="view_tickets_desc">View and track open tickets</div>
                     </div>
                 </div>
             </div>
@@ -3134,7 +3140,7 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                     <div class="action-card" onclick="showExistingIssuesScreen()">
                         <div class="action-icon">📋</div>
                         <div class="action-title" data-i18n="view_tickets">Existing Tickets</div>
-                        <div class="action-desc" data-i18n="view_tickets_desc">View and track unassigned issues</div>
+                        <div class="action-desc" data-i18n="view_tickets_desc">View and track open tickets</div>
                     </div>
                 </div>
 
@@ -4185,13 +4191,35 @@ function routeToProfileLanding() {
 
     // MANAGER: clean 2-button landing
     if (role === 'Manager') {
-        if (currentUser.stores && !Array.isArray(currentUser.stores)) {
-            const store = stores.find(s => s.code === currentUser.stores);
-            if (store) {
-                selectedStore = store;
-                document.getElementById('mgrStoreName').textContent = store.name;
-            }
+        // Managers should always have exactly one store. Support legacy formats:
+        // - stores: "BK22027" (string code)
+        // - stores: ["BK22027"] (array)
+        // - stores: "BK22027" but store may match by id or code
+        const mgrStoresRaw = currentUser.stores;
+        const mgrCandidates = Array.isArray(mgrStoresRaw) ? mgrStoresRaw : (mgrStoresRaw ? [mgrStoresRaw] : []);
+        let mgrStore = null;
+
+        for (const token of mgrCandidates) {
+            if (!token) continue;
+            mgrStore = stores.find(s => s.code === token || s.id === token || s.name === token);
+            if (mgrStore) break;
         }
+
+        // Fallback: if user has a single-item array but token doesn't match, try best-effort contains match
+        if (!mgrStore && mgrCandidates.length === 1 && typeof mgrCandidates[0] === 'string') {
+            const t = mgrCandidates[0].toLowerCase();
+            mgrStore = stores.find(s => (s.code || '').toLowerCase() === t || (s.id || '').toLowerCase() === t);
+        }
+
+        if (mgrStore) {
+            selectedStore = mgrStore;
+            renderManagerLandingHeader();
+        } else {
+            // Still show landing, but prevent actions until store resolves
+            selectedStore = null;
+            renderManagerLandingHeader();
+        }
+
         refreshSelectedStoreSummaryCounts();
         showScreen('managerLanding');
         return;
@@ -4474,12 +4502,31 @@ function updateLayoutVisibility(screenId = currentScreenId) {
     renderSelectedStoreSummary();
 }
 
+
+function renderManagerLandingHeader() {
+    const nameEl = document.getElementById('mgrStoreName');
+    const addrEl = document.getElementById('mgrStoreAddress');
+    if (!nameEl) return;
+
+    if (selectedStore) {
+        nameEl.textContent = selectedStore.name || '';
+        if (addrEl) addrEl.textContent = selectedStore.address || '';
+    } else {
+        // Fallbacks if store couldn't be resolved yet
+        const raw = (currentUser && currentUser.stores) ? currentUser.stores : '';
+        const token = Array.isArray(raw) ? (raw[0] || '') : (raw || '');
+        nameEl.textContent = token ? String(token) : '';
+        if (addrEl) addrEl.textContent = '';
+    }
+}
+
 function showScreen(screenId) {
     ['managerLanding', 'coachLanding', 'coachStoreView', 'coachOpenTicketsScreen', 'techDashboard', 'adminSummary', 'storeSelection', 'newIssueScreen', 'existingIssuesScreen', 'allTicketsScreen', 'adminScreen'].forEach(id => {
         document.getElementById(id).classList.toggle('hidden', id !== screenId);
     });
 
     updateLayoutVisibility(screenId);
+    if (screenId === 'managerLanding') { renderManagerLandingHeader(); }
 }
 
 function goBack() {
@@ -8457,7 +8504,7 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v6.0.1</span>
+    <span>R&M Tracker v6.1.0</span>
 </div>
 
 </body>
