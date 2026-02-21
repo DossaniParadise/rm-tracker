@@ -4314,7 +4314,9 @@ function getCoachStoresHeadingText() {
 
 
 function showCoachOpenTickets() {
-    if (!currentUser || currentUser.role !== 'Area Coach') return;
+    if (!currentUser) return;
+    const effRole = getEffectiveUserRole(currentUser);
+    if (effRole === 'Manager' || effRole === 'Technician') return;
     showScreen('coachOpenTicketsScreen');
 
     const titleEl = document.getElementById('coachOpenTicketsTitle');
@@ -4562,18 +4564,23 @@ function showScreen(screenId) {
 function goBack() {
     resetNewIssueForm();
     if (activeTicketListener) { activeTicketListener(); activeTicketListener = null; }
-    if (currentUser.role === 'Technician') { showScreen('techDashboard'); loadTechJobs(); return; }
-    if (currentUser.role === 'Manager') { showScreen('managerLanding'); return; }
-    if (currentUser.role === 'Area Coach') {
+
+    const effRole = getEffectiveUserRole(currentUser);
+
+    if (effRole === 'Technician') { showScreen('techDashboard'); loadTechJobs(); return; }
+    if (effRole === 'Manager') { showScreen('managerLanding'); return; }
+
+    // Coach-style landing (Area Coach / Director / Admin in this build)
+    if (effRole === 'Area Coach' || effRole === 'Director' || effRole === 'Admin') {
         // If we are viewing the grouped open tickets list, go back to coach landing
         if (currentScreenId === 'coachOpenTicketsScreen') { showScreen('coachLanding'); initCoachLanding(); return; }
         // If we came from a specific store, go back to coach store view
         if (selectedStore) { showScreen('coachStoreView'); return; }
         showScreen('coachLanding'); initCoachLanding(); return;
     }
+
     showScreen('storeSelection');
 }
-
 // ============================================================
 // STORE SELECTION
 // ============================================================
@@ -8893,7 +8900,7 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v6.2</span>
+    <span>R&M Tracker v6.3</span>
 </div>
 
 </body>
