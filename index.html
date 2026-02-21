@@ -3551,6 +3551,8 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
                         <h4 style="font-size:13px;margin-bottom:8px;color:var(--text)">Add Vendor</h4>
                         <div style="display:grid;grid-template-columns:1fr;gap:8px">
                             <input class="form-input" id="newVendorName" placeholder="Vendor name">
+                            <input class="form-input" id="newVendorPhone" placeholder="Phone (recommended)">
+                            <input class="form-input" id="newVendorEmail" placeholder="Email (recommended)">
                         </div>
                         <div style="margin-top:6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
                             <span style="font-size:12px;color:var(--text-muted)">Categories:</span>
@@ -3921,8 +3923,8 @@ let selectedLocation = null;
 let selectedPriority = null;
 let uploadedPhotos = []; // { file, previewUrl }
 let currentTickets = [];
-let const effRole = getEffectiveUserRole(currentUser);
-    currentFilter = (effRole === 'Manager' || effRole === 'Area Coach' || effRole === 'Director Coach') ? 'open' : 'all';
+let currentFilter = 'all'; // default; set after auth based on role
+
 let activeTicketListener = null;
 let vendorList = [];
 let desktopStoreData = [];
@@ -3991,6 +3993,9 @@ function syncStatusFilterUIFromConfig() {
 // AUTH
 // ============================================================
 if (typeof currentLang === 'undefined') { var currentLang = localStorage.getItem('lang') || 'en'; }
+
+function t(en, es) { return (currentLang === 'es' ? es : en); }
+
 syncStatusFilterUIFromConfig();
 
 auth.onAuthStateChanged(async (user) => {
@@ -4638,10 +4643,12 @@ function filterStores() {
         const ti = TECH_INFO.find(t => t.email === currentUser.email);
         if (ti && ti.zone === 'west') filtered = filtered.filter(s => !RAVAY_ONLY_STORES.includes(s.code));
         else if (ti && ti.zone === 'east') filtered = filtered.filter(s => RAVAY_ONLY_STORES.includes(s.code));
-    } else const effRole = getEffectiveUserRole(currentUser);
-    if (effRole !== 'Admin' && effRole !== 'Director' && effRole !== 'Director Coach' && currentUser.stores !== 'all') {
-        const userStores = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
-        filtered = filtered.filter(s => userStores.includes(s.code));
+    } else {
+        const effRole = getEffectiveUserRole(currentUser);
+        if (effRole !== 'Admin' && effRole !== 'Director' && effRole !== 'Director Coach' && currentUser.stores !== 'all') {
+            const userStores = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
+            filtered = filtered.filter(s => userStores.includes(s.code));
+        }
     }
 
     filtered.sort((a, b) => a.name.localeCompare(b.name));
@@ -4717,10 +4724,12 @@ filterStores = function() {
             const ti = TECH_INFO.find(t => t.email === currentUser.email);
             if (ti && ti.zone === 'west') allStores = allStores.filter(s => !RAVAY_ONLY_STORES.includes(s.code));
             else if (ti && ti.zone === 'east') allStores = allStores.filter(s => RAVAY_ONLY_STORES.includes(s.code));
-        } else const effRole = getEffectiveUserRole(currentUser);
-    if (effRole !== 'Admin' && effRole !== 'Director' && effRole !== 'Director Coach' && currentUser.stores !== 'all') {
-            const us = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
-            allStores = allStores.filter(s => us.includes(s.code));
+        } else {
+            const effRole = getEffectiveUserRole(currentUser);
+            if (effRole !== 'Admin' && effRole !== 'Director' && effRole !== 'Director Coach' && currentUser.stores !== 'all') {
+                const us = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
+                allStores = allStores.filter(s => us.includes(s.code));
+            }
         }
         storeSelect.innerHTML = '<option value="">Choose store...</option>' +
             allStores.map(s => '<option value="' + s.id + '">' + s.name + '</option>').join('');
@@ -4735,12 +4744,14 @@ function loadMapOverview(type) {
         const ti = TECH_INFO.find(t => t.email === currentUser.email);
         if (ti && ti.zone === 'west') filtered = filtered.filter(s => !RAVAY_ONLY_STORES.includes(s.code));
         else if (ti && ti.zone === 'east') filtered = filtered.filter(s => RAVAY_ONLY_STORES.includes(s.code));
-    } else const effRole = getEffectiveUserRole(currentUser);
-    if (effRole !== 'Admin' && effRole !== 'Director' && effRole !== 'Director Coach' && currentUser.stores !== 'all') {
-        const us = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
-        filtered = filtered.filter(s => us.includes(s.code));
+    } else {
+        const effRole = getEffectiveUserRole(currentUser);
+        if (effRole !== 'Admin' && effRole !== 'Director' && effRole !== 'Director Coach' && currentUser.stores !== 'all') {
+            const us = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
+            filtered = filtered.filter(s => us.includes(s.code));
+        }
     }
-    
+
     const typeLabels = { all: 'All Locations', fastfood: 'Fast Food Stores', cstore: 'C-Stores', carwash: 'Car Washes' };
     document.getElementById('mapTitle').textContent = typeLabels[type] || 'Stores';
     
@@ -5566,18 +5577,85 @@ async function loadVendors() {
 function renderVendorRows() {
     const container = document.getElementById('vendorRows');
     if (!container) return;
+
     if (vendorList.length === 0) {
-        container.innerHTML = '<div class="empty-state" style="font-size:13px">No vendors added yet</div>';
+        container.innerHTML = '<div class="empty-state" style="font-size:13px">'+escHtml(t('No vendors added yet','Aún no hay proveedores'))+'</div>';
         return;
     }
-    container.innerHTML = vendorList.map(v => `
+
+    container.innerHTML = vendorList.map(v => {
+        const cats = (v.categories || []).map(capitalize).join(', ');
+        const contactBits = [];
+        if (v.phone) contactBits.push('📞 ' + escHtml(v.phone));
+        if (v.email) contactBits.push('✉️ ' + escHtml(v.email));
+        const contact = contactBits.length ? (' • ' + contactBits.join(' • ')) : '';
+        return `
         <div class="vendor-row">
             <span class="vendor-name">${escHtml(v.name)}</span>
-            <span class="vendor-meta">${(v.categories || []).map(capitalize).join(', ')}</span>
-            <button class="btn btn-ghost" style="font-size:11px;color:var(--danger)" onclick="removeVendor('${v.id}')">Remove</button>
-        </div>`).join('');
+            <span class="vendor-meta">${escHtml(cats || t('No categories','Sin categorías'))}${contact}</span>
+            <button class="btn btn-ghost btn-sm" onclick="openVendorEdit('${v.id}')">${t('Edit','Editar')}</button>
+            <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="removeVendor('${v.id}')">${t('Remove','Eliminar')}</button>
+        </div>`;
+    }).join('');
 }
 
+
+async function openVendorEdit(vendorId) {
+    const v = vendorList.find(x => x.id === vendorId);
+    if (!v) return;
+
+    const canEdit = await checkVendorEditPermission();
+    if (!canEdit) { showToast(t("You don't have permission to edit vendors","No tienes permiso para editar proveedores"), 'error'); return; }
+
+    const overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+
+    overlay.innerHTML = `<div class="confirm-box" style="max-width:520px;text-align:left">
+        <h4 style="text-align:center">${t('Edit vendor contact','Editar contacto del proveedor')}</h4>
+
+        <div style="margin-top:12px">
+            <label class="form-label" style="margin-top:10px">${t('Vendor','Proveedor')}</label>
+            <div class="form-input" style="background:var(--border-light);border-color:var(--border)">${escHtml(v.name)}</div>
+
+            <label class="form-label" style="margin-top:10px">${t('Phone (recommended)','Teléfono (recomendado)')}</label>
+            <input class="form-input" id="editVendorPhone" placeholder="${t('Phone number','Número de teléfono')}" value="${escAttr(v.phone || '')}">
+
+            <label class="form-label" style="margin-top:10px">${t('Email (recommended)','Correo (recomendado)')}</label>
+            <input class="form-input" id="editVendorEmail" placeholder="${t('Email','Correo')}" value="${escAttr(v.email || '')}">
+        </div>
+
+        <div class="confirm-btns" style="margin-top:14px;justify-content:flex-end">
+            <button class="btn btn-secondary" id="vendorEditCancel">${t('Cancel','Cancelar')}</button>
+            <button class="btn btn-primary" id="vendorEditSave">${t('Save','Guardar')}</button>
+        </div>
+    </div>`;
+
+    document.body.appendChild(overlay);
+
+    overlay.querySelector('#vendorEditCancel').onclick = () => overlay.remove();
+    overlay.querySelector('#vendorEditSave').onclick = async () => {
+        const phone = (overlay.querySelector('#editVendorPhone')?.value || '').trim();
+        const email = (overlay.querySelector('#editVendorEmail')?.value || '').trim();
+
+        // Recommended contact info prompt (not required)
+        if (!phone || !email) {
+            const proceed = await showVendorContactConfirm({ missingPhone: !phone, missingEmail: !email });
+            if (!proceed) return;
+        }
+
+        try {
+            await db.ref('config/vendors/' + vendorId).update({ phone: phone || '', email: email || '' });
+            v.phone = phone || '';
+            v.email = email || '';
+            renderVendorRows();
+            showToast(t('Vendor updated','Proveedor actualizado'), 'success');
+            overlay.remove();
+        } catch (err) {
+            console.error(err);
+            showToast(t('Could not update vendor','No se pudo actualizar el proveedor'), 'error');
+        }
+    };
+}
 function renderVendorCatCheckboxes() {
     const container = document.getElementById('newVendorCats');
     if (!container) return;
@@ -5611,9 +5689,9 @@ async function addVendor() {
 }
 
 async function removeVendor(id) {
-    if (!confirm('Remove this vendor?')) return;
+    if (!confirm(t('Remove this vendor?','¿Eliminar este proveedor?'))) return;
     const canEdit = await checkVendorEditPermission();
-    if (!canEdit) { showToast('No permission', 'error'); return; }
+    if (!canEdit) { showToast(t('No permission','Sin permiso'), 'error'); return; }
     try {
         await db.ref('config/vendors/' + id).remove();
         showToast('Vendor removed', 'success');
@@ -5678,7 +5756,7 @@ async function addVendorFromManager() {
     const cats = [...document.querySelectorAll('.vm-cat-cb:checked')].map(c => c.value);
     if (!name) { showToast('Enter vendor name', 'error'); return; }
     const canEdit = await checkVendorEditPermission();
-    if (!canEdit) { showToast('No permission', 'error'); return; }
+    if (!canEdit) { showToast(t('No permission','Sin permiso'), 'error'); return; }
     try {
         const newVendorRef = db.ref('config/vendors').push();
         await newVendorRef.set({ name, categories: cats });
@@ -7480,6 +7558,32 @@ function showPhotoConfirm() {
     });
 }
 
+
+function showVendorContactConfirm({ missingPhone, missingEmail }) {
+    return new Promise(resolve => {
+        const overlay = document.createElement('div');
+        overlay.className = 'confirm-overlay';
+
+        const title = t('📇 Vendor contact info recommended', '📇 Información de contacto recomendada');
+        let msgParts = [];
+        if (missingPhone) msgParts.push(t('Phone number is missing.', 'Falta el número de teléfono.'));
+        if (missingEmail) msgParts.push(t('Email is missing.', 'Falta el correo electrónico.'));
+        msgParts.push(t('This helps us coordinate faster, but you can save without it.', 'Esto ayuda a coordinar más rápido, pero puedes guardar sin esto.'));
+
+        overlay.innerHTML = `<div class="confirm-box">
+            <h4>${title}</h4>
+            <p>${msgParts.join(' ')}</p>
+            <div class="confirm-btns">
+                <button class="btn btn-secondary" id="vendorAddContactBtn">${t('Add contact info', 'Agregar contacto')}</button>
+                <button class="btn btn-primary" id="vendorSaveAnywayBtn">${t('Save anyway', 'Guardar de todos modos')}</button>
+            </div>
+        </div>`;
+        document.body.appendChild(overlay);
+
+        overlay.querySelector('#vendorAddContactBtn').onclick = () => { overlay.remove(); resolve(false); };
+        overlay.querySelector('#vendorSaveAnywayBtn').onclick = () => { overlay.remove(); resolve(true); };
+    });
+}
 async function submitTicket() {
     if (!selectedStore) { toast('Select a store', 'error'); return; }
     if (wizardModeEnabled) copyWizardDescriptionToMain();
@@ -8302,6 +8406,7 @@ function escHtml(str) {
     div.textContent = str || '';
     return div.innerHTML;
 }
+function escAttr(str){ return escHtml(str).replace(/"/g,'&quot;'); }
 const esc = escHtml;
 
 function normalizeRole(r) {
@@ -8747,7 +8852,7 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v6.0.2</span>
+    <span>R&M Tracker v6.0.3</span>
 </div>
 
 </body>
