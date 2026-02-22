@@ -4012,7 +4012,7 @@ async function loadUserData(user) {
                     showError('Your account is pending approval. An admin will set you up shortly.');
                 } catch (e) {
                     console.warn('Could not write pending entry:', e);
-                    showError('Account not set up yet. Contact IT at itsupport@dossaniparadise.com to get access.');
+                    showError('Account not set up yet. Contact your administrator to get access.');
                 }
                 auth.signOut();
                 return;
@@ -4399,6 +4399,7 @@ function showAppScreen() {
 
     // Load vendor list
     loadVendors();
+    loadTechUsers(); // Load technicians from Firebase — no hardcoded names
 
     subscribeAdminSummary();
     routeToProfileLanding();
@@ -4559,18 +4560,10 @@ function filterStores() {
 
     let filtered = stores.filter(s => s.type === type);
 
-    // Permission filtering
-    if (currentUser.role === 'Technician' && currentUser.stores === 'all') {
-        // Tech zone filtering
-        const ti = TECH_INFO.find(t => t.email === currentUser.email);
-        if (ti && ti.zone === 'west') filtered = filtered.filter(s => !RAVAY_ONLY_STORES.includes(s.code));
-        else if (ti && ti.zone === 'east') filtered = filtered.filter(s => RAVAY_ONLY_STORES.includes(s.code));
+    // Permission filtering — use centralized scoping
+    filtered = scopeStoresToUser(filtered);
     } else {
-        const effRole = getEffectiveUserRole(currentUser);
-        if (effRole !== 'Overwatch' && effRole !== 'Admin' && effRole !== 'Director' && currentUser.stores !== 'all') {
-            const userStores = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
-            filtered = filtered.filter(s => userStores.includes(s.code));
-        }
+        filtered = scopeStoresToUser(filtered);
     }
 
     filtered.sort((a, b) => a.name.localeCompare(b.name));
@@ -4638,20 +4631,11 @@ filterStores = function() {
         mapEl.classList.add('hidden');
     }
     
-    // For 'all' type, also show all stores in dropdown
+    // For 'all' type, populate dropdown with user-scoped stores
     if (type === 'all') {
         const storeSelect = document.getElementById('storeSelect');
-        let allStores = [...stores];
-        if (currentUser.role === 'Technician' && currentUser.stores === 'all') {
-            const ti = TECH_INFO.find(t => t.email === currentUser.email);
-            if (ti && ti.zone === 'west') allStores = allStores.filter(s => !RAVAY_ONLY_STORES.includes(s.code));
-            else if (ti && ti.zone === 'east') allStores = allStores.filter(s => RAVAY_ONLY_STORES.includes(s.code));
-        } else {
-            const effRole = getEffectiveUserRole(currentUser);
-            if (effRole !== 'Admin' && effRole !== 'Director' && currentUser.stores !== 'all') {
-                const us = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
-                allStores = allStores.filter(s => us.includes(s.code));
-            }
+        let allStores = getAccessibleStores();
+        const allStores = getAccessibleStores();
         }
         storeSelect.innerHTML = '<option value="">Choose store...</option>' +
             allStores.map(s => '<option value="' + s.id + '">' + s.name + '</option>').join('');
@@ -4661,17 +4645,10 @@ filterStores = function() {
 function loadMapOverview(type) {
     let filtered = type === 'all' ? [...stores] : stores.filter(s => s.type === type);
     
-    // Permission filter
-    if (currentUser.role === 'Technician' && currentUser.stores === 'all') {
-        const ti = TECH_INFO.find(t => t.email === currentUser.email);
-        if (ti && ti.zone === 'west') filtered = filtered.filter(s => !RAVAY_ONLY_STORES.includes(s.code));
-        else if (ti && ti.zone === 'east') filtered = filtered.filter(s => RAVAY_ONLY_STORES.includes(s.code));
+    // Permission filter — centralized scoping
+    filtered = scopeStoresToUser(filtered);
     } else {
-        const effRole = getEffectiveUserRole(currentUser);
-        if (effRole !== 'Admin' && effRole !== 'Director' && currentUser.stores !== 'all') {
-            const us = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
-            filtered = filtered.filter(s => us.includes(s.code));
-        }
+        filtered = scopeStoresToUser(filtered);
     }
 
     const typeLabels = { all: 'All Locations', fastfood: 'Fast Food Stores', cstore: 'C-Stores', carwash: 'Car Washes' };
@@ -4969,7 +4946,7 @@ function renderStoreListView() {
                 <div class="slv-store-name">${shortName} <span style="font-size:12px;font-weight:400;color:var(--text-muted)">(${storeTickets.length} unassigned)</span></div>`;
             storeTickets.forEach(t => {
                 const assignee = t.assignedTo ? t.assignedTo : '';
-                const outOfZoneBadge = isOutOfZoneTechAssignment(t) ? '<span class="out-of-zone-badge" title="Assigned outside normal tech store list">Out-of-zone assignment</span>' : '';
+                const outOfZoneBadge = ''; // zone system removed
                 const prBadge = {routine:'<span class="priority-word p-routine">Routine</span>',urgent:'<span class="priority-word p-urgent">Urgent</span>',emergency:'<span class="priority-word p-emergency">Emergency</span>'}[t.priority] || '';
                 html += `<div class="slv-ticket" onclick="listViewOpenTicket('${t._key}')">
                     ${prBadge}
@@ -5717,54 +5694,42 @@ async function checkVendorEditPermission() {
     return editors.includes(currentUser.email);
 }
 
-// Stores that can ONLY be assigned to Ravay (east TX / AR)
-const RAVAY_ONLY_STORES = ['BK02390','PQS16','PQS15','BK24008','PQS11','BK26015','PQS13','BK23086','BK10358','PQS06','PQS08','SUB22','PQS07','PQS09','PQS12','PQS10','PQS05','NASH01'];
+// Technician list loaded from Firebase. No hardcoded names, emails, or zones.
+let techUserCache = [];
 
-const TECH_INFO = [
-    { email: 'rmtech1@dossaniparadise.com', name: 'Ronny Gossett', zone: 'west' },
-    { email: 'rmtech2@dossaniparadise.com', name: 'Ravay Wickware', zone: 'east' },
-    { email: 'rmtech3@dossaniparadise.com', name: 'Zamir Rios', zone: 'west' }
-];
-
-function getAvailableTechs(storeCode) {
-    if (RAVAY_ONLY_STORES.includes(storeCode)) {
-        return TECH_INFO.filter(t => t.zone === 'east'); // Only Ravay for east TX
+async function loadTechUsers() {
+    try {
+        const snap = await db.ref('users').once('value');
+        techUserCache = [];
+        snap.forEach(child => {
+            const u = child.val();
+            if (u && normalizeRole(u.role) === 'Technician') {
+                techUserCache.push({ uid: child.key, email: u.email || '', name: u.name || u.email || 'Technician' });
+            }
+        });
+    } catch(e) {
+        console.warn('loadTechUsers failed:', e);
     }
-    return TECH_INFO.filter(t => t.zone === 'west'); // Only Ronny + Zamir for west
 }
 
-function isOutOfZoneTechAssignment(ticket) {
-    if (!ticket) return false;
-    if (ticket.assigneeType && ticket.assigneeType !== 'tech') return false;
-    const assignedTo = String(ticket.assignedTo || '').trim().toLowerCase();
-    if (!assignedTo) return false;
-    const assignedTech = TECH_INFO.find(t => t.email.toLowerCase() === assignedTo);
-    if (!assignedTech) return false;
-    return !getAvailableTechs(ticket.storeCode || '').some(t => t.email.toLowerCase() === assignedTo);
-}
 
 function populateAssignDropdown() {
     const sel = document.getElementById('assignTo');
     if (!sel) return;
     sel.innerHTML = '<option value="">Unassigned</option>';
-    
-    // Internal techs - filtered by store geography
-    const storeCode = getStoreCode(selectedStore);
-    const availTechs = getAvailableTechs(storeCode);
-    
-    if (availTechs.length) {
+
+    if (techUserCache.length) {
         sel.innerHTML += '<optgroup label="Repair Technicians">';
-        availTechs.forEach(t => {
-            sel.innerHTML += `<option value="tech:${t.email}">🔧 ${t.name}</option>`;
+        techUserCache.forEach(t => {
+            sel.innerHTML += `<option value="tech:${t.email}">🔧 ${escHtml(t.name)}</option>`;
         });
         sel.innerHTML += '</optgroup>';
     }
-    
-    // Vendors
+
     if (vendorList.length) {
         sel.innerHTML += '<optgroup label="Third-Party Vendors">';
         vendorList.forEach(v => {
-            sel.innerHTML += `<option value="vendor:${v.name}">🏢 ${v.name}</option>`;
+            sel.innerHTML += `<option value="vendor:${v.name}">🏢 ${escHtml(v.name)}</option>`;
         });
         sel.innerHTML += '</optgroup>';
     }
@@ -5775,13 +5740,12 @@ function populateAssignDropdown() {
     sel.onchange = () => handleVendorManagerSelection(sel);
 }
 
-function getAssignmentOptionsHtml(storeCode) {
-    const availTechs = getAvailableTechs(storeCode || '');
+function getAssignmentOptionsHtml() {
     let html = '<option value="">Assign to...</option>';
 
-    if (availTechs.length) {
+    if (techUserCache.length) {
         html += '<optgroup label="Repair Technicians">';
-        availTechs.forEach(t => {
+        techUserCache.forEach(t => {
             html += `<option value="tech:${t.email}">🔧 ${escHtml(t.name)}</option>`;
         });
         html += '</optgroup>';
@@ -5834,7 +5798,7 @@ function renderInlineAssignControls(ticket, contextPrefix = 'inline') {
                     <div class="inline-assign-label">${'Assign to'}</div>
                     <select id="${selectId}" class="form-select form-select-sm inline-assign-select" onchange="event.stopPropagation()">
                         <option value="">${'Select…'}</option>
-                        ${buildAssigneeOptionsHtml()}
+                        ${getAssignmentOptionsHtml()}
                     </select>
                 </div>
                 <div class="inline-assign-right">
@@ -5901,7 +5865,7 @@ function renderModalAssignmentBlock(ticket, key) {
     return `<div style="margin-top:10px">
         <label class="form-label" style="font-size:12px">${'Assign'}</label>
         <div style="display:flex;gap:8px;align-items:center">
-            <select class="form-select form-select--modal-compact" id="${selectId}" style="flex:1">${getAssignmentOptionsHtml(ticket.storeCode)}</select>
+            <select class="form-select form-select--modal-compact" id="${selectId}" style="flex:1">${getAssignmentOptionsHtml()}</select>
             <button class="btn btn-primary btn-sm" style="white-space:nowrap" onclick="event.stopPropagation();quickAssignTicket('${key}','${selectId}')">${'Assign'}</button>
         </div>
     </div>`;
@@ -6349,7 +6313,7 @@ function renderTechDashboard() {
         const prBadge = {routine:'<span class="priority-word p-routine">Routine</span>',urgent:'<span class="priority-word p-urgent">Urgent</span>',emergency:'<span class="priority-word p-emergency">Emergency</span>'}[t.priority] || '';
         const desc = (t.description || '').substring(0, 100) + ((t.description || '').length > 100 ? '...' : '');
         const time = getTimeAgo(t.createdAt);
-        const zoneBadge = isOutOfZoneTechAssignment(t) ? '<span class="out-of-zone-badge" title="Assigned outside normal tech store list">Out-of-zone assignment</span>' : '';
+        const zoneBadge = ''; // zone system removed
 
         let actionBtn = '';
         if (isActiveJob) {
@@ -6625,14 +6589,8 @@ async function confirmClockOut() {
 // ============================================================
 function renderAdminSummaryFromTickets(tickets) {
     const statusCounts = Object.fromEntries(STATUS_ORDER.map(status => [status, 0]));
-    // Scope ticket counts to user's accessible stores (Director sees their stores only)
-    const effRole = getEffectiveUserRole(currentUser);
-    const scopedTickets = (effRole === 'Overwatch' || effRole === 'Admin' || currentUser.stores === 'all')
-        ? tickets
-        : tickets.filter(t => {
-            const userStores = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
-            return userStores.includes(t.storeCode);
-        });
+    // Scope counts to this user's stores — Directors/Coaches see only their stores
+    const scopedTickets = scopeTicketsToUser(tickets);
     scopedTickets.forEach(t => {
         const key = normalizeTicketStatus(t.status || '');
         if (Object.prototype.hasOwnProperty.call(statusCounts, key)) statusCounts[key]++;
@@ -6741,15 +6699,9 @@ function initNotificationCenter() {
     const isAdmin = normalizedRole === 'Admin';
     const isDirector = normalizedRole === 'Director';
     const isAdminOrDirector = isOverwatch || isAdmin || isDirector;
-    const hasAllStoresAccess = currentUser?.stores === 'all';
-    let myStores = null;
-    if (!isAdminOrDirector && !isTech) {
-        myStores = Array.isArray(currentUser.stores) ? currentUser.stores :
-                   (currentUser.stores ? [currentUser.stores] : []);
-    } else if (isDirector && !hasAllStoresAccess) {
-        myStores = Array.isArray(currentUser.stores) ? currentUser.stores :
-                   (currentUser.stores ? [currentUser.stores] : []);
-    }
+    // Use centralized scoping — null means unrestricted (Overwatch/Admin)
+    const scopedCodes = getScopedStoreCodes(currentUser);
+    const myStores = scopedCodes; // null = see all, array = restricted
 
     // Check notification routing for category-based visibility
     const myEmail = currentUser.email ? currentUser.email.toLowerCase() : '';
@@ -6783,20 +6735,16 @@ function initNotificationCenter() {
             // Skip closed/resolved tickets
             if (!isActiveStatus(normalizedStatus)) return;
 
-            // Store access check
+            // Store access check using centralized scoping
             let canSee = false;
-            if (isOverwatch || isAdmin || (isDirector && hasAllStoresAccess)) {
+            if (myStores === null) {
+                // Overwatch or Admin — see everything
                 canSee = true;
             } else if (isTech) {
                 // Techs only see tickets assigned to them
                 canSee = t.assignedTo === currentUser.email;
             } else if (myStores && myStores.length > 0 && t.storeCode) {
                 canSee = myStores.includes(t.storeCode);
-            }
-
-            // Ensure admins/directors include unassigned tickets in their bell list
-            if (!canSee && isAdminOrDirector && normalizedStatus === 'unassigned') {
-                canSee = true;
             }
 
             // Category routing: if user is routed for this category, also show it
@@ -6951,14 +6899,9 @@ function populateAllTicketsStoreFilter() {
     const type = document.getElementById('atFilterType').value;
     const sel = document.getElementById('atFilterStore');
     sel.innerHTML = '<option value="">All Stores</option>';
-    let filtered = stores;
-    if (type && type !== 'all') filtered = stores.filter(s => s.type === type);
-    // Permission filter
-    const effRole = getEffectiveUserRole(currentUser);
-    if (effRole !== 'Overwatch' && effRole !== 'Admin' && effRole !== 'Director' && currentUser.stores !== 'all') {
-        const userStores = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
-        filtered = filtered.filter(s => userStores.includes(s.code));
-    }
+    // Start from this user's accessible stores only, then optionally filter by type
+    let filtered = getAccessibleStores();
+    if (type && type !== 'all') filtered = filtered.filter(s => s.type === type);
     filtered.sort((a, b) => a.name.localeCompare(b.name));
     filtered.forEach(s => {
         const opt = document.createElement('option');
@@ -6975,15 +6918,9 @@ function filterAllTickets() {
     const type = document.getElementById('atFilterType').value;
     const storeCode = document.getElementById('atFilterStore').value;
     
-    let filtered = allTicketsData;
-    
-    // Permission filter
-    const effRole = getEffectiveUserRole(currentUser);
-    if (effRole !== 'Overwatch' && effRole !== 'Admin' && effRole !== 'Director' && currentUser.stores !== 'all') {
-        const userStores = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
-        filtered = filtered.filter(t => userStores.includes(t.storeCode));
-    }
-    
+    // Always scope to this user's accessible stores first
+    let filtered = scopeTicketsToUser(allTicketsData);
+
     // Status filter
     if (status !== 'all' && getStatusMeta(status)) {
         filtered = filtered.filter(t => normalizeTicketStatus(t.status) === status);
@@ -7202,12 +7139,49 @@ function exitViewAs() {
 // ============================================================
 const NEW_ISSUE_DRAFT_KEY = 'rm_new_issue_draft_v1';
 
-function getAccessibleStores() {
-    if (!currentUser) return [];
-    const role = normalizeRole(currentUser.role);
-    if (role === 'Overwatch' || role === 'Admin' || currentUser.stores === 'all') return [...stores];
-    const allowed = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
-    return stores.filter(s => allowed.includes(s.code));
+// ============================================================
+// SINGLE SOURCE OF TRUTH: store-scoping by role
+// ============================================================
+// Returns null  → user sees ALL stores (Overwatch, Admin, or stores==='all')
+// Returns string[] → the store codes the user is allowed to see
+//
+// Rules:
+//   Overwatch  → all stores, always
+//   Admin      → all stores, always
+//   Director   → their assigned stores (stores array in DB)
+//   Area Coach → their assigned stores
+//   Manager    → their single store
+//   Technician → their assigned stores
+function getScopedStoreCodes(user = currentUser) {
+    if (!user) return [];
+    const role = normalizeRole(user.role);
+    if (role === 'Overwatch' || role === 'Admin') return null; // null = unrestricted
+    if (user.stores === 'all') return null;
+    const raw = user.stores;
+    if (Array.isArray(raw)) return raw.filter(Boolean);
+    if (typeof raw === 'string' && raw) return [raw];
+    return [];
+}
+
+// Returns the stores array objects the user can access
+function getAccessibleStores(user = currentUser) {
+    const codes = getScopedStoreCodes(user);
+    if (codes === null) return [...stores];
+    return stores.filter(s => codes.includes(s.code));
+}
+
+// Scopes a tickets array to only those within the user's stores
+function scopeTicketsToUser(tickets, user = currentUser) {
+    const codes = getScopedStoreCodes(user);
+    if (codes === null) return tickets; // unrestricted
+    return tickets.filter(t => codes.includes(t.storeCode));
+}
+
+// Scopes a stores array to only those within the user's stores
+function scopeStoresToUser(storeList, user = currentUser) {
+    const codes = getScopedStoreCodes(user);
+    if (codes === null) return storeList;
+    return storeList.filter(s => codes.includes(s.code));
 }
 
 function getStoreCode(store) {
@@ -7862,9 +7836,8 @@ function openTicketDetail(key, forceModal = true) {
     const reassignSel = document.getElementById('reassignTo');
     if (reassignSel && canAssignTickets()) {
         reassignSel.innerHTML = '<option value="">' + (t.assignedTo ? 'Keep current' : 'Unassigned') + '</option>';
-        const availTechs = getAvailableTechs(t.storeCode || (selectedStore && getStoreCode(selectedStore)) || '');
-        if (availTechs.length) {
-            reassignSel.innerHTML += '<optgroup label="Repair Technicians">' + availTechs.map(te => `<option value="tech:${te.email}">🔧 ${escHtml(te.name)}</option>`).join('') + '</optgroup>';
+        if (techUserCache.length) {
+            reassignSel.innerHTML += '<optgroup label="Repair Technicians">' + techUserCache.map(te => `<option value="tech:${te.email}">🔧 ${escHtml(te.name)}</option>`).join('') + '</optgroup>';
         }
         if (vendorList.length) {
             reassignSel.innerHTML += '<optgroup label="Third-Party Vendors">' + vendorList.map(v => `<option value="vendor:${escHtml(v.name)}">🏢 ${escHtml(v.name)}</option>`).join('') + '</optgroup>';
@@ -8575,7 +8548,7 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v5.6</span>
+    <span>R&M Tracker v6.8</span>
 </div>
 
 </body>
