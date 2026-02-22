@@ -3009,7 +3009,6 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
     <div class="app-header">
         <div class="header-left">
             <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle dark mode">🌙</button>
-            <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle dark mode">🌙</button>
             <a class="header-logo" href="#" onclick="goHome();return false" style="text-decoration:none;display:flex;align-items:center;gap:8px;cursor:pointer"><img src="logos/dpm-icon.png" alt="DPM" style="height:24px;vertical-align:middle"><span class="header-title">Repair &amp; Maintenance</span></a>
         </div>
         <div class="header-right">
@@ -3971,14 +3970,15 @@ let adminSummaryListenerCallback = null;
 
 const SUMMARY_LAYOUT_RULES = {
     adminSummary: {
+        // Top status-count bar: Overwatch, Admin, Director only
         roles: new Set(['Overwatch', 'Admin', 'Director']),
-        screens: new Set(['storeSelection','allTicketsScreen'])
+        screens: new Set(['storeSelection','allTicketsScreen','coachLanding'])
     },
     selectedStoreSummary: {
         screensByRole: {
             Overwatch: new Set(['storeSelection', 'newIssueScreen', 'existingIssuesScreen', 'allTicketsScreen']),
             Admin: new Set(['storeSelection', 'newIssueScreen', 'existingIssuesScreen', 'allTicketsScreen']),
-            Director: new Set(['storeSelection', 'newIssueScreen', 'existingIssuesScreen', 'allTicketsScreen']),
+            Director: new Set(['coachLanding', 'coachStoreView', 'newIssueScreen', 'existingIssuesScreen', 'allTicketsScreen']),
             Manager: new Set(['managerLanding', 'newIssueScreen', 'existingIssuesScreen', 'allTicketsScreen']),
             'Area Coach': new Set(['coachStoreView', 'newIssueScreen', 'existingIssuesScreen', 'allTicketsScreen'])
         }
@@ -4224,12 +4224,11 @@ function getExperienceProfile(role, viewport = getViewportHints()) {
 }
 
 function routeToProfileLanding() {
-    const role = currentUser.role;
+    const role = getEffectiveUserRole(currentUser);
 
-    // OVERWATCH: full admin overview w/ map + list
-    if (isItsupportUser(currentUser)) {
+    // OVERWATCH + ADMIN: full map overview w/ all stores
+    if (role === 'Overwatch' || role === 'Admin') {
         showScreen('storeSelection');
-        // Default to showing all brands on large screens
         if (window.innerWidth >= 1100 || window.innerWidth > window.innerHeight) {
             setTimeout(() => selectBrand('all'), 100);
         }
@@ -4245,10 +4244,6 @@ function routeToProfileLanding() {
 
     // MANAGER: clean 2-button landing
     if (role === 'Manager') {
-        // Managers should always have exactly one store. Support legacy formats:
-        // - stores: "BK22027" (string code)
-        // - stores: ["BK22027"] (array)
-        // - stores: "BK22027" but store may match by id or code
         const mgrStoresRaw = currentUser.stores;
         const mgrCandidates = Array.isArray(mgrStoresRaw) ? mgrStoresRaw : (mgrStoresRaw ? [mgrStoresRaw] : []);
         let mgrStore = null;
@@ -4259,7 +4254,6 @@ function routeToProfileLanding() {
             if (mgrStore) break;
         }
 
-        // Fallback: if user has a single-item array but token doesn't match, try best-effort contains match
         if (!mgrStore && mgrCandidates.length === 1 && typeof mgrCandidates[0] === 'string') {
             const t = mgrCandidates[0].toLowerCase();
             mgrStore = stores.find(s => (s.code || '').toLowerCase() === t || (s.id || '').toLowerCase() === t);
@@ -4269,7 +4263,6 @@ function routeToProfileLanding() {
             selectedStore = mgrStore;
             renderManagerLandingHeader();
         } else {
-            // Still show landing, but prevent actions until store resolves
             selectedStore = null;
             renderManagerLandingHeader();
         }
@@ -4279,7 +4272,7 @@ function routeToProfileLanding() {
         return;
     }
 
-    // AREA COACH / DIRECTOR / ADMIN: same store-tile landing (no map)
+    // DIRECTOR / AREA COACH: tile grid of their assigned stores
     showScreen('coachLanding');
     initCoachLanding();
 }
@@ -6283,8 +6276,6 @@ async function quickAssignTicket(ticketKey, selectId) {
 
 // (duplicate getAssignmentOptionsHtml removed)
 
-// (removed duplicate renderInlineAssignControls)
-
 function toggleDateFields() {
     const type = document.getElementById('reqDateType').value;
     const d1 = document.getElementById('reqDate1');
@@ -7697,41 +7688,39 @@ function configureStoreTicketFiltersForRole() {
     if (!filtersWrap) return;
     const effRole = getEffectiveUserRole(currentUser);
 
-    const openBtn = filtersWrap.querySelector('[data-filter="unassigned"]');
-    if (openBtn) {
-        if (effRole === 'Manager' || effRole === 'Area Coach') {
-            openBtn.dataset.filter = 'open';
-            openBtn.setAttribute('onclick', "filterTickets('open', this)");
-            openBtn.removeAttribute('data-i18n');
-            openBtn.textContent = 'Open';
-        } else {
-            // Directors/Admin keep unassigned label
-            openBtn.dataset.filter = 'unassigned';
-            openBtn.setAttribute('onclick', "filterTickets('unassigned', this)");
-            openBtn.setAttribute('data-i18n', 'filter_open');
-            openBtn.textContent = 'Unassigned';
-        }
-    }
-
-    // Managers/Area Coaches should not see the granular assignment queues as primary.
-    const hideGranular = (effRole === 'Manager' || effRole === 'Area Coach');
-    ['assigned','dispatched','waiting','inprogress','resolved'].forEach(k => {
-        const btn = filtersWrap.querySelector(`[data-filter="${k}"]`);
-        if (btn) btn.classList.toggle('hidden', hideGranular);
-    });
-
-    const allBtn = filtersWrap.querySelector('[data-filter="all"]');
-    if (allBtn) allBtn.classList.toggle('hidden', hideGranular);
-
-    const closedBtn = filtersWrap.querySelector('[data-filter="closed"]');
-    if (closedBtn) closedBtn.classList.remove('hidden');
-
-    if (hideGranular) {
-        // Ensure only Open + Closed show nicely
+    if (effRole === 'Manager') {
+        // Manager: Only Open + Closed
+        filtersWrap.innerHTML = `
+            <button class="filter-chip active" data-filter="open" onclick="filterTickets('open', this)">Open</button>
+            <button class="filter-chip" data-filter="closed" onclick="filterTickets('closed', this)">Closed</button>
+        `;
         filtersWrap.classList.add('ticket-filters--simple');
-    } else {
-        filtersWrap.classList.remove('ticket-filters--simple');
+        currentFilter = 'open';
+        return;
     }
+
+    if (effRole === 'Area Coach') {
+        // Area Coach: Open + Closed (Open = all non-resolved/closed)
+        filtersWrap.innerHTML = `
+            <button class="filter-chip active" data-filter="open" onclick="filterTickets('open', this)">Open</button>
+            <button class="filter-chip" data-filter="closed" onclick="filterTickets('closed', this)">Closed</button>
+        `;
+        filtersWrap.classList.add('ticket-filters--simple');
+        currentFilter = 'open';
+        return;
+    }
+
+    // All other roles (Overwatch, Admin, Director): Full granular filter set
+    filtersWrap.querySelectorAll('.filter-chip').forEach(c => {
+        c.classList.remove('hidden');
+        // Ensure the first chip says "Unassigned" and uses correct filter key
+        if (c.dataset.filter === 'open') {
+            c.dataset.filter = 'unassigned';
+            c.setAttribute('onclick', "filterTickets('unassigned', this)");
+            c.textContent = 'Unassigned';
+        }
+    });
+    filtersWrap.classList.remove('ticket-filters--simple');
 }
 
 function filterTickets(filter, chipEl) {
@@ -7746,25 +7735,30 @@ function filterTickets(filter, chipEl) {
 function renderTickets() {
     const listEl = document.getElementById('ticketsList');
     let tickets = currentTickets;
-    const OPEN_STATUSES = new Set(['unassigned','assigned','dispatched','inprogress','waiting','dispatched']);
+    const OPEN_STATUSES = new Set(['unassigned','assigned','dispatched','inprogress','waiting']);
     const CLOSED_STATUSES = new Set(['resolved','closed']);
 
-    if (currentFilter === 'mgr-open') {
+    if (currentFilter === 'open' || currentFilter === 'mgr-open') {
+        // Open = everything except resolved and closed
         tickets = tickets.filter(t => !CLOSED_STATUSES.has(normalizeTicketStatus(t.status)));
-    } else if (currentFilter === 'mgr-closed') {
+    } else if (currentFilter === 'closed' || currentFilter === 'mgr-closed') {
         tickets = tickets.filter(t => CLOSED_STATUSES.has(normalizeTicketStatus(t.status)));
-    } else if (currentFilter === 'open') {
-        tickets = tickets.filter(t => normalizeTicketStatus(t.status) !== 'closed');
     } else if (currentFilter !== 'all' && getStatusMeta(currentFilter)) {
         tickets = tickets.filter(t => normalizeTicketStatus(t.status) === currentFilter);
     }
 
     if (tickets.length === 0) {
+        const emptyMsg = (currentFilter === 'open' || currentFilter === 'mgr-open') ? 'No open tickets' :
+                         (currentFilter === 'closed' || currentFilter === 'mgr-closed') ? 'No closed tickets' :
+                         currentFilter === 'all' ? 'No tickets yet' :
+                         'No ' + getStatusLabel(currentFilter) + ' tickets';
+        const emptyIcon = (currentFilter === 'open' || currentFilter === 'mgr-open') ? '🎉' : currentFilter === 'all' ? '📭' : '🔍';
+        const emptySub = (currentFilter === 'open' || currentFilter === 'mgr-open') ? 'All clear at this location!' : 'Try a different filter.';
         listEl.innerHTML = `
             <div class="empty-state">
-                <div class="empty-icon">${currentFilter === 'all' ? '📭' : '🔍'}</div>
-                <h3>${currentFilter === 'all' ? 'No tickets yet' : (currentFilter === 'open' ? 'No open tickets' : 'No ' + getStatusLabel(currentFilter) + ' tickets')}</h3>
-                <p>${currentFilter === 'all' ? 'All clear at this location!' : 'Try a different filter.'}</p>
+                <div class="empty-icon">${emptyIcon}</div>
+                <h3>${emptyMsg}</h3>
+                <p>${emptySub}</p>
             </div>`;
         return;
     }
@@ -8188,8 +8182,6 @@ function promptWaitingReason(existingReason = '', existingNote = '') {
     });
 }
 
-// (duplicate parseAssignmentValue and promptWaitingReason removed)
-
 function handleStatusPhotos(input) {
     const files = Array.from(input.files).slice(0, 3 - statusPhotos.length);
     files.forEach(file => {
@@ -8454,11 +8446,20 @@ function getRoleTitle(user = currentUser) {
     return user.title || user.role;
 }
 
+// isItsupportUser: true for Overwatch role OR Admin role (both get map + storeSelection landing)
 function isItsupportUser(user = currentUser) {
     if (!user) return false;
     const role = normalizeRole(user.role);
-    if (role === 'Overwatch') return true;
-    return String(user.email || '').toLowerCase() === 'itsupport@dossaniparadise.com';
+    if (role === 'Overwatch' || role === 'Admin') return true;
+    // Legacy: email-based fallback in case Firebase role hasn't been updated yet
+    const email = String(user.email || '').toLowerCase();
+    if (email === 'itsupport@dossaniparadise.com') return true;
+    // Auto-map legacy 'Admin' role for specific directors if Firebase not yet updated
+    if (role === 'Admin') {
+        const directorEmails = ['sam@dossaniparadise.com', 'rick@dossaniparadise.com', 'paul@dossaniparadise.com', 'vishal@dossaniparadise.com'];
+        if (directorEmails.includes(email)) return false; // Directors should NOT get map
+    }
+    return false;
 }
 
 function canDeleteTickets(user = currentUser) {
@@ -8682,7 +8683,7 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v7.0</span>
+    <span>R&M Tracker v7.1</span>
 </div>
 
 </body>
