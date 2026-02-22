@@ -6625,7 +6625,15 @@ async function confirmClockOut() {
 // ============================================================
 function renderAdminSummaryFromTickets(tickets) {
     const statusCounts = Object.fromEntries(STATUS_ORDER.map(status => [status, 0]));
-    tickets.forEach(t => {
+    // Scope ticket counts to user's accessible stores (Director sees their stores only)
+    const effRole = getEffectiveUserRole(currentUser);
+    const scopedTickets = (effRole === 'Overwatch' || effRole === 'Admin' || currentUser.stores === 'all')
+        ? tickets
+        : tickets.filter(t => {
+            const userStores = Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores];
+            return userStores.includes(t.storeCode);
+        });
+    scopedTickets.forEach(t => {
         const key = normalizeTicketStatus(t.status || '');
         if (Object.prototype.hasOwnProperty.call(statusCounts, key)) statusCounts[key]++;
     });
@@ -6672,8 +6680,14 @@ function handleAdminSummaryClick(status) {
         return;
     }
     // Default behavior from overview
-    selectBrand('all');
-    setTimeout(() => showAllTickets(status), 200);
+    // Overwatch needs selectBrand to activate the map view first.
+    // Admin/Director land on coachLanding and go straight to the ticket list.
+    if (getEffectiveUserRole(currentUser) === 'Overwatch') {
+        selectBrand('all');
+        setTimeout(() => showAllTickets(status), 200);
+    } else {
+        showAllTickets(status);
+    }
 }
 
 function subscribeAdminSummary() {
@@ -6908,9 +6922,14 @@ function showAllTickets(defaultStatus) {
         if (banner) banner.style.display = 'none';
     }
     
-    // Populate store filter
-    const type = document.getElementById('storeType').value;
-    document.getElementById('atFilterType').value = type || '';
+    // Populate store filter — reset type filter to 'all stores' by default
+    // (storeType dropdown belongs to Overwatch map screen, don't inherit it)
+    if (getEffectiveUserRole(currentUser) === 'Overwatch') {
+        const type = document.getElementById('storeType').value;
+        document.getElementById('atFilterType').value = type || '';
+    } else {
+        document.getElementById('atFilterType').value = '';
+    }
     populateAllTicketsStoreFilter();
     
     // Load all tickets
@@ -6933,7 +6952,7 @@ function populateAllTicketsStoreFilter() {
     const sel = document.getElementById('atFilterStore');
     sel.innerHTML = '<option value="">All Stores</option>';
     let filtered = stores;
-    if (type) filtered = stores.filter(s => s.type === type);
+    if (type && type !== 'all') filtered = stores.filter(s => s.type === type);
     // Permission filter
     const effRole = getEffectiveUserRole(currentUser);
     if (effRole !== 'Overwatch' && effRole !== 'Admin' && effRole !== 'Director' && currentUser.stores !== 'all') {
@@ -6970,8 +6989,8 @@ function filterAllTickets() {
         filtered = filtered.filter(t => normalizeTicketStatus(t.status) === status);
     }
     
-    // Type filter
-    if (type) {
+    // Type filter — 'all' means no type restriction
+    if (type && type !== 'all') {
         const typeCodes = stores.filter(s => s.type === type).map(s => s.code);
         filtered = filtered.filter(t => typeCodes.includes(t.storeCode));
     }
@@ -8556,7 +8575,7 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v5.4</span>
+    <span>R&M Tracker v5.6</span>
 </div>
 
 </body>
