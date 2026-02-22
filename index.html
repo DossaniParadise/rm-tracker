@@ -4604,7 +4604,7 @@ let overviewMap = null;
 let mapMarkers = [];
 let allTicketCounts = {}; // { storeCode: { open: N, total: N } }
 function isMultiStoreUser() {
-    return currentUser return currentUser && (currentUser.role === 'Admin' || currentUser.role === 'Director' || currentUser.role === 'Area Coach' || currentUser.role === 'Technician');return currentUser && (currentUser.role === 'Admin' || currentUser.role === 'Director' || currentUser.role === 'Area Coach' || currentUser.role === 'Technician'); (currentUser.role === 'Overwatch' || currentUser.role === 'Admin' || currentUser.role === 'Director' || currentUser.role === 'Area Coach' || currentUser.role === 'Technician');
+    return currentUser && (currentUser.role === 'Overwatch' || currentUser.role === 'Admin' || currentUser.role === 'Director' || currentUser.role === 'Area Coach' || currentUser.role === 'Technician');
 }
 
 // Brand pill click → set dropdown + trigger map
@@ -8556,7 +8556,7 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v5.3</span>
+    <span>R&M Tracker v5.4</span>
 </div>
 
 </body>
