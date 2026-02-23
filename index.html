@@ -5857,7 +5857,7 @@ function renderInlineAssignControls(ticket, contextPrefix = 'inline') {
             <div class="inline-assign-row" onclick="event.stopPropagation()">
                 <div class="inline-assign-left">
                     <div class="inline-assign-label">${'Assign to'}</div>
-                    <select id="${selectId}" class="form-select form-select-sm inline-assign-select" onchange="event.stopPropagation()">
+                    <select id="${selectId}" class="form-select form-select-sm inline-assign-select" onchange="event.stopPropagation();handleVendorManagerSelection(this)">
                         <option value="">${'Select…'}</option>
                         ${getAssignmentOptionsHtml()}
                     </select>
@@ -5988,19 +5988,15 @@ function buildAssignEmailDraft(ticket, partyLabel) {
         '',
         `Please find details below for a job we need done at ${ticket.storeName || ticket.storeCode || 'the location'}.`,
         '',
-        'Details from ticket below:',
+        'Job Details:',
         `- Ticket ID: ${ticket.id || ticket._key || ''}`,
         `- Location: ${ticket.storeName || ticket.storeCode || ''}`,
-        `- Status: ${getStatusLabel(ticket.status)}`,
         `- Priority: ${capitalize(ticket.priority || 'routine')}`,
         `- Category: ${capitalize(ticket.category || '')}${ticket.location ? ' / ' + capitalize(ticket.location) : ''}`,
         `- Description: ${ticket.description || ''}`,
-        ticket.contactName ? `- Contact: ${ticket.contactName}${ticket.contactPhone ? ' (' + ticket.contactPhone + ')' : ''}` : '',
+        ticket.contactName ? `- On-site Contact: ${ticket.contactName}${ticket.contactPhone ? ' (' + ticket.contactPhone + ')' : ''}` : '',
         '',
-        'Attach picture below:',
-        ...(Array.isArray(ticket.photos) && ticket.photos.length
-            ? ticket.photos.map((url, i) => `- Photo ${i + 1}: ${url}`)
-            : ['- No photo attached in ticket']),
+        'Please reply to confirm receipt and your availability.',
         '',
         'Thank you.'
     ].filter(Boolean);
@@ -6012,13 +6008,32 @@ function openAssignEmailComposer(ticket, partyLabel) {
     const overlay = document.createElement('div');
     overlay.className = 'confirm-overlay';
     const draft = buildAssignEmailDraft(ticket, partyLabel);
+    const hasPhotos = Array.isArray(ticket.photos) && ticket.photos.length > 0;
+
+    // Build photo strip HTML — actual images the user can right-click → copy/save
+    const photoStripHtml = hasPhotos
+        ? `<div style="margin-top:12px">
+            <p style="text-align:left;font-size:12px;color:var(--text-muted);margin-bottom:6px">
+                📷 Ticket photos — right-click (or press &amp; hold) to copy or save, then paste into your email:
+            </p>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+                ${ticket.photos.map((url, i) =>
+                    `<img src="${url}" alt="Photo ${i+1}"
+                        style="height:120px;max-width:180px;object-fit:cover;border-radius:8px;border:1px solid var(--border);cursor:pointer"
+                        onclick="openLightbox('${url}')">`
+                ).join('')}
+            </div>
+          </div>`
+        : '';
+
     overlay.innerHTML = `<div class="confirm-box" style="max-width:700px;width:min(92vw,700px)">
         <h4>✉️ Email Draft</h4>
-        <p style="text-align:left">You can edit this text before copying into your email.</p>
-        <textarea id="assignEmailDraft" class="form-textarea" style="min-height:280px">${escHtml(draft)}</textarea>
+        <p style="text-align:left;margin-bottom:8px">Edit the text below, then copy it into your email client.</p>
+        <textarea id="assignEmailDraft" class="form-textarea" style="min-height:260px">${escHtml(draft)}</textarea>
+        ${photoStripHtml}
         <div class="confirm-btns" style="margin-top:10px">
             <button class="btn btn-secondary" id="assignEmailClose">Close</button>
-            <button class="btn btn-primary" id="assignEmailCopy">Copy</button>
+            <button class="btn btn-primary" id="assignEmailCopy">📋 Copy Text</button>
         </div>
     </div>`;
     document.body.appendChild(overlay);
@@ -6027,9 +6042,9 @@ function openAssignEmailComposer(ticket, partyLabel) {
         const txt = overlay.querySelector('#assignEmailDraft').value;
         try {
             await navigator.clipboard.writeText(txt);
-            toast('Email draft copied', 'success');
+            toast('Email draft copied to clipboard', 'success');
         } catch {
-            toast('Could not copy automatically. Please copy manually.', 'error');
+            toast('Could not copy automatically — please select all text and copy manually.', 'error');
         }
     };
 }
@@ -6180,7 +6195,12 @@ async function quickAssignTicket(ticketKey, selectId) {
         });
 
         toast('Ticket assigned', 'success');
-        showAssignReminder({ ...ticket, _key: ticketKey, status: 'assigned' }, parsed.assignedTo);
+        // In-house techs (assigneeType 'tech') see the job on their own app —
+        // no need to remind the assigner to contact them separately.
+        // Only show the reminder for external vendors.
+        if (parsed.assigneeType === 'vendor') {
+            showAssignReminder({ ...ticket, _key: ticketKey, status: 'assigned' }, parsed.assignedTo);
+        }
     } catch (err) {
         console.error('Quick assign failed', err);
         toast('Assignment failed', 'error');
@@ -8630,7 +8650,7 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v3.2</span>
+    <span>R&M Tracker v3.3</span>
 </div>
 
 </body>
