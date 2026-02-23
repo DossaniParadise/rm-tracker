@@ -7091,10 +7091,13 @@ function doViewAs() {
 
         // Apply experience CSS + route to correct landing
         applyExperienceClass(currentUser.role);
-    // Only IT Support should ever see map view
-    if (isItsupportUser(currentUser)) document.body.classList.remove('no-map');
-    else document.body.classList.add('no-map');
+        if (isItsupportUser(currentUser)) document.body.classList.remove('no-map');
+        else document.body.classList.add('no-map');
         routeToProfileLanding();
+
+        // Re-subscribe admin summary so counts reflect the impersonated user's store scope
+        subscribeAdminSummary();
+        updateLayoutVisibility(currentScreenId);
 
         initNotificationCenter();
         showToast('Viewing as ' + currentUser.name, 'success');
@@ -7110,20 +7113,20 @@ function exitViewAs() {
     document.getElementById('viewAsModal')?.remove();
     resetUiForProfileSwitch();
 
-    showScreen('storeSelection');
     applyHeaderIdentity(currentUser, { impersonating: false });
-
-    // Restore admin experience
     applyRoleScopedControls(currentUser, { impersonating: false });
     applyExperienceClass(currentUser.role);
-    // Only IT Support should ever see map view
     if (isItsupportUser(currentUser)) document.body.classList.remove('no-map');
     else document.body.classList.add('no-map');
     updateAllLocationsVisibility(currentUser);
     routeToProfileLanding();
 
+    // Re-subscribe admin summary so counts return to Overwatch's full view
+    subscribeAdminSummary();
+    updateLayoutVisibility(currentScreenId);
+
     initNotificationCenter();
-    showToast('Back to IT Support', 'success');
+    showToast('Back to your account', 'success');
 }
 
 // ============================================================
@@ -8540,7 +8543,7 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v6.3</span>
+    <span>R&M Tracker v6.8</span>
 </div>
 
 </body>
