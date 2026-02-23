@@ -1366,27 +1366,34 @@ body {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    gap: 1px;
+    gap: 0px;
     flex-shrink: 0;
-    margin-left: 8px;
+    margin-left: 10px;
+    min-width: 0;
 }
 .assignee-badge-status {
-    font-size: 11px;
-    font-weight: 600;
+    font-size: 10px;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.4px;
+    letter-spacing: 0.5px;
     white-space: nowrap;
 }
 .assignee-badge-status.s-assigned { color: var(--status-assigned); }
 .assignee-badge-status.s-dispatched { color: var(--status-dispatched); }
+.assignee-badge-status.s-unassigned { color: var(--status-unassigned); }
+.assignee-badge-status.s-inprogress { color: var(--status-inprogress); }
+.assignee-badge-status.s-waiting { color: var(--status-waiting); }
+.assignee-badge-status.s-resolved { color: var(--status-resolved); }
+.assignee-badge-status.s-closed { color: var(--status-closed); }
 .assignee-badge-name {
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 700;
     color: var(--text);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 140px;
+    max-width: 150px;
+    line-height: 1.25;
 }
 .assignee-badge-date {
     font-size: 10px;
@@ -1412,13 +1419,14 @@ body {
 
 /* All tickets card needs padding since it doesn't use ticket-card-inner */
 .ticket-card > .ticket-card-top:first-child {
-    padding: 16px 18px 0;
+    padding: 10px 16px 0;
 }
 .ticket-card > .ticket-card-desc {
-    padding: 0 18px;
+    padding: 0 16px;
+    font-size: 13px;
 }
 .ticket-card > .ticket-card-meta {
-    padding: 0 18px 14px;
+    padding: 0 16px 10px;
 }
 
 .ticket-card-inner {
@@ -1464,9 +1472,21 @@ body {
 
 .ticket-id {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
+    font-size: 11px;
     color: var(--text-muted);
+    letter-spacing: 0;
 }
+.ticket-store-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+}
+[data-theme="dark"] .ticket-store-name { color: var(--text); }
 
 .ticket-status-badge {
     font-size: 11px;
@@ -3640,18 +3660,8 @@ body.kiosk .action-card[onclick*="showNewIssueScreen"] { display:none !important
                 <div class="admin-section-body" id="vendorList">
                     <p style="font-size:13px;color:var(--text-mid);margin-bottom:12px">Manage third-party vendors available for ticket assignment.</p>
                     <div id="vendorRows"></div>
-                    <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px">
-                        <h4 style="font-size:13px;margin-bottom:8px;color:var(--text)">Add Vendor</h4>
-                        <div style="display:grid;grid-template-columns:1fr;gap:8px">
-                            <input class="form-input" id="newVendorName" placeholder="Vendor name">
-                            <input class="form-input" id="newVendorPhone" placeholder="Phone (recommended)">
-                            <input class="form-input" id="newVendorEmail" placeholder="Email (recommended)">
-                        </div>
-                        <div style="margin-top:6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-                            <span style="font-size:12px;color:var(--text-muted)">Categories:</span>
-                            <div id="newVendorCats" style="display:flex;gap:4px;flex-wrap:wrap"></div>
-                        </div>
-                        <button class="btn btn-primary btn-sm" onclick="addVendor()" style="margin-top:8px">Add Vendor</button>
+                    <div style="margin-top:12px">
+                        <button class="btn btn-primary btn-sm" onclick="showVendorManager()">🏢 Add / Edit Vendors</button>
                     </div>
                 </div>
             </div>
@@ -4583,6 +4593,7 @@ function showAppScreen() {
     loadTechUsers(); // Load technicians from Firebase — no hardcoded names
 
     subscribeAdminSummary();
+    startGlobalPolling();
     routeToProfileLanding();
     updateLayoutVisibility(currentScreenId);
 }
@@ -4656,6 +4667,7 @@ function goBack() {
             return;
         }
         // If we are viewing the grouped open tickets list, go back to coach landing
+        if (currentScreenId === 'allTicketsScreen') { teardownAllTicketsListener(); }
         if (currentScreenId === 'coachOpenTicketsScreen') { showScreen('coachLanding'); initCoachLanding(); return; }
         // If we came from a specific store, go back to coach store view
         if (selectedStore) { showScreen('coachStoreView'); return; }
@@ -4790,6 +4802,10 @@ function selectBrand(type) {
     const pill = document.getElementById('brandPill-' + type);
     if (pill) pill.classList.add('active');
     filterStores();
+    // If already in list view, immediately re-render with fresh data
+    if (currentMapView === 'list') {
+        renderStoreListView();
+    }
 }
 
 // Override filterStores to sync pill active state
@@ -6848,6 +6864,30 @@ function handleAdminSummaryClick(status) {
     }
 }
 
+// ── Global 5-minute polling ────────────────────────────────────────────────
+// Refreshes whichever live view is currently visible. The allTicketsScreen
+// uses a real-time Firebase listener so it updates instantly anyway; this
+// polling is the safety net for the store-list and coach views.
+function startGlobalPolling() {
+    if (globalPollInterval) clearInterval(globalPollInterval);
+    globalPollInterval = setInterval(() => {
+        const screenId = currentScreenId;
+        if (!screenId) return;
+        if (screenId === 'allTicketsScreen') {
+            // Live listener handles it — just re-filter to refresh timestamps
+            if (allTicketsData.length) filterAllTickets();
+        } else if (screenId === 'storeSelection' && currentMapView === 'list') {
+            renderStoreListView();
+        } else if (screenId === 'coachLanding') {
+            initCoachLanding();
+        } else if (screenId === 'coachOpenTicketsScreen') {
+            showCoachOpenTickets();
+        } else if (screenId === 'adminSummary' || screenId === 'coachStoreView') {
+            // Admin summary has its own real-time listener
+        }
+    }, 5 * 60 * 1000); // every 5 minutes
+}
+
 function subscribeAdminSummary() {
     if (adminSummaryListenerRef && adminSummaryListenerCallback) {
         adminSummaryListenerRef.off('value', adminSummaryListenerCallback);
@@ -6872,6 +6912,7 @@ function subscribeAdminSummary() {
 
 function loadAdminSummary() {
     subscribeAdminSummary();
+    startGlobalPolling();
 }
 
 // ============================================================
@@ -7060,6 +7101,31 @@ document.addEventListener('click', (e) => {
 // ============================================================
 let allTicketsData = [];
 let allTicketsDrilldown = null;
+let allTicketsListenerRef = null;  // live Firebase listener for allTicketsScreen
+let globalPollInterval = null;    // 5-min cross-view polling
+
+function teardownAllTicketsListener() {
+    if (allTicketsListenerRef) {
+        allTicketsListenerRef.off('value');
+        allTicketsListenerRef = null;
+    }
+}
+
+function attachAllTicketsListener() {
+    teardownAllTicketsListener();
+    const listEl = document.getElementById('allTicketsList');
+    if (listEl) listEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted)"><span class="spinner spinner-dark"></span> Loading...</div>';
+    allTicketsListenerRef = db.ref('tickets');
+    allTicketsListenerRef.on('value', snap => {
+        allTicketsData = [];
+        snap.forEach(child => { allTicketsData.push({ _key: child.key, ...child.val() }); });
+        allTicketsData.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        // Only re-render if the screen is still active (avoids ghost updates)
+        if (!document.getElementById('allTicketsScreen').classList.contains('hidden')) {
+            filterAllTickets();
+        }
+    });
+}
 
 function showAllTickets(defaultStatus) {
     showScreen('allTicketsScreen');
@@ -7071,7 +7137,6 @@ function showAllTickets(defaultStatus) {
     }
     
     // Populate store filter — reset type filter to 'all stores' by default
-    // (storeType dropdown belongs to Overwatch map screen, don't inherit it)
     if (getEffectiveUserRole(currentUser) === 'Overwatch' || getEffectiveUserRole(currentUser) === 'Viewer') {
         const type = document.getElementById('storeType').value;
         document.getElementById('atFilterType').value = type || '';
@@ -7080,19 +7145,8 @@ function showAllTickets(defaultStatus) {
     }
     populateAllTicketsStoreFilter();
     
-    // Load all tickets
-    const listEl = document.getElementById('allTicketsList');
-    listEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted)"><span class="spinner spinner-dark"></span> Loading...</div>';
-    
-    db.ref('tickets').once('value', snap => {
-        allTicketsData = [];
-        snap.forEach(child => {
-            allTicketsData.push({ _key: child.key, ...child.val() });
-        });
-        // Sort newest first
-        allTicketsData.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-        filterAllTickets();
-    });
+    // Attach live listener — data updates automatically on any Firebase change
+    attachAllTicketsListener();
 }
 
 function populateAllTicketsStoreFilter() {
@@ -7180,18 +7234,18 @@ function filterAllTickets() {
         
         return `<div class="ticket-card" onclick="openTicketFromAllByKey('${esc(t._key || t.id)}')">
             <div class="ticket-card-top">
-                <span class="ticket-id">${esc(t.id)}</span>
+                <span class="ticket-store-name">${esc(t.storeName || t.storeCode)}</span>
                 ${getAssigneeBadgeHtml(t)}
             </div>
             <div class="ticket-card-desc">
                 <span class="cat-emoji">${getCategoryEmoji(t.category)}</span> ${esc(shortDesc)}
             </div>
             <div class="ticket-card-meta">
+                <span class="ticket-id">${esc(t.id)}</span>
                 <span style="color:${prColor}">● ${capitalize(t.priority || 'routine')}</span>
                 <span>${catLabel(t.category)}${t.location ? ' · ' + capitalize(t.location) : ''}</span>
                 ${brandIcon}
                 <span>${timeAgo}</span>
-                <span style="color:var(--text-muted)">${esc(t.storeName || t.storeCode)}</span>
                 ${photoCount ? '<span>📷 ' + photoCount + '</span>' : ''}
                 ${staleInProgress ? '<span class="priority-badge p-urgent">⏱️ In Progress 24h+</span>' : ''}
             </div>
@@ -7305,6 +7359,7 @@ function doViewAs() {
 
         // Re-subscribe admin summary so counts reflect the impersonated user's store scope
         subscribeAdminSummary();
+        startGlobalPolling();
         updateLayoutVisibility(currentScreenId);
 
         initNotificationCenter();
@@ -7331,6 +7386,7 @@ function exitViewAs() {
 
     // Re-subscribe admin summary so counts return to Overwatch's full view
     subscribeAdminSummary();
+    startGlobalPolling();
     updateLayoutVisibility(currentScreenId);
 
     initNotificationCenter();
@@ -8327,6 +8383,17 @@ function syncAfterTicketMutation(ticketKey, patch) {
     if (!document.getElementById('storeSelection').classList.contains('hidden') && currentMapView === 'list') {
         renderStoreListView();
     }
+    // Refresh coach landing inline ticket list if visible
+    if (!document.getElementById('coachLanding').classList.contains('hidden')) {
+        const ticketListEl = document.getElementById('coachLandingTicketsList');
+        if (ticketListEl) {
+            const idx = allTicketsData.findIndex(x => x._key === ticketKey || x.id === ticketKey);
+            if (idx >= 0) {
+                // Re-render by re-calling initCoachLanding silently (only the ticket list part)
+                initCoachLanding();
+            }
+        }
+    }
 
     updateNotifyBadge();
     const panel = document.getElementById('notifyPanel');
@@ -8807,7 +8874,7 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v3.5</span>
+    <span>R&M Tracker v3.6</span>
 </div>
 
 </body>
