@@ -1354,9 +1354,41 @@ body {
 .ticket-card-top {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     margin-bottom: 6px;
 }
+.assignee-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1px;
+    flex-shrink: 0;
+    margin-left: 8px;
+}
+.assignee-badge-status {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+}
+.assignee-badge-status.s-assigned { color: var(--status-assigned); }
+.assignee-badge-status.s-dispatched { color: var(--status-dispatched); }
+.assignee-badge-name {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 140px;
+}
+.assignee-badge-date {
+    font-size: 10px;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+[data-theme="dark"] .assignee-badge-name { color: var(--text); }
 .ticket-card-desc {
     font-size: 14px;
     color: var(--text);
@@ -3667,10 +3699,7 @@ body.kiosk .action-card[onclick*="showNewIssueScreen"] { display:none !important
     <div class="modal-content">
         <div class="modal-header">
             <h3 id="modalTicketId">Ticket #---</h3>
-            <div style="display:flex;align-items:center;gap:8px">
-                <button id="modalDeleteBtn" class="hidden" style="background:#dc2626;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer" onclick="deleteTicketFromModal()">🗑 Delete</button>
-                <button class="modal-close" onclick="closeModal()">✕</button>
-            </div>
+            <button class="modal-close" onclick="closeModal()">✕</button>
         </div>
         <div class="modal-body" id="modalBody">
             <!-- Populated by JS -->
@@ -5483,6 +5512,7 @@ async function deleteNode(node) {
 // ============================================================
 const CATEGORIES = ['plumbing','equipment','it','structural','safety','other'];
 const CAT_LABELS = {plumbing:'Plumbing',equipment:'Equipment',it:'IT',structural:'Structural',safety:'Safety',other:'Other'};
+function catLabel(cat) { return CAT_LABELS[String(cat||'').toLowerCase()] || capitalize(cat || ''); }
 let notifyRouting = {};
 
 function loadNotifyRouting() {
@@ -5540,7 +5570,7 @@ function renderVendorRows() {
     if (!container) return;
 
     if (vendorList.length === 0) {
-        container.innerHTML = '<div class="empty-state" style="font-size:13px">'+escHtml(t('No vendors added yet','Aún no hay proveedores'))+'</div>';
+        container.innerHTML = '<div class="empty-state" style="font-size:13px">No vendors added yet</div>';
         return;
     }
 
@@ -5553,9 +5583,9 @@ function renderVendorRows() {
         return `
         <div class="vendor-row">
             <span class="vendor-name">${escHtml(v.name)}</span>
-            <span class="vendor-meta">${escHtml(cats || t('No categories','Sin categorías'))}${contact}</span>
-            <button class="btn btn-ghost btn-sm" onclick="openVendorEdit('${v.id}')">${t('Edit','Editar')}</button>
-            <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="removeVendor('${v.id}')">${t('Remove','Eliminar')}</button>
+            <span class="vendor-meta">${escHtml(cats || 'No categories')}${contact}</span>
+            <button class="btn btn-ghost btn-sm" onclick="openVendorEdit('${v.id}')">Edit</button>
+            <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="removeVendor('${v.id}')">Remove</button>
         </div>`;
     }).join('');
 }
@@ -5566,28 +5596,28 @@ async function openVendorEdit(vendorId) {
     if (!v) return;
 
     const canEdit = await checkVendorEditPermission();
-    if (!canEdit) { showToast(t("You don't have permission to edit vendors","No tienes permiso para editar proveedores"), 'error'); return; }
+    if (!canEdit) { showToast("You don't have permission to edit vendors", 'error'); return; }
 
     const overlay = document.createElement('div');
     overlay.className = 'confirm-overlay';
 
     overlay.innerHTML = `<div class="confirm-box" style="max-width:520px;text-align:left">
-        <h4 style="text-align:center">${t('Edit vendor contact','Editar contacto del proveedor')}</h4>
+        <h4 style="text-align:center">Edit vendor contact</h4>
 
         <div style="margin-top:12px">
-            <label class="form-label" style="margin-top:10px">${t('Vendor','Proveedor')}</label>
+            <label class="form-label" style="margin-top:10px">Vendor</label>
             <div class="form-input" style="background:var(--border-light);border-color:var(--border)">${escHtml(v.name)}</div>
 
-            <label class="form-label" style="margin-top:10px">${t('Phone (recommended)','Teléfono (recomendado)')}</label>
-            <input class="form-input" id="editVendorPhone" placeholder="${t('Phone number','Número de teléfono')}" value="${escAttr(v.phone || '')}">
+            <label class="form-label" style="margin-top:10px">Phone (recommended)</label>
+            <input class="form-input" id="editVendorPhone" placeholder="Phone number" value="${escAttr(v.phone || '')}">
 
-            <label class="form-label" style="margin-top:10px">${t('Email (recommended)','Correo (recomendado)')}</label>
-            <input class="form-input" id="editVendorEmail" placeholder="${t('Email','Correo')}" value="${escAttr(v.email || '')}">
+            <label class="form-label" style="margin-top:10px">Email (recommended)</label>
+            <input class="form-input" id="editVendorEmail" placeholder="Email" value="${escAttr(v.email || '')}">
         </div>
 
         <div class="confirm-btns" style="margin-top:14px;justify-content:flex-end">
-            <button class="btn btn-secondary" id="vendorEditCancel">${t('Cancel','Cancelar')}</button>
-            <button class="btn btn-primary" id="vendorEditSave">${t('Save','Guardar')}</button>
+            <button class="btn btn-secondary" id="vendorEditCancel">Cancel</button>
+            <button class="btn btn-primary" id="vendorEditSave">Save</button>
         </div>
     </div>`;
 
@@ -5609,11 +5639,11 @@ async function openVendorEdit(vendorId) {
             v.phone = phone || '';
             v.email = email || '';
             renderVendorRows();
-            showToast(t('Vendor updated','Proveedor actualizado'), 'success');
+            showToast('Vendor updated', 'success');
             overlay.remove();
         } catch (err) {
             console.error(err);
-            showToast(t('Could not update vendor','No se pudo actualizar el proveedor'), 'error');
+            showToast('Could not update vendor', 'error');
         }
     };
 }
@@ -5621,7 +5651,7 @@ function renderVendorCatCheckboxes() {
     const container = document.getElementById('newVendorCats');
     if (!container) return;
     const cats = ['all','plumbing','equipment','it','structural','safety','other'];
-    container.innerHTML = cats.map(c => `<label class="store-cb" style="border:1px solid var(--border);border-radius:6px;padding:2px 6px"><input type="checkbox" class="vendor-cat-cb" value="${c}"> ${capitalize(c)}</label>`).join('');
+    container.innerHTML = cats.map(c => `<label class="store-cb" style="border:1px solid var(--border);border-radius:6px;padding:2px 6px"><input type="checkbox" class="vendor-cat-cb" value="${c}"> ${catLabel(c)}</label>`).join('');
 }
 
 async function addVendor() {
@@ -5650,9 +5680,9 @@ async function addVendor() {
 }
 
 async function removeVendor(id) {
-    if (!confirm(t('Remove this vendor?','¿Eliminar este proveedor?'))) return;
+    if (!confirm('Remove this vendor?')) return;
     const canEdit = await checkVendorEditPermission();
-    if (!canEdit) { showToast(t('No permission','Sin permiso'), 'error'); return; }
+    if (!canEdit) { showToast('No permission', 'error'); return; }
     try {
         await db.ref('config/vendors/' + id).remove();
         showToast('Vendor removed', 'success');
@@ -5695,7 +5725,7 @@ function renderVendorManagerCatCheckboxes() {
     const container = document.getElementById('vmCats');
     if (!container) return;
     const cats = ['all','plumbing','equipment','it','structural','safety','other'];
-    container.innerHTML = cats.map(c => `<label class="store-cb" style="border:1px solid var(--border);border-radius:6px;padding:2px 6px"><input type="checkbox" class="vm-cat-cb" value="${c}"> ${capitalize(c)}</label>`).join('');
+    container.innerHTML = cats.map(c => `<label class="store-cb" style="border:1px solid var(--border);border-radius:6px;padding:2px 6px"><input type="checkbox" class="vm-cat-cb" value="${c}"> ${catLabel(c)}</label>`).join('');
 }
 
 function renderVendorManagerRows() {
@@ -5717,7 +5747,7 @@ async function addVendorFromManager() {
     const cats = [...document.querySelectorAll('.vm-cat-cb:checked')].map(c => c.value);
     if (!name) { showToast('Enter vendor name', 'error'); return; }
     const canEdit = await checkVendorEditPermission();
-    if (!canEdit) { showToast(t('No permission','Sin permiso'), 'error'); return; }
+    if (!canEdit) { showToast('No permission', 'error'); return; }
     try {
         const newVendorRef = db.ref('config/vendors').push();
         await newVendorRef.set({ name, categories: cats });
@@ -5992,7 +6022,7 @@ function buildAssignEmailDraft(ticket, partyLabel) {
         `- Ticket ID: ${ticket.id || ticket._key || ''}`,
         `- Location: ${ticket.storeName || ticket.storeCode || ''}`,
         `- Priority: ${capitalize(ticket.priority || 'routine')}`,
-        `- Category: ${capitalize(ticket.category || '')}${ticket.location ? ' / ' + capitalize(ticket.location) : ''}`,
+        `- Category: ${catLabel(ticket.category)}${ticket.location ? ' / ' + capitalize(ticket.location) : ''}`,
         `- Description: ${ticket.description || ''}`,
         ticket.contactName ? `- On-site Contact: ${ticket.contactName}${ticket.contactPhone ? ' (' + ticket.contactPhone + ')' : ''}` : '',
         '',
@@ -6910,7 +6940,7 @@ function renderNotifyPanel() {
             <div class="notify-item-title">${getCategoryEmoji(t.category)} ${esc((t.description || '').substring(0, 60))}${(t.description||'').length > 60 ? '...' : ''}</div>
             <div class="notify-item-meta">
                 <span class="${priClass}">● ${priLabel}</span>
-                <span>${capitalize(t.category)}${t.location ? ' · ' + capitalize(t.location) : ''}</span>
+                <span>${catLabel(t.category)}${t.location ? ' · ' + capitalize(t.location) : ''}</span>
                 <span>${storeName}</span>
                 <span>${timeAgo}</span>
             </div>
@@ -7068,14 +7098,14 @@ function filterAllTickets() {
         return `<div class="ticket-card" onclick="openTicketFromAllByKey('${esc(t._key || t.id)}')">
             <div class="ticket-card-top">
                 <span class="ticket-id">${esc(t.id)}</span>
-                <span class="ticket-status s-${statusClass}">${getStatusLabel(t.status)}</span>
+                ${getAssigneeBadgeHtml(t)}
             </div>
             <div class="ticket-card-desc">
                 <span class="cat-emoji">${getCategoryEmoji(t.category)}</span> ${esc(shortDesc)}
             </div>
             <div class="ticket-card-meta">
                 <span style="color:${prColor}">● ${capitalize(t.priority || 'routine')}</span>
-                <span>${capitalize(t.category || '')}${t.location ? ' · ' + capitalize(t.location) : ''}</span>
+                <span>${catLabel(t.category)}${t.location ? ' · ' + capitalize(t.location) : ''}</span>
                 ${brandIcon}
                 <span>${timeAgo}</span>
                 <span style="color:var(--text-muted)">${esc(t.storeName || t.storeCode)}</span>
@@ -7469,16 +7499,16 @@ function showVendorContactConfirm({ missingPhone, missingEmail }) {
 
         const title = t('📇 Vendor contact info recommended', '📇 Información de contacto recomendada');
         let msgParts = [];
-        if (missingPhone) msgParts.push(t('Phone number is missing.', 'Falta el número de teléfono.'));
-        if (missingEmail) msgParts.push(t('Email is missing.', 'Falta el correo electrónico.'));
-        msgParts.push(t('This helps us coordinate faster, but you can save without it.', 'Esto ayuda a coordinar más rápido, pero puedes guardar sin esto.'));
+        if (missingPhone) msgParts.push('Phone number is missing.');
+        if (missingEmail) msgParts.push('Email is missing.');
+        msgParts.push('This helps us coordinate faster, but you can save without it.');
 
         overlay.innerHTML = `<div class="confirm-box">
             <h4>${title}</h4>
             <p>${msgParts.join(' ')}</p>
             <div class="confirm-btns">
-                <button class="btn btn-secondary" id="vendorAddContactBtn">${t('Add contact info', 'Agregar contacto')}</button>
-                <button class="btn btn-primary" id="vendorSaveAnywayBtn">${t('Save anyway', 'Guardar de todos modos')}</button>
+                <button class="btn btn-secondary" id="vendorAddContactBtn">Add contact info</button>
+                <button class="btn btn-primary" id="vendorSaveAnywayBtn">Save anyway</button>
             </div>
         </div>`;
         document.body.appendChild(overlay);
@@ -7752,7 +7782,7 @@ function renderTickets() {
                     <div class="ticket-title">${catIcons[t.category] || '📎'} ${escHtml(t.description.substring(0, 80))}${t.description.length > 80 ? '...' : ''}</div>
                     <div class="ticket-meta">
                         <span><span class="priority-dot ${t.priority}"></span> ${capitalize(t.priority)}</span>
-                        <span>${capitalize(t.category)}${t.location ? ' · ' + capitalize(t.location) : ''}</span>
+                        <span>${catLabel(t.category)}${t.location ? ' · ' + capitalize(t.location) : ''}</span>
                         <span>${brandLogo} ${timeAgo}</span>
                         ${t.photos && t.photos.length ? '<span>📷 ' + t.photos.length + '</span>' : ''}
                         ${t.contactPhone ? '<span>📞</span>' : ''}
@@ -7792,9 +7822,6 @@ function openTicketDetail(key, forceModal = true) {
 
     currentModalTicketKey = key;
     document.getElementById('modalTicketId').textContent = t.id || key;
-    const modalDeleteBtn = document.getElementById('modalDeleteBtn');
-    if (modalDeleteBtn) modalDeleteBtn.classList.toggle('hidden', !canDeleteTickets());
-
     const catIcons = { plumbing:'🚿', equipment:'⚙️', it:'💻', structural:'🧱', safety:'🛡️', other:'📎' };
 
     const effRole = getEffectiveUserRole(currentUser);
@@ -7815,7 +7842,7 @@ function openTicketDetail(key, forceModal = true) {
 
         <div class="detail-section">
             <div class="detail-label">Category</div>
-            <div class="detail-value">${catIcons[t.category] || ''} ${capitalize(t.category)}${t.location ? ' &middot; ' + capitalize(t.location) : ''}</div>
+            <div class="detail-value">${catIcons[t.category] || ''} ${catLabel(t.category)}${t.location ? ' &middot; ' + capitalize(t.location) : ''}</div>
         </div>
 
         <div class="detail-section">
@@ -7920,6 +7947,17 @@ function openTicketDetail(key, forceModal = true) {
     if (profile.startsWith('tech-') && profile.endsWith('tablet') && !forceModal) {
         renderTechDetailPane(key);
         return;
+    }
+
+    if (canDeleteTickets()) {
+        html += `<div class="detail-section" style="margin-top:24px;border-top:1px solid var(--border);padding-top:14px;display:flex;align-items:center;gap:10px">
+            <button onclick="deleteTicketFromModal()"
+                style="background:none;border:1px solid var(--danger);color:var(--danger);border-radius:6px;padding:5px 14px;font-size:12px;font-weight:600;cursor:pointer;opacity:0.65;transition:opacity 0.15s"
+                onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0.65'">
+                🗑 Delete Ticket
+            </button>
+            <span style="font-size:11px;color:var(--text-muted)">Permanent — cannot be undone.</span>
+        </div>`;
     }
 
     document.getElementById('modalBody').innerHTML = html;
@@ -8595,6 +8633,37 @@ function capitalize(s) {
     return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
 }
 
+function formatShortDate(ts) {
+    if (!ts) return '';
+    const d = new Date(ts);
+    return (d.getMonth() + 1) + '/' + d.getDate();
+}
+
+function getAssigneeBadgeHtml(ticket) {
+    const status = normalizeTicketStatus(ticket.status);
+    if (status !== 'assigned' && status !== 'dispatched') {
+        return `<span class="ticket-status s-${getStatusColorClass(ticket.status)}">${getStatusLabel(ticket.status)}</span>`;
+    }
+    const isAssigned = status === 'assigned';
+    const assignedTo = String(ticket.assignedTo || '').trim();
+    let displayName = '';
+    if (ticket.assigneeType === 'tech') {
+        const cached = techUserCache.find(u => u.email === assignedTo);
+        const fullName = cached ? cached.name : assignedTo;
+        displayName = fullName.split(' ')[0];
+    } else {
+        displayName = assignedTo || 'Vendor';
+    }
+    const dateStr = formatShortDate(ticket.updatedAt || ticket.createdAt);
+    const statusLabel = isAssigned ? 'Assigned' : 'Dispatched';
+    const statusCls = isAssigned ? 's-assigned' : 's-dispatched';
+    return `<div class="assignee-badge">
+        <span class="assignee-badge-status ${statusCls}">${statusLabel}</span>
+        ${displayName ? `<span class="assignee-badge-name">${escHtml(displayName)}</span>` : ''}
+        ${dateStr ? `<span class="assignee-badge-date">${statusLabel}: ${dateStr}</span>` : ''}
+    </div>`;
+}
+
 function getTimeAgo(ts) {
     if (!ts) return '';
     const diff = Date.now() - ts;
@@ -8650,7 +8719,7 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v3.3</span>
+    <span>R&M Tracker v3.4</span>
 </div>
 
 </body>
