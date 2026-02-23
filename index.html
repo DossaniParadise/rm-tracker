@@ -2947,35 +2947,29 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
 
 /* admin mobile handled in main responsive section */
 /* ============================================================
-   KIOSK / VIEWER MODE — Touch-optimized for portrait 2160×3840
-   Applied via body.kiosk when viewer@ is active
+   KIOSK / VIEWER — Touch-optimized, portrait 2160×3840
    ============================================================ */
-body.kiosk .admin-sum-card {
-    flex: 1 1 160px; min-height: 110px; padding: 20px 16px; border-radius: 16px; gap: 8px;
-}
-body.kiosk .admin-sum-card .asc-title { font-size: 15px; }
-body.kiosk .admin-sum-card .asc-num  { font-size: 44px; }
-body.kiosk .admin-sum-card .asc-desc { display: block; font-size: 12px; }
-body.kiosk .admin-summary-grid { gap: 14px; padding: 8px 0; margin-bottom: 20px; }
-body.kiosk .ticket-card { padding: 18px 16px; margin-bottom: 12px; border-radius: 14px; }
-body.kiosk .ticket-id, body.kiosk .ticket-title { font-size: 16px; }
-body.kiosk .ticket-meta { font-size: 13px; }
-body.kiosk .brand-pill { padding: 12px 20px; font-size: 15px; min-height: 52px; border-radius: 28px; }
-body.kiosk .app-header { min-height: 64px; }
-body.kiosk .filter-chip, body.kiosk .btn { min-height: 48px; font-size: 15px; padding: 10px 18px; border-radius: 10px; }
-body.kiosk .modal-header h3 { font-size: 20px; }
-body.kiosk .detail-value { font-size: 16px; }
-body.kiosk .modal-close { width: 44px; height: 44px; font-size: 22px; }
-/* Hide "Report New Issue" for viewer — can't submit tickets */
-body.kiosk .action-card[onclick*="showNewIssueScreen"] { display: none !important; }
-/* 4K portrait scaling */
-@media (min-width: 1800px) {
-    body.kiosk .admin-sum-card { flex: 1 1 200px; min-height: 130px; }
-    body.kiosk .admin-sum-card .asc-num { font-size: 56px; }
-    body.kiosk .admin-sum-card .asc-title { font-size: 17px; }
-    body.kiosk #storeSelection { grid-template-columns: 420px 1fr; }
-    body.kiosk .ticket-card { padding: 22px 20px; }
-    body.kiosk .ticket-id, body.kiosk .ticket-title { font-size: 18px; }
+body.kiosk .admin-sum-card { flex:1 1 160px; min-height:110px; padding:20px 16px; border-radius:16px; gap:8px; }
+body.kiosk .admin-sum-card .asc-title { font-size:15px; }
+body.kiosk .admin-sum-card .asc-num { font-size:44px; }
+body.kiosk .admin-sum-card .asc-desc { display:block; font-size:12px; }
+body.kiosk .admin-summary-grid { gap:14px; padding:8px 0; margin-bottom:20px; }
+body.kiosk .ticket-card { padding:18px 16px; margin-bottom:12px; border-radius:14px; }
+body.kiosk .ticket-id, body.kiosk .ticket-title { font-size:16px; }
+body.kiosk .brand-pill { padding:12px 20px; font-size:15px; min-height:52px; border-radius:28px; }
+body.kiosk .app-header { min-height:64px; }
+body.kiosk .filter-chip, body.kiosk .btn { min-height:48px; font-size:15px; padding:10px 18px; border-radius:10px; }
+body.kiosk .modal-header h3 { font-size:20px; }
+body.kiosk .detail-value { font-size:16px; }
+body.kiosk .modal-close { width:44px; height:44px; font-size:22px; }
+body.kiosk .action-card[onclick*="showNewIssueScreen"] { display:none !important; }
+@media (min-width:1800px) {
+    body.kiosk .admin-sum-card { flex:1 1 200px; min-height:130px; }
+    body.kiosk .admin-sum-card .asc-num { font-size:56px; }
+    body.kiosk .admin-sum-card .asc-title { font-size:17px; }
+    body.kiosk #storeSelection { grid-template-columns:420px 1fr; }
+    body.kiosk .ticket-card { padding:22px 20px; }
+    body.kiosk .ticket-id, body.kiosk .ticket-title { font-size:18px; }
 }
     </style>
 </head>
@@ -3876,7 +3870,6 @@ let adminSummaryListenerCallback = null;
 
 const SUMMARY_LAYOUT_RULES = {
     adminSummary: {
-        // Top status-count bar: Overwatch, Viewer, Admin, Director
         roles: new Set(['Overwatch', 'Viewer', 'Admin', 'Director']),
         screens: new Set(['storeSelection','allTicketsScreen','coachLanding','coachStoreView'])
     },
@@ -3944,7 +3937,7 @@ auth.onAuthStateChanged(async (user) => {
     } else if (auth.isSignInWithEmailLink(window.location.href)) {
         handleEmailLinkSignIn();
     } else if (window.localStorage.getItem('kioskMode') === '1') {
-        // Restore kiosk session — no Firebase auth needed
+        // Restore kiosk session without Firebase auth — persists across refreshes
         activateKioskMode();
     } else {
         showLoginScreen();
@@ -3955,7 +3948,7 @@ async function sendSignInLink() {
     const email = document.getElementById('loginEmail').value.trim().toLowerCase();
     if (!email) { showError('Enter your email address.'); return; }
 
-    // KIOSK / VIEWER bypass — no email sent, persists across page refresh via localStorage
+    // KIOSK BYPASS — no email sent, no Firebase auth required, persists via localStorage
     if (email === 'viewer@dossaniparadise.com') {
         activateKioskMode();
         return;
@@ -3996,7 +3989,6 @@ function activateKioskMode() {
         stores: 'all',
         status: 'active'
     };
-    document.body.classList.add('kiosk');
     showAppScreen();
 }
 
@@ -4392,7 +4384,7 @@ function applyHeaderIdentity(user, { impersonating = false } = {}) {
     if (isImpersonating) {
         document.getElementById('userRole').innerHTML = getRoleTitle(user) + ' <span style="font-size:10px;color:var(--accent);font-weight:700">(viewing as)</span>';
     } else if (isViewerKiosk(user)) {
-        document.getElementById('userRole').innerHTML = '👁 View Only';
+        document.getElementById('userRole').textContent = '👁 View Only';
     } else {
         document.getElementById('userRole').textContent = getRoleTitle(user);
     }
@@ -4418,11 +4410,11 @@ function showAppScreen() {
     document.getElementById('appContainer').style.display = 'flex';
     const experienceProfile = getExperienceProfile(currentUser.role);
     applyExperienceClass(currentUser.role);
-    // Overwatch and Viewer get map
+    // Overwatch and Viewer get map; everyone else gets no-map
     if (isItsupportUser(currentUser)) document.body.classList.remove('no-map');
     else document.body.classList.add('no-map');
 
-    // Kiosk body class for touch-optimized CSS
+    // Kiosk touch-optimized class
     if (isViewerKiosk(currentUser)) document.body.classList.add('kiosk');
     else document.body.classList.remove('kiosk');
 
@@ -4531,14 +4523,13 @@ function goBack() {
     if (effRole === 'Technician') { showScreen('techDashboard'); loadTechJobs(); return; }
     if (effRole === 'Manager') { showScreen('managerLanding'); return; }
 
-    if (effRole === 'Overwatch' || effRole === 'Viewer') {
-        showScreen('storeSelection');
-        setTimeout(() => selectBrand('all'), 100);
-        return;
-    }
-
-    // Coach-style landing (Area Coach / Director / Admin in this build)
-    if (effRole === 'Area Coach' || effRole === 'Director' || effRole === 'Admin') {
+    // Coach-style landing (Overwatch / Viewer / Area Coach / Director / Admin in this build)
+    if (effRole === 'Overwatch' || effRole === 'Viewer' || effRole === 'Area Coach' || effRole === 'Director' || effRole === 'Admin') {
+        if (effRole === 'Overwatch' || effRole === 'Viewer') {
+            showScreen('storeSelection');
+            setTimeout(() => selectBrand('all'), 100);
+            return;
+        }
         // If we are viewing the grouped open tickets list, go back to coach landing
         if (currentScreenId === 'coachOpenTicketsScreen') { showScreen('coachLanding'); initCoachLanding(); return; }
         // If we came from a specific store, go back to coach store view
@@ -4611,7 +4602,7 @@ function renderSelectedStoreSummary() {
     summaryName.textContent = selectedStore.name || getStoreCode(selectedStore) || 'Selected Store';
     summaryAddress.textContent = selectedStore.address || 'Address unavailable';
     const effRole = getEffectiveUserRole(currentUser);
-    summaryOpen.textContent = effRole === 'Admin' || effRole === 'Director' || effRole === 'Viewer' || effRole === 'Overwatch'
+    summaryOpen.textContent = effRole === 'Admin' || effRole === 'Director'
         ? `${selectedStoreSummaryCounts.open || 0} unassigned`
         : `${selectedStoreSummaryCounts.open || 0} open`;
     summaryTotal.textContent = `${selectedStoreSummaryCounts.total || 0} total`;
@@ -7217,8 +7208,7 @@ const NEW_ISSUE_DRAFT_KEY = 'rm_new_issue_draft_v1';
 //   Area Coach → their assigned stores
 //   Manager    → their single store
 //   Technician → their assigned stores
-function getScopedStoreCodes(user) {
-    user = user || currentUser;
+function getScopedStoreCodes(user = currentUser) {
     if (!user) return [];
     const role = normalizeRole(user.role);
     if (role === 'Overwatch' || role === 'Viewer' || role === 'Admin') return null; // null = unrestricted
@@ -8383,9 +8373,9 @@ function normalizeRole(r) {
     return 'Manager';
 }
 
-function isViewerKiosk(user) {
-    user = user || currentUser;
-    return normalizeRole(user?.role) === 'Viewer';
+// isViewerKiosk: true when the kiosk/viewer account is active
+function isViewerKiosk(u) {
+    return normalizeRole((u || currentUser)?.role) === 'Viewer';
 }
 
 function getRoleTitle(user = currentUser) {
@@ -8393,49 +8383,42 @@ function getRoleTitle(user = currentUser) {
     return user.title || user.role;
 }
 
-// isItsupportUser: controls map visibility. Overwatch and Viewer (kiosk) both get the map.
-function isItsupportUser(user) {
-    user = user || currentUser;
+// isItsupportUser: ONLY Overwatch gets the map. Admin/Director go to their own landings.
+function isItsupportUser(user = currentUser) {
     if (!user) return false;
     const role = normalizeRole(user.role);
     return role === 'Overwatch' || role === 'Viewer';
 }
 
-function canDeleteTickets(user) {
-    user = user || currentUser;
+function canDeleteTickets(user = currentUser) {
     if (isViewerKiosk(user)) return false;
     const role = getEffectiveUserRole(user);
     return role === 'Overwatch' || role === 'Admin' || role === 'Director';
 }
 
-function getEffectiveUserRole(user) {
-    user = user || currentUser;
+function getEffectiveUserRole(user = currentUser) {
     return normalizeRole(user?.role);
 }
 
-function canAccessAdminPanel(user) {
-    user = user || currentUser;
+function canAccessAdminPanel(user = currentUser) {
     if (isViewerKiosk(user)) return false;
     const role = getEffectiveUserRole(user);
     return role === 'Overwatch' || role === 'Admin';
 }
 
-function canAssignTickets(user) {
-    user = user || currentUser;
+function canAssignTickets(user = currentUser) {
     if (isViewerKiosk(user)) return false;
     const role = getEffectiveUserRole(user);
     return role === 'Overwatch' || role === 'Admin' || role === 'Director';
 }
 
-function canManageVendors(user) {
-    user = user || currentUser;
+function canManageVendors(user = currentUser) {
     if (isViewerKiosk(user)) return false;
     const role = getEffectiveUserRole(user);
     return role === 'Overwatch' || role === 'Admin' || role === 'Director';
 }
 
-function canEditUrgency(user) {
-    user = user || currentUser;
+function canEditUrgency(user = currentUser) {
     if (isViewerKiosk(user)) return false;
     return getEffectiveUserRole(user) !== 'Technician';
 }
@@ -8633,7 +8616,7 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v2.8</span>
+    <span>R&M Tracker v6.8</span>
 </div>
 
 </body>
