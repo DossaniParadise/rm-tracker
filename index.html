@@ -1383,6 +1383,26 @@ body {
 .assignee-badge-status.s-unassigned { color: var(--status-unassigned); }
 .assignee-badge-status.s-inprogress { color: var(--status-inprogress); }
 .assignee-badge-status.s-waiting { color: var(--status-waiting); }
+/* Waiting reason pills */
+.waiting-reason-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 20px;
+    white-space: nowrap;
+    letter-spacing: 0.2px;
+}
+.wrb-parts    { background: #fef3c7; color: #92400e; }
+.wrb-vendor   { background: #ede9fe; color: #5b21b6; }
+.wrb-approval { background: #fee2e2; color: #991b1b; }
+.wrb-other    { background: #f1f5f9; color: #475569; }
+[data-theme="dark"] .wrb-parts    { background: rgba(245,158,11,0.18); color: #fbbf24; }
+[data-theme="dark"] .wrb-vendor   { background: rgba(139,92,246,0.18); color: #a78bfa; }
+[data-theme="dark"] .wrb-approval { background: rgba(239,68,68,0.18);  color: #f87171; }
+[data-theme="dark"] .wrb-other    { background: rgba(100,116,139,0.18); color: #94a3b8; }
 .assignee-badge-status.s-resolved { color: var(--status-resolved); }
 .assignee-badge-status.s-closed { color: var(--status-closed); }
 .assignee-badge-name {
@@ -2282,6 +2302,8 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
 }
 .map-stats-bar .mstat[style*="cursor"] { padding: 4px 8px; border-radius: 6px; }
 .map-stats-bar .mstat[style*="cursor"]:hover { background: var(--primary-light); }
+.map-stats-bar .mstat-clickable { cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: background 0.15s; }
+.map-stats-bar .mstat-clickable:hover { background: var(--primary-light); }
 
 /* Leaflet dark overrides */
 .leaflet-popup-content-wrapper {
@@ -4909,19 +4931,20 @@ function loadMapOverview(type) {
             overviewMap.fitBounds(bounds, { padding: [30, 30], maxZoom: 12 });
         }
         
-        // Stats bar
-        let totalOpen = 0, totalAll = 0, storesWithIssues = 0;
+        // Stats bar — separate unassigned count from total active count
+        let totalUnassigned = 0, totalAll = 0, storesWithUnassigned = 0;
         codes.forEach(c => {
-            const ct = allTicketCounts[c] || { open: 0, total: 0 };
-            totalOpen += ct.open;
+            const ct = allTicketCounts[c] || { open: 0, unassigned: 0, total: 0 };
+            totalUnassigned += (ct.unassigned || 0);
             totalAll += ct.total;
-            if (ct.open > 0) storesWithIssues++;
+            if ((ct.unassigned || 0) > 0) storesWithUnassigned++;
         });
-        document.getElementById('mapStatsBar').innerHTML = 
-            '<div class="mstat"><strong>' + filtered.length + '</strong>stores</div>' +
-            '<div class="mstat" style="cursor:pointer" onclick="showAllTickets(\'unassigned\')"><strong style="color:' + (totalOpen > 0 ? '#dc2626' : '#059669') + '">' + totalOpen + '</strong>' + (totalOpen === 1 ? 'issue' : 'issues') + '</div>' +
-            '<div class="mstat" style="cursor:pointer" onclick="showAllTickets(\'unassigned\')"><strong>' + storesWithIssues + '</strong>need assignment</div>' +
-            '<div class="mstat" style="cursor:pointer" onclick="showAllTickets(\'all\')"><strong>' + totalAll + '</strong>total tickets</div>';
+        const issueColor = totalUnassigned > 0 ? '#dc2626' : '#059669';
+        document.getElementById('mapStatsBar').innerHTML =
+            '<div class="mstat mstat-clickable" onclick="setMapView(&quot;map&quot;);selectBrand(document.getElementById(&quot;storeType&quot;).value||&quot;all&quot;)" title="View map"><strong>' + filtered.length + '</strong>stores</div>' +
+            '<div class="mstat mstat-clickable" onclick="setMapView(&quot;list&quot;)" title="View store list"><strong style="color:' + issueColor + '">' + storesWithUnassigned + '</strong>' + (storesWithUnassigned === 1 ? 'store with issues' : 'stores with issues') + '</div>' +
+            '<div class="mstat mstat-clickable" onclick="showAllTickets(&quot;unassigned&quot;)" title="View unassigned tickets"><strong>' + totalUnassigned + '</strong>need assignment</div>' +
+            '<div class="mstat mstat-clickable" onclick="showAllTickets(&quot;all&quot;)" title="View all tickets"><strong>' + totalAll + '</strong>total tickets</div>';
 
         // Desktop store list sidebar with toggle
         const dsl = document.getElementById('desktopStoreList');
@@ -4945,15 +4968,18 @@ function fetchTicketCounts(codes, callback) {
     db.ref('tickets').once('value', snap => {
         allTicketCounts = {};
         const scopedTickets = [];
-        codes.forEach(c => allTicketCounts[c] = { open: 0, total: 0, score: 0, hasEmergency: false });
+        codes.forEach(c => allTicketCounts[c] = { open: 0, unassigned: 0, total: 0, score: 0, hasEmergency: false });
         snap.forEach(child => {
             const t = { _key: child.key, ...child.val() };
             if (codes.includes(t.storeCode)) {
                 scopedTickets.push(t);
-                if (!allTicketCounts[t.storeCode]) allTicketCounts[t.storeCode] = { open: 0, total: 0, score: 0, hasEmergency: false };
+                if (!allTicketCounts[t.storeCode]) allTicketCounts[t.storeCode] = { open: 0, unassigned: 0, total: 0, score: 0, hasEmergency: false };
                 allTicketCounts[t.storeCode].total++;
                 if (isActiveStatus(t.status)) {
                     allTicketCounts[t.storeCode].open++;
+                    if (normalizeTicketStatus(t.status) === 'unassigned') {
+                        allTicketCounts[t.storeCode].unassigned++;
+                    }
                     if (t.priority === 'emergency') {
                         allTicketCounts[t.storeCode].score += 3;
                         allTicketCounts[t.storeCode].hasEmergency = true;
@@ -8802,8 +8828,32 @@ function getAssigneeDisplayName(ticket) {
     return assignedTo; // vendor name
 }
 
+// Waiting reason → pill config
+const WAITING_BADGE_CONFIG = {
+    parts:    { cls: 'wrb-parts',    icon: '🔩', label: 'On Parts'    },
+    vendor:   { cls: 'wrb-vendor',   icon: '🏢', label: 'On Vendor'   },
+    approval: { cls: 'wrb-approval', icon: '📋', label: 'Needs Approval' },
+    other:    { cls: 'wrb-other',    icon: '⏳', label: 'Waiting'     },
+};
+
+function getWaitingBadgeHtml(ticket) {
+    const reason = ticket.waitingReason || 'other';
+    const cfg = WAITING_BADGE_CONFIG[reason] || WAITING_BADGE_CONFIG.other;
+    const note = (reason === 'other' && ticket.waitingReasonNote) ? ': ' + escHtml(ticket.waitingReasonNote.substring(0, 28)) : '';
+    const dateStr = formatShortDate(ticket.updatedAt || ticket.createdAt);
+    return `<div class="assignee-badge">
+        <span class="assignee-badge-status s-waiting">Waiting</span>
+        <span class="waiting-reason-badge ${cfg.cls}">${cfg.icon} ${cfg.label}${note}</span>
+        ${dateStr ? `<span class="assignee-badge-date">Since: ${dateStr}</span>` : ''}
+    </div>`;
+}
+
 function getAssigneeBadgeHtml(ticket) {
     const status = normalizeTicketStatus(ticket.status);
+    // Waiting: special reason-pill badge
+    if (status === 'waiting') {
+        return getWaitingBadgeHtml(ticket);
+    }
     if (status !== 'assigned' && status !== 'dispatched') {
         return `<span class="ticket-status s-${getStatusColorClass(ticket.status)}">${getStatusLabel(ticket.status)}</span>`;
     }
@@ -8874,7 +8924,7 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v3.6</span>
+    <span>R&M Tracker v3.7</span>
 </div>
 
 </body>
