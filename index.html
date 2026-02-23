@@ -3989,7 +3989,15 @@ function activateKioskMode() {
         stores: 'all',
         status: 'active'
     };
-    showAppScreen();
+    // Sign in anonymously so Firebase security rules (auth != null) allow reads.
+    // If already authenticated (e.g., session restored), proceed immediately.
+    if (auth.currentUser) {
+        showAppScreen();
+    } else {
+        auth.signInAnonymously()
+            .catch(() => { /* proceed anyway — rules may allow unauthenticated reads */ })
+            .finally(() => showAppScreen());
+    }
 }
 
 // Allow pressing Enter on email input
@@ -4152,12 +4160,12 @@ function getExperienceProfile(role, viewport = getViewportHints()) {
 function routeToProfileLanding() {
     const role = getEffectiveUserRole(currentUser);
 
-    // OVERWATCH + VIEWER: full map overview w/ all stores
+    // OVERWATCH + VIEWER: full map overview w/ all stores.
+    // Always call selectBrand('all') — kiosk may be portrait so width/orientation
+    // checks would wrongly suppress the brand load.
     if (role === 'Overwatch' || role === 'Viewer') {
         showScreen('storeSelection');
-        if (window.innerWidth >= 1100 || window.innerWidth > window.innerHeight) {
-            setTimeout(() => selectBrand('all'), 100);
-        }
+        setTimeout(() => selectBrand('all'), 100);
         return;
     }
 
@@ -6117,6 +6125,12 @@ async function unassignTicket(ticketKey) {
     } catch (err) {
         toast('Unable to unassign: ' + err.message, 'error');
     }
+}
+
+// assignTicketFromSelect: used by renderInlineAssignControls in list view and all-tickets view.
+// Identical behaviour to quickAssignTicket — writes to Firebase immediately, no Save needed.
+async function assignTicketFromSelect(ticketKey, selectId) {
+    return quickAssignTicket(ticketKey, selectId);
 }
 
 async function quickAssignTicket(ticketKey, selectId) {
@@ -8616,7 +8630,7 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v2.9</span>
+    <span>R&M Tracker v2.10</span>
 </div>
 
 </body>
