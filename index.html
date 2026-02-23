@@ -690,6 +690,11 @@ body {
 .slv-ticket:last-child { border-bottom: none; }
 .slv-ticket .slv-desc { flex: 1; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .slv-ticket .slv-assignee { font-size: 11px; color: var(--text-muted); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Unified right-side group: name + status badge + photo count */
+.slv-right-group { display: flex; align-items: center; gap: 6px; flex-shrink: 0; margin-left: auto; }
+.slv-assignee-name { font-size: 12px; font-weight: 700; color: var(--text); white-space: nowrap; max-width: 100px; overflow: hidden; text-overflow: ellipsis; }
+.slv-photo-count { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+[data-theme="dark"] .slv-assignee-name { color: var(--text); }
 .out-of-zone-badge {
     display: inline-flex;
     align-items: center;
@@ -3190,13 +3195,15 @@ body.kiosk .action-card[onclick*="showNewIssueScreen"] { display:none !important
 
         <!-- ===== SCREEN: Coach Landing ===== -->
         <div id="coachLanding" class="hidden">
-            <div class="role-landing">
+            <div class="role-landing" style="max-width:980px">
                 <div class="landing-header">
                     <h2 id="coachStoresHeading">My Stores</h2>
                 </div>
                 <div class="landing-actions" id="coachStoreGrid"></div>
-                <div style="text-align:center;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
-                    <button class="btn btn-primary" onclick="showCoachOpenTickets()" style="padding:14px 32px;font-size:15px;border-radius:12px;font-weight:600">🔍 View All Open Tickets</button>
+                <!-- Open tickets load automatically below the store grid -->
+                <div style="margin-top:24px;border-top:1px solid var(--border);padding-top:16px">
+                    <h3 id="coachLandingTicketsTitle" style="font-size:15px;font-weight:600;margin-bottom:10px;color:var(--text)">Open Tickets</h3>
+                    <div id="coachLandingTicketsList" class="store-list-view"></div>
                 </div>
             </div>
         </div>
@@ -4252,10 +4259,18 @@ function initCoachLanding() {
     updateCoachStoresHeading();
     const myStores = getAccessibleStores();
     const grid = document.getElementById('coachStoreGrid');
-    // Fetch ticket counts for coach stores
+    const ticketListEl = document.getElementById('coachLandingTicketsList');
+    const ticketTitleEl = document.getElementById('coachLandingTicketsTitle');
+
+    if (ticketListEl) {
+        ticketListEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)"><span class="spinner spinner-dark"></span> Loading...</div>';
+    }
+
     const codes = myStores.map(s => s.code);
+    const brandLabels = { fastfood: 'Burger King', cstore: 'C-Store', carwash: 'Car Wash' };
+
+    // Load ticket counts for store grid tiles
     fetchTicketCounts(codes, () => {
-        const brandLabels = { fastfood: 'Burger King', cstore: 'C-Store', carwash: 'Car Wash' };
         grid.innerHTML = myStores
             .sort((a, b) => {
                 const ca = (allTicketCounts[a.code] || {}).open || 0;
@@ -4274,6 +4289,72 @@ function initCoachLanding() {
                         : '<div class="csb-tickets no-issues">✓ No issues</div>') +
                 '</div>';
             }).join('');
+    });
+
+    // Load open tickets inline — no button click needed
+    if (!ticketListEl) return;
+    db.ref('tickets').once('value', snap => {
+        const scoped = [];
+        snap.forEach(child => {
+            const t = child.val();
+            if (!t) return;
+            const ticket = { _key: child.key, ...t };
+            if (!codes.includes(ticket.storeCode)) return;
+            if (!isActiveStatus(ticket.status)) return;
+            scoped.push(ticket);
+        });
+
+        allTicketsData = scoped.slice();
+
+        if (ticketTitleEl) {
+            const name = (currentUser?.name || '').split(' ')[0] || 'Coach';
+            const total = scoped.length;
+            ticketTitleEl.textContent = total > 0 ? `Open Tickets (${total})` : 'Open Tickets';
+        }
+
+        if (scoped.length === 0) {
+            ticketListEl.innerHTML = '<div style="padding:30px;text-align:center;font-size:14px;color:var(--text-muted)">🎉 No open tickets across your stores!</div>';
+            return;
+        }
+
+        const byStore = {};
+        scoped.forEach(t => { (byStore[t.storeCode] ||= []).push(t); });
+
+        const storeOrder = myStores.filter(s => byStore[s.code])
+            .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+        const priRank = { emergency: 0, urgent: 1, routine: 2 };
+        const statusRank = s => (TICKET_STATUS_CONFIG[normalizeTicketStatus(s)]?.order ?? 99);
+
+        let html = '';
+        storeOrder.forEach(s => {
+            const storeTickets = (byStore[s.code] || []).sort((a, b) =>
+                (priRank[a.priority] ?? 2) - (priRank[b.priority] ?? 2) ||
+                statusRank(a.status) - statusRank(b.status) ||
+                (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0)
+            );
+            const shortName = (s.name || '').replace(/^Burger King /, 'BK ').replace(/^Paradise QS /, 'PQS ');
+            html += `<div class="slv-store">
+                <div class="slv-store-name">${escHtml(shortName)} <span style="font-size:12px;font-weight:400;color:var(--text-muted)">(${storeTickets.length} open)</span></div>`;
+
+            storeTickets.forEach(t => {
+                const prBadge = {routine:'<span class="priority-word p-routine">Routine</span>',urgent:'<span class="priority-word p-urgent">Urgent</span>',emergency:'<span class="priority-word p-emergency">Emergency</span>'}[t.priority] || '';
+                const displayName = getAssigneeDisplayName(t);
+                const photoCount = Array.isArray(t.photos) ? t.photos.length : 0;
+                html += `<div class="slv-ticket" onclick="openTicketFromAllByKey('${esc(t._key || t.id)}')">
+                    ${prBadge}
+                    <span class="slv-desc">${escHtml((t.description || '').substring(0, 80))}</span>
+                    <span class="slv-right-group">
+                        ${displayName ? `<span class="slv-assignee-name">${escHtml(displayName)}</span>` : ''}
+                        <span class="ticket-status-badge status-${getStatusColorClass(t.status)}" style="font-size:11px;padding:2px 8px">${getStatusLabel(t.status)}</span>
+                        ${photoCount ? `<span class="slv-photo-count">📷 ${photoCount}</span>` : ''}
+                    </span>
+                </div>`;
+            });
+            html += '</div>';
+        });
+
+        ticketListEl.innerHTML = html;
     });
 }
 
@@ -4363,11 +4444,18 @@ function showCoachOpenTickets() {
 
             storeTickets.forEach(t => {
                 const prBadge = {routine:'<span class="priority-word p-routine">Routine</span>',urgent:'<span class="priority-word p-urgent">Urgent</span>',emergency:'<span class="priority-word p-emergency">Emergency</span>'}[t.priority] || '';
+                const displayName = getAssigneeDisplayName(t);
+                const photoCount = Array.isArray(t.photos) ? t.photos.length : 0;
+                const statusCls = getStatusColorClass(t.status);
+                const statusLabel = getStatusLabel(t.status);
                 html += `<div class="slv-ticket" onclick="openTicketFromAllByKey('${esc(t._key || t.id)}')">
                     ${prBadge}
                     <span class="slv-desc">${escHtml((t.description || '').substring(0, 80))}</span>
-                    <span class="ticket-status-badge status-${getStatusColorClass(t.status)}" style="font-size:11px;padding:2px 8px">${getStatusLabel(t.status)}</span>
-                    ${t.photos && t.photos.length ? '<span class="slv-assignee" style="color:var(--text-muted)">📷 ' + t.photos.length + '</span>' : ''}
+                    <span class="slv-right-group">
+                        ${displayName ? `<span class="slv-assignee-name">${escHtml(displayName)}</span>` : ''}
+                        <span class="ticket-status-badge status-${statusCls}" style="font-size:11px;padding:2px 8px">${statusLabel}</span>
+                        ${photoCount ? `<span class="slv-photo-count">📷 ${photoCount}</span>` : ''}
+                    </span>
                 </div>`;
             });
 
@@ -5035,15 +5123,19 @@ function renderStoreListView() {
             html += `<div class="slv-store">
                 <div class="slv-store-name">${shortName} <span style="font-size:12px;font-weight:400;color:var(--text-muted)">(${storeTickets.length} unassigned)</span></div>`;
             storeTickets.forEach(t => {
-                const assignee = t.assignedTo ? t.assignedTo : '';
-                const outOfZoneBadge = ''; // zone system removed
                 const prBadge = {routine:'<span class="priority-word p-routine">Routine</span>',urgent:'<span class="priority-word p-urgent">Urgent</span>',emergency:'<span class="priority-word p-emergency">Emergency</span>'}[t.priority] || '';
+                const displayName = getAssigneeDisplayName(t);
+                const photoCount = Array.isArray(t.photos) ? t.photos.length : 0;
+                const statusCls = getStatusColorClass(t.status);
+                const statusLabel = getStatusLabel(t.status);
                 html += `<div class="slv-ticket" onclick="listViewOpenTicket('${t._key}')">
                     ${prBadge}
                     <span class="slv-desc">${escHtml(t.description || '').substring(0,80)}</span>
-                    <span class="ticket-status-badge status-${getStatusColorClass(t.status)}" style="font-size:11px;padding:2px 8px">${getStatusLabel(t.status)}</span>
-                    ${assignee ? '<span class="slv-assignee">' + escHtml(assignee) + '</span>' : ''}
-                    ${outOfZoneBadge}
+                    <span class="slv-right-group">
+                        ${displayName ? `<span class="slv-assignee-name">${escHtml(displayName)}</span>` : ''}
+                        <span class="ticket-status-badge status-${statusCls}" style="font-size:11px;padding:2px 8px">${statusLabel}</span>
+                        ${photoCount ? `<span class="slv-photo-count">📷 ${photoCount}</span>` : ''}
+                    </span>
                     ${renderInlineAssignControls(t, 'slv')}
                 </div>`;
             });
@@ -5901,26 +5993,17 @@ function renderInlineAssignControls(ticket, contextPrefix = 'inline') {
         `;
     }
 
-    // Assigned: show assigned to + unassign + contacted yes/no (moves to Dispatched on Yes)
+    // Assigned: show inline dispatch row with name + contacted question
     if (status === 'assigned' && assigneeLabel) {
+        const dispName = getAssigneeDisplayName(ticket) || escHtml(assigneeLabel);
         return `
             <div class="inline-assigned-row" onclick="event.stopPropagation()">
-                <div class="inline-assigned-top">
-                    <div class="inline-assigned-to">${'Assigned to:'} <b>${escHtml(assigneeLabel)}</b></div>
-                    <button class="btn btn-outline-danger btn-sm" onclick="event.stopPropagation();unassignTicket('${escAttr(ticketKey)}')">
-                        ${'Unassign'}
-                    </button>
-                </div>
-
                 <div class="inline-dispatch-row">
-                    <div class="inline-dispatch-q">${'Have you already contacted the assigned technician?'}</div>
+                    <div class="inline-dispatch-q">Contacted <b>${escHtml(dispName)}</b> already?</div>
                     <div class="inline-dispatch-btns">
-                        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();markAssignedContactedYes('${escAttr(ticketKey)}')">
-                            ${'Yes'}
-                        </button>
-                        <button class="btn btn-outline-secondary btn-sm" onclick="event.stopPropagation();markAssignedContactedNo('${escAttr(ticketKey)}')">
-                            ${'No'}
-                        </button>
+                        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();markAssignedContactedYes('${escAttr(ticketKey)}')">Yes</button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="event.stopPropagation();markAssignedContactedNo('${escAttr(ticketKey)}')">No</button>
+                        <button class="btn btn-outline-danger btn-sm" onclick="event.stopPropagation();unassignTicket('${escAttr(ticketKey)}')">Unassign</button>
                     </div>
                 </div>
             </div>
@@ -8639,21 +8722,26 @@ function formatShortDate(ts) {
     return (d.getMonth() + 1) + '/' + d.getDate();
 }
 
+// Shared helper: resolves a ticket's assignedTo into a short display name.
+// Tech = first name only; vendor = stored name; empty = ''.
+function getAssigneeDisplayName(ticket) {
+    const assignedTo = String(ticket.assignedTo || '').trim();
+    if (!assignedTo) return '';
+    if (ticket.assigneeType === 'tech') {
+        const cached = techUserCache.find(u => u.email === assignedTo);
+        const fullName = cached ? cached.name : assignedTo;
+        return fullName.split(' ')[0];
+    }
+    return assignedTo; // vendor name
+}
+
 function getAssigneeBadgeHtml(ticket) {
     const status = normalizeTicketStatus(ticket.status);
     if (status !== 'assigned' && status !== 'dispatched') {
         return `<span class="ticket-status s-${getStatusColorClass(ticket.status)}">${getStatusLabel(ticket.status)}</span>`;
     }
     const isAssigned = status === 'assigned';
-    const assignedTo = String(ticket.assignedTo || '').trim();
-    let displayName = '';
-    if (ticket.assigneeType === 'tech') {
-        const cached = techUserCache.find(u => u.email === assignedTo);
-        const fullName = cached ? cached.name : assignedTo;
-        displayName = fullName.split(' ')[0];
-    } else {
-        displayName = assignedTo || 'Vendor';
-    }
+    const displayName = getAssigneeDisplayName(ticket) || (ticket.assigneeType === 'vendor' ? 'Vendor' : '');
     const dateStr = formatShortDate(ticket.updatedAt || ticket.createdAt);
     const statusLabel = isAssigned ? 'Assigned' : 'Dispatched';
     const statusCls = isAssigned ? 's-assigned' : 's-dispatched';
@@ -8719,7 +8807,7 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v3.4</span>
+    <span>R&M Tracker v3.5</span>
 </div>
 
 </body>
