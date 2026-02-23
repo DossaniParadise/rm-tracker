@@ -3921,6 +3921,21 @@ async function sendSignInLink() {
     const email = document.getElementById('loginEmail').value.trim().toLowerCase();
     if (!email) { showError('Enter your email address.'); return; }
 
+    // KIOSK / VIEWER bypass — no email sent, no Firebase auth required
+    if (email === 'viewer@dossaniparadise.com') {
+        currentUser = {
+            uid: 'kiosk-viewer',
+            email: 'viewer@dossaniparadise.com',
+            name: 'Viewer',
+            role: 'Viewer',
+            title: 'Kiosk View',
+            stores: 'all',
+            status: 'active'
+        };
+        showAppScreen();
+        return;
+    }
+
     if (!email.endsWith('@dossaniparadise.com') && email !== 'scroadmart@att.net') {
         showError('Only @dossaniparadise.com emails are allowed.');
         return;
@@ -4102,8 +4117,8 @@ function getExperienceProfile(role, viewport = getViewportHints()) {
 function routeToProfileLanding() {
     const role = getEffectiveUserRole(currentUser);
 
-    // OVERWATCH ONLY: full map overview w/ all stores
-    if (role === 'Overwatch') {
+    // OVERWATCH + VIEWER (kiosk): full map overview w/ all stores
+    if (role === 'Overwatch' || role === 'Viewer') {
         showScreen('storeSelection');
         if (window.innerWidth >= 1100 || window.innerWidth > window.innerHeight) {
             setTimeout(() => selectBrand('all'), 100);
@@ -4328,11 +4343,13 @@ function applyRoleScopedControls(user, { impersonating = false } = {}) {
 function applyHeaderIdentity(user, { impersonating = false } = {}) {
     const isImpersonating = !!(impersonating || realUser);
     const initials = (user?.name || '').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-    document.getElementById('userAvatar').textContent = initials || '?';
+    document.getElementById('userAvatar').textContent = isViewerKiosk(user) ? '👁' : (initials || '?');
     document.getElementById('userName').textContent = user?.name || 'Unknown User';
     document.getElementById('impersonationIndicator')?.classList.toggle('hidden', !isImpersonating);
     if (isImpersonating) {
         document.getElementById('userRole').innerHTML = getRoleTitle(user) + ' <span style="font-size:10px;color:var(--accent);font-weight:700">(viewing as)</span>';
+    } else if (isViewerKiosk(user)) {
+        document.getElementById('userRole').innerHTML = '👁 View Only <span style="font-size:10px;color:var(--warning,#f59e0b);font-weight:700">· Read Only</span>';
     } else {
         document.getElementById('userRole').textContent = getRoleTitle(user);
     }
@@ -4348,7 +4365,7 @@ function updateHeaderIdentity(user, opts = {}) {
 
 function updateAllLocationsVisibility(user) {
     const role = getEffectiveUserRole(user);
-    const showAllLocations = !!(user && (role === 'Overwatch' || role === 'Admin' || role === 'Director' || user.stores === 'all'));
+    const showAllLocations = !!(user && (role === 'Overwatch' || role === 'Viewer' || role === 'Admin' || role === 'Director' || user.stores === 'all'));
     document.getElementById('brandPill-all')?.classList.toggle('hidden', !showAllLocations);
     document.querySelectorAll('.admin-only-opt').forEach(el => el.classList.toggle('hidden', !showAllLocations));
 }
@@ -4392,7 +4409,7 @@ function showAppScreen() {
         const types = [...new Set(userStoreList.map(s => s.type))];
         if (types.length === 1) {
             setTimeout(() => selectBrand(types[0]), 100);
-        } else if (currentUser.role === 'Admin' || currentUser.role === 'Overwatch' || currentUser.role === 'Technician') {
+        } else if (currentUser.role === 'Admin' || currentUser.role === 'Overwatch' || currentUser.role === 'Viewer' || currentUser.role === 'Technician') {
             setTimeout(() => selectBrand('all'), 100);
         }
     }
@@ -7703,7 +7720,7 @@ function openTicketDetail(key, forceModal = true) {
     const catIcons = { plumbing:'🚿', equipment:'⚙️', it:'💻', structural:'🧱', safety:'🛡️', other:'📎' };
 
     const effRole = getEffectiveUserRole(currentUser);
-    const canUpdateStatus = effRole === 'Overwatch' || effRole === 'Admin' || effRole === 'Director' || effRole === 'Area Coach' || effRole === 'Technician';
+    const canUpdateStatus = !isViewerKiosk() && (effRole === 'Overwatch' || effRole === 'Admin' || effRole === 'Director' || effRole === 'Area Coach' || effRole === 'Technician');
     const canEditTicketMeta = canEditUrgency();
     const canCoachEdit = (effRole === 'Area Coach') && isTicketInUsersStores(t);
     const canFullEdit = effRole === 'Overwatch' || effRole === 'Admin' || effRole === 'Director';
@@ -8304,6 +8321,7 @@ function normalizeRole(r) {
     if (!r) return 'Manager';
     const lower = r.toLowerCase().trim();
     if (lower === 'overwatch') return 'Overwatch';
+    if (lower === 'viewer' || lower === 'kiosk') return 'Viewer';
     if (lower === 'admin') return 'Admin';
     if (lower === 'director' || lower === 'vp' || lower === 'dev') return 'Director';
     if (lower === 'areacoach' || lower === 'area coach') return 'Area Coach';
@@ -8311,18 +8329,24 @@ function normalizeRole(r) {
     return 'Manager';
 }
 
+function isViewerKiosk(user = currentUser) {
+    return normalizeRole(user?.role) === 'Viewer';
+}
+
 function getRoleTitle(user = currentUser) {
     if (!user) return '';
     return user.title || user.role;
 }
 
-// isItsupportUser: ONLY Overwatch gets the map. Admin/Director go to their own landings.
+// isItsupportUser: controls map visibility. Overwatch and Viewer (kiosk) get the map.
 function isItsupportUser(user = currentUser) {
     if (!user) return false;
-    return normalizeRole(user.role) === 'Overwatch';
+    const role = normalizeRole(user.role);
+    return role === 'Overwatch' || role === 'Viewer';
 }
 
 function canDeleteTickets(user = currentUser) {
+    if (isViewerKiosk(user)) return false;
     const role = getEffectiveUserRole(user);
     return role === 'Overwatch' || role === 'Admin' || role === 'Director';
 }
@@ -8332,21 +8356,25 @@ function getEffectiveUserRole(user = currentUser) {
 }
 
 function canAccessAdminPanel(user = currentUser) {
+    if (isViewerKiosk(user)) return false;
     const role = getEffectiveUserRole(user);
     return role === 'Overwatch' || role === 'Admin';
 }
 
 function canAssignTickets(user = currentUser) {
+    if (isViewerKiosk(user)) return false;
     const role = getEffectiveUserRole(user);
     return role === 'Overwatch' || role === 'Admin' || role === 'Director';
 }
 
 function canManageVendors(user = currentUser) {
+    if (isViewerKiosk(user)) return false;
     const role = getEffectiveUserRole(user);
     return role === 'Overwatch' || role === 'Admin' || role === 'Director';
 }
 
 function canEditUrgency(user = currentUser) {
+    if (isViewerKiosk(user)) return false;
     return getEffectiveUserRole(user) !== 'Technician';
 }
 
@@ -8543,7 +8571,7 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v6.8</span>
+    <span>R&M Tracker v2.6</span>
 </div>
 
 </body>
