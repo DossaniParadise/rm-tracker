@@ -2946,6 +2946,141 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
 }
 
 /* admin mobile handled in main responsive section */
+
+/* ============================================================
+   KIOSK / VIEWER MODE — Touch-optimized for portrait displays
+   Targets body.kiosk — applied when viewer@ logs in
+   ============================================================ */
+
+/* Larger status summary tiles — easy to tap in a hallway */
+body.kiosk .admin-sum-card {
+    flex: 1 1 160px;
+    min-height: 110px;
+    padding: 20px 16px;
+    border-radius: 16px;
+    gap: 8px;
+}
+body.kiosk .admin-sum-card .asc-title {
+    font-size: 15px;
+    letter-spacing: 0.5px;
+}
+body.kiosk .admin-sum-card .asc-num {
+    font-size: 44px;
+    line-height: 1;
+}
+body.kiosk .admin-sum-card .asc-desc {
+    display: block; /* keep descriptor even on small/portrait */
+    font-size: 12px;
+}
+body.kiosk .admin-summary-grid {
+    gap: 14px;
+    padding: 8px 0;
+    margin-bottom: 20px;
+}
+
+/* Bigger ticket cards — tall portrait touch */
+body.kiosk .ticket-card {
+    padding: 18px 16px;
+    margin-bottom: 12px;
+    border-radius: 14px;
+}
+body.kiosk .ticket-card-inner {
+    gap: 12px;
+}
+body.kiosk .ticket-status-bar {
+    width: 6px;
+    border-radius: 6px;
+}
+body.kiosk .ticket-id,
+body.kiosk .ticket-title {
+    font-size: 16px;
+}
+body.kiosk .ticket-meta {
+    font-size: 13px;
+}
+
+/* Brand pills — bigger tap targets */
+body.kiosk .brand-pill {
+    padding: 12px 20px;
+    font-size: 15px;
+    min-height: 52px;
+    border-radius: 28px;
+}
+body.kiosk .brand-pill-icon {
+    width: 28px;
+    height: 28px;
+}
+
+/* App header slightly taller for visibility */
+body.kiosk .app-header {
+    padding: 14px 20px;
+    min-height: 64px;
+}
+body.kiosk .user-avatar {
+    width: 38px;
+    height: 38px;
+    font-size: 18px;
+    line-height: 38px;
+}
+
+/* All ticket screen filters — big enough to tap with a finger */
+body.kiosk .filter-chip,
+body.kiosk .btn {
+    min-height: 48px;
+    font-size: 15px;
+    padding: 10px 18px;
+    border-radius: 10px;
+}
+
+/* Hide action buttons Viewer can't use anyway */
+body.kiosk #actionButtons .action-card[onclick*="showNewIssueScreen"] {
+    display: none !important;
+}
+
+/* Ticket modal — bigger text, larger close button */
+body.kiosk .modal-header h3 {
+    font-size: 20px;
+}
+body.kiosk .detail-label {
+    font-size: 13px;
+}
+body.kiosk .detail-value {
+    font-size: 16px;
+}
+body.kiosk .modal-close {
+    width: 44px;
+    height: 44px;
+    font-size: 22px;
+}
+
+/* Map markers slightly larger */
+body.kiosk .leaflet-marker-icon {
+    transform-origin: center bottom;
+}
+
+/* For portrait 4K — storeSelection sidebar wider so tiles are readable */
+@media (min-width: 1800px) and (orientation: portrait) {
+    body.kiosk #storeSelection {
+        grid-template-columns: 420px 1fr;
+    }
+    body.kiosk .admin-sum-card {
+        flex: 1 1 200px;
+        min-height: 130px;
+    }
+    body.kiosk .admin-sum-card .asc-num {
+        font-size: 56px;
+    }
+    body.kiosk .admin-sum-card .asc-title {
+        font-size: 17px;
+    }
+    body.kiosk .ticket-card {
+        padding: 22px 20px;
+    }
+    body.kiosk .ticket-id,
+    body.kiosk .ticket-title {
+        font-size: 18px;
+    }
+}
     </style>
 </head>
 <body class="exp-manager-mobile">
@@ -3845,14 +3980,14 @@ let adminSummaryListenerCallback = null;
 
 const SUMMARY_LAYOUT_RULES = {
     adminSummary: {
-        // Top status-count bar: Overwatch, Admin, Director only
-        // Admin now lands on coachLanding, so that screen is included for Admin too
-        roles: new Set(['Overwatch', 'Admin', 'Director']),
+        // Top status-count bar: Overwatch, Viewer, Admin, Director
+        roles: new Set(['Overwatch', 'Viewer', 'Admin', 'Director']),
         screens: new Set(['storeSelection','allTicketsScreen','coachLanding','coachStoreView'])
     },
     selectedStoreSummary: {
         screensByRole: {
             Overwatch: new Set(['storeSelection', 'newIssueScreen', 'existingIssuesScreen', 'allTicketsScreen']),
+            Viewer: new Set(['storeSelection', 'newIssueScreen', 'existingIssuesScreen', 'allTicketsScreen']),
             Admin: new Set(['storeSelection', 'newIssueScreen', 'existingIssuesScreen', 'allTicketsScreen']),
             Director: new Set(['coachLanding', 'coachStoreView', 'newIssueScreen', 'existingIssuesScreen', 'allTicketsScreen']),
             Manager: new Set(['managerLanding', 'newIssueScreen', 'existingIssuesScreen', 'allTicketsScreen']),
@@ -3912,6 +4047,9 @@ auth.onAuthStateChanged(async (user) => {
         await loadUserData(user);
     } else if (auth.isSignInWithEmailLink(window.location.href)) {
         handleEmailLinkSignIn();
+    } else if (window.localStorage.getItem('kioskMode') === '1') {
+        // Restore kiosk session without requiring Firebase auth
+        activateKioskMode();
     } else {
         showLoginScreen();
     }
@@ -3921,18 +4059,9 @@ async function sendSignInLink() {
     const email = document.getElementById('loginEmail').value.trim().toLowerCase();
     if (!email) { showError('Enter your email address.'); return; }
 
-    // KIOSK / VIEWER bypass — no email sent, no Firebase auth required
+    // KIOSK / VIEWER bypass — no email sent, no Firebase auth, persists across refresh
     if (email === 'viewer@dossaniparadise.com') {
-        currentUser = {
-            uid: 'kiosk-viewer',
-            email: 'viewer@dossaniparadise.com',
-            name: 'Viewer',
-            role: 'Viewer',
-            title: 'Kiosk View',
-            stores: 'all',
-            status: 'active'
-        };
-        showAppScreen();
+        activateKioskMode();
         return;
     }
 
@@ -3958,6 +4087,21 @@ async function sendSignInLink() {
         btn.innerHTML = 'Send Sign-In Link';
         btn.disabled = false;
     }
+}
+
+function activateKioskMode() {
+    window.localStorage.setItem('kioskMode', '1');
+    currentUser = {
+        uid: 'kiosk-viewer',
+        email: 'viewer@dossaniparadise.com',
+        name: 'Viewer',
+        role: 'Viewer',
+        title: 'Kiosk View',
+        stores: 'all',
+        status: 'active'
+    };
+    document.body.classList.add('kiosk');
+    showAppScreen();
 }
 
 // Allow pressing Enter on email input
@@ -4044,6 +4188,7 @@ async function loadUserData(user) {
 }
 
 function logout() {
+    window.localStorage.removeItem('kioskMode');
     if (activeTicketListener) { activeTicketListener(); activeTicketListener = null; }
     if (notifyListenerRef && notifyListenerCallback) {
         notifyListenerRef.off('value', notifyListenerCallback);
@@ -4057,6 +4202,8 @@ function logout() {
         adminSummaryListenerRef = null;
         adminSummaryListenerCallback = null;
     }
+    currentUser = null;
+    document.body.classList.remove('kiosk');
     auth.signOut();
 }
 
@@ -4344,12 +4491,12 @@ function applyHeaderIdentity(user, { impersonating = false } = {}) {
     const isImpersonating = !!(impersonating || realUser);
     const initials = (user?.name || '').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
     document.getElementById('userAvatar').textContent = isViewerKiosk(user) ? '👁' : (initials || '?');
-    document.getElementById('userName').textContent = user?.name || 'Unknown User';
+    document.getElementById('userName').textContent = isViewerKiosk(user) ? 'Kiosk Display' : (user?.name || 'Unknown User');
     document.getElementById('impersonationIndicator')?.classList.toggle('hidden', !isImpersonating);
     if (isImpersonating) {
         document.getElementById('userRole').innerHTML = getRoleTitle(user) + ' <span style="font-size:10px;color:var(--accent);font-weight:700">(viewing as)</span>';
     } else if (isViewerKiosk(user)) {
-        document.getElementById('userRole').innerHTML = '👁 View Only <span style="font-size:10px;color:var(--warning,#f59e0b);font-weight:700">· Read Only</span>';
+        document.getElementById('userRole').innerHTML = '👁 View Only';
     } else {
         document.getElementById('userRole').textContent = getRoleTitle(user);
     }
@@ -4375,9 +4522,13 @@ function showAppScreen() {
     document.getElementById('appContainer').style.display = 'flex';
     const experienceProfile = getExperienceProfile(currentUser.role);
     applyExperienceClass(currentUser.role);
-    // Only Overwatch should ever see map view
+    // Map visible for Overwatch and Viewer
     if (isItsupportUser(currentUser)) document.body.classList.remove('no-map');
     else document.body.classList.add('no-map');
+
+    // Kiosk body class for touch-optimized CSS
+    if (isViewerKiosk(currentUser)) document.body.classList.add('kiosk');
+    else document.body.classList.remove('kiosk');
 
     // Populate header
     applyHeaderIdentity(currentUser, { impersonating: !!realUser });
@@ -6646,10 +6797,8 @@ function handleAdminSummaryClick(status) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
     }
-    // Default behavior from overview
-    // Overwatch needs selectBrand to activate the map view first.
-    // Admin/Director land on coachLanding and go straight to the ticket list.
-    if (getEffectiveUserRole(currentUser) === 'Overwatch') {
+    // Overwatch and Viewer need selectBrand to activate map view first.
+    if (getEffectiveUserRole(currentUser) === 'Overwatch' || getEffectiveUserRole(currentUser) === 'Viewer') {
         selectBrand('all');
         setTimeout(() => showAllTickets(status), 200);
     } else {
@@ -6662,7 +6811,8 @@ function subscribeAdminSummary() {
         adminSummaryListenerRef.off('value', adminSummaryListenerCallback);
     }
 
-    if (!currentUser || !(currentUser.role === 'Overwatch' || currentUser.role === 'Admin' || currentUser.role === 'Director')) {
+    const role = currentUser?.role;
+    if (!currentUser || !(role === 'Overwatch' || role === 'Viewer' || role === 'Admin' || role === 'Director')) {
         adminSummaryListenerRef = null;
         adminSummaryListenerCallback = null;
         document.getElementById('adminSummaryGrid').innerHTML = '';
@@ -7723,7 +7873,7 @@ function openTicketDetail(key, forceModal = true) {
     const canUpdateStatus = !isViewerKiosk() && (effRole === 'Overwatch' || effRole === 'Admin' || effRole === 'Director' || effRole === 'Area Coach' || effRole === 'Technician');
     const canEditTicketMeta = canEditUrgency();
     const canCoachEdit = (effRole === 'Area Coach') && isTicketInUsersStores(t);
-    const canFullEdit = effRole === 'Overwatch' || effRole === 'Admin' || effRole === 'Director';
+    const canFullEdit = !isViewerKiosk() && (effRole === 'Overwatch' || effRole === 'Admin' || effRole === 'Director');
 
     let html = `
         <div class="detail-section">
@@ -8571,7 +8721,7 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v2.6</span>
+    <span>R&M Tracker v6.8</span>
 </div>
 
 </body>
