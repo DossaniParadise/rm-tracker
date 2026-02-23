@@ -4241,7 +4241,7 @@ function initCoachLanding() {
                     '<div class="csb-name">' + escHtml(shortName) + '</div>' +
                     '<div class="csb-brand">' + (brandLabels[s.type] || s.type) + '</div>' +
                     (hasIssues
-                        ? '<div class="csb-tickets has-issues">' + tc.open + ' unassigned</div>'
+                        ? '<div class="csb-tickets has-issues">' + tc.open + ' ' + (tc.open === 1 ? 'issue' : 'issues') + '</div>'
                         : '<div class="csb-tickets no-issues">✓ No issues</div>') +
                 '</div>';
             }).join('');
@@ -4786,7 +4786,7 @@ function loadMapOverview(type) {
         });
         document.getElementById('mapStatsBar').innerHTML = 
             '<div class="mstat"><strong>' + filtered.length + '</strong>stores</div>' +
-            '<div class="mstat" style="cursor:pointer" onclick="showAllTickets(\'unassigned\')"><strong style="color:' + (totalOpen > 0 ? '#dc2626' : '#059669') + '">' + totalOpen + '</strong>unassigned tickets</div>' +
+            '<div class="mstat" style="cursor:pointer" onclick="showAllTickets(\'unassigned\')"><strong style="color:' + (totalOpen > 0 ? '#dc2626' : '#059669') + '">' + totalOpen + '</strong>' + (totalOpen === 1 ? 'issue' : 'issues') + '</div>' +
             '<div class="mstat" style="cursor:pointer" onclick="showAllTickets(\'unassigned\')"><strong>' + storesWithIssues + '</strong>need assignment</div>' +
             '<div class="mstat" style="cursor:pointer" onclick="showAllTickets(\'all\')"><strong>' + totalAll + '</strong>total tickets</div>';
 
@@ -4923,7 +4923,7 @@ function renderDesktopStoreList() {
             const isSelected = selectedStore && getStoreCode(selectedStore) === s.code;
             html += `<div class="store-list-item ${isSelected ? 'active' : ''}" onclick="desktopSelectStore('${s.id}')">
                 <span class="sli-name">${shortName}</span>
-                <span class="sli-badge ${badgeCls}">${s.counts.open} unassigned</span>
+                <span class="sli-badge ${badgeCls}">${s.counts.open} ${s.counts.open === 1 ? 'issue' : 'issues'}</span>
             </div>`;
         });
     }
@@ -8630,7 +8630,7 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v3.1</span>
+    <span>R&M Tracker v3.2</span>
 </div>
 
 </body>
