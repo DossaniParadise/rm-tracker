@@ -4562,9 +4562,6 @@ function filterStores() {
 
     // Permission filtering — use centralized scoping
     filtered = scopeStoresToUser(filtered);
-    } else {
-        filtered = scopeStoresToUser(filtered);
-    }
 
     filtered.sort((a, b) => a.name.localeCompare(b.name));
     filtered.forEach(s => {
@@ -4634,9 +4631,7 @@ filterStores = function() {
     // For 'all' type, populate dropdown with user-scoped stores
     if (type === 'all') {
         const storeSelect = document.getElementById('storeSelect');
-        let allStores = getAccessibleStores();
         const allStores = getAccessibleStores();
-        }
         storeSelect.innerHTML = '<option value="">Choose store...</option>' +
             allStores.map(s => '<option value="' + s.id + '">' + s.name + '</option>').join('');
     }
@@ -4647,9 +4642,6 @@ function loadMapOverview(type) {
     
     // Permission filter — centralized scoping
     filtered = scopeStoresToUser(filtered);
-    } else {
-        filtered = scopeStoresToUser(filtered);
-    }
 
     const typeLabels = { all: 'All Locations', fastfood: 'Fast Food Stores', cstore: 'C-Stores', carwash: 'Car Washes' };
     document.getElementById('mapTitle').textContent = typeLabels[type] || 'Stores';
@@ -8548,7 +8540,7 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v6.8</span>
+    <span>R&M Tracker v6.3</span>
 </div>
 
 </body>
