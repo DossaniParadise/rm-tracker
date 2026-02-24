@@ -252,6 +252,9 @@
 [data-theme="dark"] .photo-preview { border-color: var(--border); }
 [data-theme="dark"] .photo-btn-row .photo-btn { background: #1a1f2e; border-color: var(--border); color: var(--text); }
 [data-theme="dark"] .photo-btn-row .photo-btn:hover { border-color: var(--primary); background: rgba(91,156,246,0.1); color: var(--primary); }
+[data-theme="dark"] .correct-meta-toggle { color: var(--text-muted); }
+[data-theme="dark"] .correct-meta-toggle:hover { color: var(--text-mid); }
+[data-theme="dark"] .correct-meta-panel { background: rgba(0,0,0,0.2); border-color: var(--border); }
 [data-theme="dark"] .header-title { color: var(--text); }
 [data-theme="dark"] h2, [data-theme="dark"] h3, [data-theme="dark"] h4 { color: var(--text); }
 
@@ -1113,6 +1116,36 @@ body {
 }
 
 .category-btn.selected .cat-label { color: var(--primary); }
+
+/* Ticket meta correction (area coach+) */
+.correct-meta-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px 0;
+    font-family: inherit;
+    letter-spacing: 0.2px;
+    opacity: 0.7;
+    transition: opacity 0.15s;
+    margin-top: 12px;
+}
+.correct-meta-toggle:hover { opacity: 1; color: var(--text-mid); }
+.correct-meta-panel {
+    margin-top: 10px;
+    padding: 12px 14px;
+    background: rgba(0,0,0,0.02);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    display: none;
+}
+.correct-meta-panel.open { display: block; }
+.correct-meta-panel .form-label { font-size: 11px; margin-bottom: 4px; }
+.correct-meta-panel .form-select { font-size: 13px; padding: 8px 10px; }
 
 /* Photo Upload Buttons */
 .photo-btn-row {
@@ -8161,6 +8194,13 @@ function openTicketDetail(key, forceModal = true) {
 
     // Area Coach: add note / update description / attach photos
     if (canCoachEdit || canFullEdit) {
+        const canCorrect = canCorrectTicketMeta();
+        const accessibleStores = canCorrect ? getAccessibleStores() : [];
+        const storeOptions = accessibleStores.map(s => `<option value="${escHtml(s.code)}" ${s.code === t.storeCode ? 'selected' : ''}>${escHtml(s.name)}</option>`).join('');
+        const catOptions = ['plumbing','equipment','it','structural','safety','other'].map(c =>
+            `<option value="${c}" ${(t.category||'') === c ? 'selected' : ''}>${catLabel(c)}</option>`
+        ).join('');
+
         html += `
         <div class="status-update-section" style="margin-top:16px">
             <h4>✏️ Edit Ticket Info</h4>
@@ -8182,7 +8222,28 @@ function openTicketDetail(key, forceModal = true) {
                 <input type="file" id="editPhotoCamera" accept="image/*" capture="environment" multiple style="display:none" onchange="handleEditPhotos(this)">
                 <div id="editPhotoPreview" style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap"></div>
             </div>
-            <button class="btn btn-primary btn-sm" onclick="saveTicketEdits('${key}')">Save Changes</button>
+            ${canCorrect ? `
+            <button type="button" class="correct-meta-toggle" id="correctMetaToggle" onclick="document.getElementById('correctMetaPanel').classList.toggle('open');this.querySelector('.cmt-arrow').textContent=document.getElementById('correctMetaPanel').classList.contains('open')?'▲':'▼'">
+                <span style="font-size:10px">⚙</span> Correct store / category &nbsp;<span class="cmt-arrow">▼</span>
+            </button>
+            <div class="correct-meta-panel" id="correctMetaPanel">
+                <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;font-style:italic">Use only to fix data entry errors — this changes the ticket record.</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                    <div>
+                        <label class="form-label" style="font-size:11px">Store Location</label>
+                        <select class="form-select" id="editStoreField" style="font-size:12px;padding:7px 10px">
+                            ${storeOptions}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label" style="font-size:11px">Category</label>
+                        <select class="form-select" id="editCategoryField" style="font-size:12px;padding:7px 10px">
+                            ${catOptions}
+                        </select>
+                    </div>
+                </div>
+            </div>` : ''}
+            <button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="saveTicketEdits('${key}')">Save Changes</button>
         </div>`;
     }
 
@@ -8289,9 +8350,31 @@ async function saveTicketEdits(key) {
             const existing = Array.isArray(t.photos) ? t.photos : [];
             updates.photos = [...existing, ...photoUrls];
         }
+
+        // Store / category corrections
+        const activityEntries = [];
+        const editStoreField = document.getElementById('editStoreField');
+        const editCategoryField = document.getElementById('editCategoryField');
+
+        if (editStoreField && t) {
+            const newStoreCode = editStoreField.value;
+            if (newStoreCode && newStoreCode !== t.storeCode) {
+                const newStore = stores.find(s => s.code === newStoreCode);
+                updates.storeCode = newStoreCode;
+                if (newStore) updates.storeName = newStore.name;
+                activityEntries.push({ action: 'edit', by: currentUser.name, byEmail: currentUser.email, note: `Corrected store: ${t.storeName || t.storeCode} → ${newStore ? newStore.name : newStoreCode}`, timestamp: Date.now() });
+            }
+        }
+        if (editCategoryField && t) {
+            const newCat = editCategoryField.value;
+            if (newCat && newCat !== t.category) {
+                updates.category = newCat;
+                activityEntries.push({ action: 'edit', by: currentUser.name, byEmail: currentUser.email, note: `Corrected category: ${catLabel(t.category)} → ${catLabel(newCat)}`, timestamp: Date.now() });
+            }
+        }
+
         await db.ref(`tickets/${key}`).update(updates);
         // Add activity log entry if note or description changed
-        const activityEntries = [];
         if (t && t.description !== newDesc) {
             activityEntries.push({ action: 'edit', by: currentUser.name, note: 'Updated description', timestamp: Date.now() });
         }
@@ -8722,6 +8805,12 @@ function canDeleteTickets(user = currentUser) {
     return role === 'Overwatch' || role === 'Admin' || role === 'Director';
 }
 
+function canCorrectTicketMeta(user = currentUser) {
+    if (isViewerKiosk(user)) return false;
+    const role = getEffectiveUserRole(user);
+    return role === 'Overwatch' || role === 'Admin' || role === 'Director' || role === 'Area Coach';
+}
+
 function getEffectiveUserRole(user = currentUser) {
     return normalizeRole(user?.role);
 }
@@ -9002,7 +9091,7 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v3.8</span>
+    <span>R&M Tracker v3.9</span>
 </div>
 
 </body>
