@@ -6121,8 +6121,10 @@ function renderInlineAssignControls(ticket, contextPrefix = 'inline') {
         `;
     }
 
-    // Assigned: show inline dispatch row with name + contacted question
-    if (status === 'assigned' && assigneeLabel) {
+    // Assigned + vendor: show inline dispatch row with contacted question.
+    // Tech-assigned tickets go straight to 'dispatched' on assignment, so
+    // this block only applies to external vendors who need to be contacted.
+    if (status === 'assigned' && assigneeLabel && ticket.assigneeType !== 'tech') {
         const dispName = getAssigneeDisplayName(ticket) || escHtml(assigneeLabel);
         return `
             <div class="inline-assigned-row" onclick="event.stopPropagation()">
@@ -6184,10 +6186,12 @@ async function markAssignedContactedYes(ticketKey) {
         if (!t) return;
         const oldStatus = normalizeTicketStatus(t.status);
         if (oldStatus !== 'assigned') return;
+        // Tech-assigned tickets go straight to dispatched on assignment — this path is for vendors only.
+        if (t.assigneeType === 'tech') return;
 
         const actSnap = await db.ref(`tickets/${ticketKey}/activity`).once('value');
         const activity = actSnap.val() || [];
-        activity.push({ action:'status', by: currentUser.name, byEmail: currentUser.email, oldStatus:'assigned', newStatus:'dispatched', note:'Technician contacted', timestamp: Date.now() });
+        activity.push({ action:'status', by: currentUser.name, byEmail: currentUser.email, oldStatus:'assigned', newStatus:'dispatched', note:'Vendor contacted', timestamp: Date.now() });
 
         await db.ref().update({
             [`tickets/${ticketKey}/status`]: 'dispatched',
@@ -6207,8 +6211,12 @@ async function markAssignedContactedNo(ticketKey) {
     if (!ticketKey) return;
     if (!canAssignTickets()) { toast('You do not have assignment permissions', 'error'); return; }
 
+    // Tech-assigned tickets go straight to dispatched — this path is for vendors only.
+    const tCheck = allTicketsData.find(x => x._key === ticketKey || x.id === ticketKey) || currentTickets.find(x => x._key === ticketKey || x.id === ticketKey);
+    if (tCheck && tCheck.assigneeType === 'tech') return;
+
     // Ask if they want the email draft
-    const t = allTicketsData.find(x => x._key === ticketKey || x.id === ticketKey) || currentTickets.find(x => x._key === ticketKey || x.id === ticketKey);
+    const t = tCheck;
     if (!t) return;
 
     const label = String(t.assignedTo || '').trim() || 'the technician';
@@ -6402,6 +6410,12 @@ async function quickAssignTicket(ticketKey, selectId) {
     const parsed = parseAssignmentValue(value);
     if (!parsed.assignedTo) { toast('Invalid assignee', 'error'); return; }
 
+    // In-house techs already have the app — skip 'assigned' and go straight to 'dispatched'.
+    // Vendors need an external contact step, so they stay at 'assigned' first.
+    const isTech = parsed.assigneeType === 'tech';
+    const newStatus = isTech ? 'dispatched' : 'assigned';
+    const activityNote = isTech ? 'Dispatched to technician' : 'Assigned from unassigned queue';
+
     try {
         const ticketSnap = await db.ref(`tickets/${ticketKey}`).once('value');
         const ticket = ticketSnap.val();
@@ -6416,13 +6430,13 @@ async function quickAssignTicket(ticketKey, selectId) {
             timestamp: Date.now(),
             assignedTo: parsed.assignedTo,
             assigneeType: parsed.assigneeType,
-            note: 'Assigned from unassigned queue'
+            note: activityNote
         });
 
         await db.ref().update({
             [`tickets/${ticketKey}/assignedTo`]: parsed.assignedTo,
             [`tickets/${ticketKey}/assigneeType`]: parsed.assigneeType,
-            [`tickets/${ticketKey}/status`]: 'assigned',
+            [`tickets/${ticketKey}/status`]: newStatus,
             [`tickets/${ticketKey}/updatedAt`]: firebase.database.ServerValue.TIMESTAMP,
             [`tickets/${ticketKey}/activity`]: activity
         });
@@ -6430,16 +6444,14 @@ async function quickAssignTicket(ticketKey, selectId) {
         syncAfterTicketMutation(ticketKey, {
             assignedTo: parsed.assignedTo,
             assigneeType: parsed.assigneeType,
-            status: 'assigned',
+            status: newStatus,
             updatedAt: Date.now(),
             activity
         });
 
-        toast('Ticket assigned', 'success');
-        // In-house techs (assigneeType 'tech') see the job on their own app —
-        // no need to remind the assigner to contact them separately.
-        // Only show the reminder for external vendors.
-        if (parsed.assigneeType === 'vendor') {
+        toast(isTech ? 'Dispatched to technician' : 'Ticket assigned', 'success');
+        // Only show the reminder prompt for external vendors — they don't have the app.
+        if (!isTech) {
             showAssignReminder({ ...ticket, _key: ticketKey, status: 'assigned' }, parsed.assignedTo);
         }
     } catch (err) {
@@ -9091,7 +9103,7 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v3.9</span>
+    <span>R&M Tracker v3.10</span>
 </div>
 
 </body>
