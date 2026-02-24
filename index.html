@@ -143,7 +143,7 @@
 /* Form elements */
 [data-theme="dark"] .form-input,
 [data-theme="dark"] .form-select,
-[data-theme="dark"] .form-textarea { background: var(--select-bg); color: var(--text); border-color: var(--select-border); color-scheme: dark; }
+[data-theme="dark"] .form-textarea { background: var(--select-bg); color: var(--text); -webkit-text-fill-color: var(--text); border-color: var(--select-border); color-scheme: dark; }
 [data-theme="dark"] .form-label { color: var(--text-mid); }
 [data-theme="dark"] ::placeholder { color: #64748b !important; }
 
@@ -1062,6 +1062,9 @@ body {
     resize: vertical;
     min-height: 100px;
     background: #fafaf8;
+    color: var(--text);
+    color-scheme: light;
+    -webkit-text-fill-color: var(--text);
     transition: border-color 0.2s;
     line-height: 1.5;
 }
@@ -2809,6 +2812,55 @@ body.exp-tech-tablet .ticket-filters { gap: 6px; }
     cursor: pointer;
 }
 .quick-chip:hover { border-color: var(--primary); color: var(--primary); }
+
+/* Mobile inline note row on active job card */
+.tjc-note-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    margin-top: 8px;
+    grid-column: 1 / -1;
+}
+.tjc-note-input {
+    flex: 1;
+    padding: 9px 12px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 14px;
+    font-family: inherit;
+    resize: none;
+    background: #fafaf8;
+    color: var(--text);
+    color-scheme: light;
+    -webkit-text-fill-color: var(--text);
+    line-height: 1.4;
+    min-height: 60px;
+}
+.tjc-note-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    background: #fff;
+}
+[data-theme="dark"] .tjc-note-input {
+    background: var(--select-bg);
+    color: var(--text);
+    -webkit-text-fill-color: var(--text);
+    border-color: var(--select-border);
+    color-scheme: dark;
+}
+.tjc-note-save {
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    padding: 9px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+    align-self: flex-end;
+}
 
 .btn-clock-in {
     background: #059669;
@@ -6666,7 +6718,7 @@ function renderTechDashboard() {
             actionBtn = `<button class="btn-clock-in" disabled title="Finish current job first">▶ Clock In</button>`;
         }
 
-        return `<div class="tech-job-card ${isActiveJob ? 'active-job' : ''}" onclick="techOpenTicket('${t._key}')">
+        return `<div class="tech-job-card ${isActiveJob ? 'active-job' : ''}" onclick="if(!this.classList.contains('active-job'))techOpenTicket('${t._key}')">
             <div class="tjc-main">
                 <div class="tjc-top">
                     <span class="tjc-store">${escHtml(shortStore)}</span>
@@ -6685,6 +6737,10 @@ function renderTechDashboard() {
                     <button class="quick-chip" onclick="event.stopPropagation();saveTechQuickChip('${t._key}','Waiting on parts')">Waiting parts</button>
                     <button class="quick-chip" onclick="event.stopPropagation();saveTechQuickChip('${t._key}','Need callback from store')">Need callback</button>
                 </div>
+                ${isActiveJob ? `<div class="tjc-note-row" onclick="event.stopPropagation()">
+                    <textarea class="tjc-note-input" id="mobileQuickNote_${t._key}" placeholder="Add a note…" rows="2"></textarea>
+                    <button class="tjc-note-save" onclick="event.stopPropagation();saveMobileQuickNote('${t._key}')">Save Note</button>
+                </div>` : ''}
             </div>
             <div class="tjc-actions">
                 ${actionBtn}
@@ -6699,6 +6755,26 @@ function renderTechDashboard() {
 async function saveTechQuickChip(key, note) {
     await db.ref('tickets/' + key + '/activity').push({ action: 'note', by: currentUser.name, byEmail: currentUser.email, timestamp: Date.now(), note });
     toast('Note added', 'success');
+}
+
+async function saveMobileQuickNote(key) {
+    const el = document.getElementById('mobileQuickNote_' + key);
+    if (!el) return;
+    const note = el.value.trim();
+    if (!note) { toast('Type a note first', 'error'); return; }
+    try {
+        await db.ref('tickets/' + key + '/activity').push({
+            action: 'note',
+            by: currentUser.name,
+            byEmail: currentUser.email,
+            timestamp: Date.now(),
+            note
+        });
+        el.value = '';
+        toast('Note saved ✓', 'success');
+    } catch (err) {
+        toast('Failed to save note: ' + err.message, 'error');
+    }
 }
 
 function filterTechJobs(filter, btn) {
@@ -9103,7 +9179,7 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v3.10</span>
+    <span>R&M Tracker v3.11</span>
 </div>
 
 </body>
