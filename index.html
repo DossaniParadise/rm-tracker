@@ -3800,7 +3800,7 @@ body.kiosk .action-card[onclick*="showNewIssueScreen"] { display:none !important
                 <div class="admin-section-body">
                     <p style="font-size:13px;color:var(--text-mid);margin-bottom:10px">
                         Paste one user per line. Format:<br>
-                        <code style="font-size:11px;background:var(--bg);padding:2px 6px;border-radius:4px;display:inline-block;margin-top:3px">Name, email@dossaniparadise.com, Role, StoreCode(s)</code>
+                        <code style="font-size:11px;background:var(--bg);padding:2px 6px;border-radius:4px;display:inline-block;margin-top:3px">Name, <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="67020a060e0b270308141406090e17061506030e14024904080a">[email&#160;protected]</a>, Role, StoreCode(s)</code>
                     </p>
                     <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">
                         Roles: Manager, Area Coach, Director, Admin, Technician, Overwatch<br>
@@ -3983,7 +3983,7 @@ body.kiosk .action-card[onclick*="showNewIssueScreen"] { display:none !important
 <div class="toast" id="toast"></div>
 
 <!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
@@ -6994,8 +6994,7 @@ function parseBatchLine(line) {
 }
 
 function previewBatchUsers() {
-    const lines = (document.getElementById('batchUserInput')?.value || '').split('
-').filter(l => l.trim());
+    const lines = (document.getElementById('batchUserInput')?.value || '').split('\n').filter(l => l.trim());
     const el = document.getElementById('batchPreview');
     if (!el) return;
     if (!lines.length) { el.innerHTML = ''; return; }
@@ -7027,8 +7026,7 @@ function previewBatchUsers() {
 }
 
 async function submitBatchUsers() {
-    const lines = (document.getElementById('batchUserInput')?.value || '').split('
-').filter(l => l.trim());
+    const lines = (document.getElementById('batchUserInput')?.value || '').split('\n').filter(l => l.trim());
     const users = lines.map(parseBatchLine).filter(Boolean);
     if (!users.length) { toast('No valid rows found. Check format.', 'error'); return; }
 
@@ -9489,9 +9487,4 @@ document.addEventListener('keydown', (e) => {
 
 
 <!-- Version Footer -->
-<div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v3.12</span>
-</div>
-
-</body>
-</html>
+<div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rg
