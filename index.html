@@ -3288,12 +3288,9 @@ body.kiosk .action-card[onclick*="showNewIssueScreen"] { display:none !important
         <div id="techDashboard" class="hidden">
             <div class="tech-dash-header">
                 <h2>🔧 My Jobs</h2>
-                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                    <div class="tech-dash-filters">
-                        <button class="filter-chip active" data-filter="active" onclick="filterTechJobs('active', this)">Active</button>
-                        <button class="filter-chip" data-filter="completed" onclick="filterTechJobs('completed', this)">Completed</button>
-                    </div>
-                    <button class="btn btn-primary btn-sm" onclick="showAddNewJobModal()" style="white-space:nowrap">➕ Add New Job</button>
+                <div class="tech-dash-filters">
+                    <button class="filter-chip active" data-filter="active" onclick="filterTechJobs('active', this)">Active</button>
+                    <button class="filter-chip" data-filter="completed" onclick="filterTechJobs('completed', this)">Completed</button>
                 </div>
             </div>
 
@@ -3792,31 +3789,6 @@ body.kiosk .action-card[onclick*="showNewIssueScreen"] { display:none !important
                 </div>
             </div>
 
-            <!-- Batch Add Users (for launch / onboarding) -->
-            <div class="admin-section">
-                <div class="admin-section-header">
-                    <h3>📋 Batch Add Users</h3>
-                </div>
-                <div class="admin-section-body">
-                    <p style="font-size:13px;color:var(--text-mid);margin-bottom:10px">
-                        Paste one user per line. Format:<br>
-                        <code style="font-size:11px;background:var(--bg);padding:2px 6px;border-radius:4px;display:inline-block;margin-top:3px">Name, <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="67020a060e0b270308141406090e17061506030e14024904080a">[email&#160;protected]</a>, Role, StoreCode(s)</code>
-                    </p>
-                    <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">
-                        Roles: Manager, Area Coach, Director, Admin, Technician, Overwatch<br>
-                        Store codes: single like <em>BK27083</em>, multiple separated by <strong>|</strong> like <em>BK27083|BK27082</em>, or <em>all</em> for full access.
-                    </p>
-                    <textarea class="form-textarea" id="batchUserInput"
-                        style="min-height:110px;font-size:12px;font-family:'JetBrains Mono',monospace"
-                        placeholder="John Smith, jsmith@dossaniparadise.com, Manager, BK27083&#10;Jane Doe, jdoe@dossaniparadise.com, Manager, BK27082|BK27083&#10;Bob Lee, blee@dossaniparadise.com, Area Coach, all"></textarea>
-                    <div id="batchPreview" style="margin-top:8px;font-size:12px"></div>
-                    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
-                        <button class="btn btn-secondary btn-sm" onclick="previewBatchUsers()">👁 Preview</button>
-                        <button class="btn btn-primary btn-sm" onclick="submitBatchUsers()" id="batchSubmitBtn">➕ Add All Users</button>
-                    </div>
-                </div>
-            </div>
-
             <!-- Database Cleanup -->
             <div class="admin-section">
                 <div class="admin-section-header">
@@ -3896,72 +3868,6 @@ body.kiosk .action-card[onclick*="showNewIssueScreen"] { display:none !important
 </div>
 
 <!-- Ticket Detail Modal -->
-<!-- Add New Job Modal — tech self-log proactive maintenance -->
-<div class="modal-overlay" id="addNewJobModal" onclick="if(event.target===this)closeAddNewJobModal()">
-    <div class="modal-content" style="max-width:520px">
-        <div class="modal-header">
-            <h3>➕ Log Completed Work</h3>
-            <button class="modal-close" onclick="closeAddNewJobModal()">✕</button>
-        </div>
-        <div class="modal-body" style="padding:20px;max-height:82vh;overflow-y:auto">
-            <p style="font-size:13px;color:var(--text-muted);margin-bottom:18px">
-                Log routine maintenance or work done proactively. It will appear as a <strong>Resolved</strong> ticket so managers and coaches have a complete service record.
-            </p>
-            <div class="form-group">
-                <label class="form-label">Store <span style="color:var(--danger)">*</span></label>
-                <select class="form-select" id="anjStore"><option value="">Select store…</option></select>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Category <span style="color:var(--danger)">*</span></label>
-                <div class="category-grid" id="anjCategoryGrid">
-                    <button class="category-btn" data-cat="plumbing" onclick="anjSelectCat(this)"><span class="cat-icon">🚿</span><span class="cat-label">Plumbing</span></button>
-                    <button class="category-btn" data-cat="equipment" onclick="anjSelectCat(this)"><span class="cat-icon">⚙️</span><span class="cat-label">Equipment</span></button>
-                    <button class="category-btn" data-cat="it" onclick="anjSelectCat(this)"><span class="cat-icon">💻</span><span class="cat-label">IT</span></button>
-                    <button class="category-btn" data-cat="structural" onclick="anjSelectCat(this)"><span class="cat-icon">🧱</span><span class="cat-label">Structural</span></button>
-                    <button class="category-btn" data-cat="safety" onclick="anjSelectCat(this)"><span class="cat-icon">🛡️</span><span class="cat-label">Safety</span></button>
-                    <button class="category-btn" data-cat="other" onclick="anjSelectCat(this)"><span class="cat-icon">📎</span><span class="cat-label">Other</span></button>
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Location</label>
-                <div class="priority-options" style="max-width:260px">
-                    <button class="priority-btn" data-loc="interior" onclick="anjSelectLoc(this)"><span class="priority-icon">🏠</span><span class="priority-label">Interior</span></button>
-                    <button class="priority-btn" data-loc="exterior" onclick="anjSelectLoc(this)"><span class="priority-icon">🏪</span><span class="priority-label">Exterior</span></button>
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Date Work Was Done <span style="color:var(--danger)">*</span></label>
-                <input type="date" class="form-input" id="anjDate" style="max-width:200px">
-            </div>
-            <div class="form-group">
-                <label class="form-label">Equipment / Part Serviced</label>
-                <input type="text" class="form-input" id="anjEquipment" placeholder="e.g. Ice machine, fryer, walk-in cooler, HVAC filter…">
-            </div>
-            <div class="form-group">
-                <label class="form-label">Work Done <span style="color:var(--danger)">*</span></label>
-                <textarea class="form-textarea" id="anjDescription"
-                    placeholder="What did you do? What was the condition before and after? Any follow-up needed?"
-                    style="min-height:88px"></textarea>
-            </div>
-            <div class="form-group">
-                <label class="form-label">📷 Photos <span style="font-weight:400;color:var(--text-muted);font-size:12px">— highly recommended, gives managers a visual record</span></label>
-                <div class="photo-btn-row">
-                    <button type="button" class="photo-btn" onclick="document.getElementById('anjPhotoGallery').click()"><span class="photo-btn-icon">🖼️</span> Upload</button>
-                    <button type="button" class="photo-btn" onclick="document.getElementById('anjPhotoCamera').click()"><span class="photo-btn-icon">📷</span> Take Photo</button>
-                </div>
-                <div class="photo-btn-hint">JPG or PNG · max 5MB each</div>
-                <input type="file" id="anjPhotoGallery" accept="image/*" multiple style="display:none" onchange="handleAnjPhotos(this)">
-                <input type="file" id="anjPhotoCamera" accept="image/*" capture="environment" multiple style="display:none" onchange="handleAnjPhotos(this)">
-                <div id="anjPhotoPreview" class="photo-preview-grid"></div>
-            </div>
-            <div style="display:flex;gap:10px;margin-top:4px">
-                <button class="btn btn-secondary" onclick="closeAddNewJobModal()">Cancel</button>
-                <button class="btn btn-primary" style="flex:1" onclick="submitNewJob()" id="anjSubmitBtn">✅ Submit Work Record</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <div class="modal-overlay" id="ticketModal" onclick="if(event.target===this)closeModal()">
     <div class="modal-content">
         <div class="modal-header">
@@ -3983,7 +3889,7 @@ body.kiosk .action-card[onclick*="showNewIssueScreen"] { display:none !important
 <div class="toast" id="toast"></div>
 
 <!-- Firebase SDK -->
-<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
@@ -4551,10 +4457,18 @@ function initCoachLanding() {
             }).join('');
     });
 
-    // Load open tickets inline — shared cache avoids redundant full fetches
+    // Load open tickets inline — no button click needed
     if (!ticketListEl) return;
-    getTicketsCached().then(allT => {
-        const scoped = allT.filter(t => codes.includes(t.storeCode) && isActiveStatus(t.status));
+    db.ref('tickets').once('value', snap => {
+        const scoped = [];
+        snap.forEach(child => {
+            const t = child.val();
+            if (!t) return;
+            const ticket = { _key: child.key, ...t };
+            if (!codes.includes(ticket.storeCode)) return;
+            if (!isActiveStatus(ticket.status)) return;
+            scoped.push(ticket);
+        });
 
         allTicketsData = scoped.slice();
 
@@ -4648,8 +4562,16 @@ function showCoachOpenTickets() {
     const myStores = getAccessibleStores();
     const codes = myStores.map(s => s.code);
 
-    getTicketsCached().then(allT => {
-        const scoped = allT.filter(t => codes.includes(t.storeCode) && isActiveStatus(t.status));
+    db.ref('tickets').once('value', snap => {
+        const scoped = [];
+        snap.forEach(child => {
+            const t = child.val();
+            if (!t) return;
+            const ticket = { _key: child.key, ...t };
+            if (!codes.includes(ticket.storeCode)) return;
+            if (!isActiveStatus(ticket.status)) return; // "open" tickets only
+            scoped.push(ticket);
+        });
 
         // Reuse the global list opener so ticket modal works everywhere
         allTicketsData = scoped.slice();
@@ -5179,21 +5101,35 @@ function loadMapOverview(type) {
 }
 
 function fetchTicketCounts(codes, callback) {
-    getTicketsCached().then(allT => {
+    // Listen once for all tickets and count per store
+    // Priority weighting: emergency = auto red (score 3), urgent = 2, routine = 1
+    db.ref('tickets').once('value', snap => {
         allTicketCounts = {};
+        const scopedTickets = [];
         codes.forEach(c => allTicketCounts[c] = { open: 0, unassigned: 0, total: 0, score: 0, hasEmergency: false });
-        allT.forEach(t => {
-            if (!codes.includes(t.storeCode)) return;
-            if (!allTicketCounts[t.storeCode]) allTicketCounts[t.storeCode] = { open: 0, unassigned: 0, total: 0, score: 0, hasEmergency: false };
-            allTicketCounts[t.storeCode].total++;
-            if (isActiveStatus(t.status)) {
-                allTicketCounts[t.storeCode].open++;
-                if (normalizeTicketStatus(t.status) === 'unassigned') allTicketCounts[t.storeCode].unassigned++;
-                if (t.priority === 'emergency') { allTicketCounts[t.storeCode].score += 3; allTicketCounts[t.storeCode].hasEmergency = true; }
-                else if (t.priority === 'urgent') allTicketCounts[t.storeCode].score += 2;
-                else allTicketCounts[t.storeCode].score += 1;
+        snap.forEach(child => {
+            const t = { _key: child.key, ...child.val() };
+            if (codes.includes(t.storeCode)) {
+                scopedTickets.push(t);
+                if (!allTicketCounts[t.storeCode]) allTicketCounts[t.storeCode] = { open: 0, unassigned: 0, total: 0, score: 0, hasEmergency: false };
+                allTicketCounts[t.storeCode].total++;
+                if (isActiveStatus(t.status)) {
+                    allTicketCounts[t.storeCode].open++;
+                    if (normalizeTicketStatus(t.status) === 'unassigned') {
+                        allTicketCounts[t.storeCode].unassigned++;
+                    }
+                    if (t.priority === 'emergency') {
+                        allTicketCounts[t.storeCode].score += 3;
+                        allTicketCounts[t.storeCode].hasEmergency = true;
+                    } else if (t.priority === 'urgent') {
+                        allTicketCounts[t.storeCode].score += 2;
+                    } else {
+                        allTicketCounts[t.storeCode].score += 1;
+                    }
+                }
             }
         });
+
         callback();
     });
 }
@@ -6624,12 +6560,13 @@ function initTechDashboard() {
 }
 
 function loadTechJobs() {
-    getTicketsCached().then(allTickets => {
-        const myEmail = String(currentUser.email || '').trim().toLowerCase();
-        const assignedJobs = allTickets.filter(t =>
-            String(t.assignedTo || '').trim().toLowerCase() === myEmail
-        );
+    db.ref('tickets').once('value', snap => {
+        const allTickets = [];
+        snap.forEach(child => { allTickets.push({ _key: child.key, ...child.val() }); });
 
+        const assignedJobs = allTickets.filter(t => String(t.assignedTo || '').trim().toLowerCase() === String(currentUser.email || '').trim().toLowerCase());
+
+        // Optional browse context for unassigned work only (keeps assigned workload unfiltered by zone/store lists).
         let browseJobs = [];
         if (window.techBrowseUnassigned === true) {
             const techStores = currentUser.stores === 'all' ? stores.map(s => s.code) :
@@ -6684,11 +6621,6 @@ function renderTechDetailPane(key) {
             <span class="ticket-status-badge status-${getStatusColorClass(t.status)}" style="font-size:11px">${getStatusLabel(t.status)}</span>
         </div>
         <div style="font-size:13px;line-height:1.4;margin-bottom:8px">${catIcons[t.category] || '📎'} ${escHtml(t.description || '')}</div>
-        ${Array.isArray(t.photos) && t.photos.length ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
-            ${t.photos.map((url, i) => `<img src="${url}" alt="Photo ${i+1}"
-                style="height:72px;width:72px;object-fit:cover;border-radius:8px;border:2px solid var(--border);cursor:pointer"
-                onclick="openLightbox('${url}')" title="Tap to enlarge">`).join('')}
-        </div>` : ''}
         <div class="tjc-fast-actions" style="margin-bottom:10px">
             ${notes.map(n => `<button class="quick-chip" onclick="prefillTechNote('${escHtml(n)}')">${escHtml(n)}</button>`).join('')}
         </div>
@@ -6843,225 +6775,6 @@ async function saveMobileQuickNote(key) {
     } catch (err) {
         toast('Failed to save note: ' + err.message, 'error');
     }
-}
-
-// ============================================================
-// ADD NEW JOB — technician self-logs proactive maintenance
-// ============================================================
-let _anjPhotos = [];
-let _anjCategory = null;
-let _anjLocation = null;
-
-function showAddNewJobModal() {
-    const sel = document.getElementById('anjStore');
-    if (sel) {
-        const accessible = getAccessibleStores();
-        sel.innerHTML = '<option value="">Select store…</option>' +
-            accessible.map(s => `<option value="${s.code}">${escHtml(s.name)}</option>`).join('');
-    }
-    const dateEl = document.getElementById('anjDate');
-    if (dateEl) dateEl.value = new Date().toISOString().slice(0, 10);
-    _anjPhotos = [];
-    _anjCategory = null;
-    _anjLocation = null;
-    document.getElementById('anjCategoryGrid')?.querySelectorAll('.category-btn').forEach(b => b.classList.remove('selected'));
-    document.querySelectorAll('#addNewJobModal .priority-btn[data-loc]').forEach(b => b.classList.remove('selected'));
-    const d = document.getElementById('anjDescription'); if (d) d.value = '';
-    const e = document.getElementById('anjEquipment'); if (e) e.value = '';
-    document.getElementById('anjPhotoPreview').innerHTML = '';
-    const btn = document.getElementById('anjSubmitBtn');
-    if (btn) { btn.innerHTML = '✅ Submit Work Record'; btn.disabled = false; }
-    document.getElementById('addNewJobModal').classList.add('open');
-}
-
-function closeAddNewJobModal() {
-    document.getElementById('addNewJobModal').classList.remove('open');
-}
-
-function anjSelectCat(el) {
-    el.closest('#anjCategoryGrid').querySelectorAll('.category-btn').forEach(b => b.classList.remove('selected'));
-    el.classList.add('selected');
-    _anjCategory = el.dataset.cat;
-}
-
-function anjSelectLoc(el) {
-    document.querySelectorAll('#addNewJobModal .priority-btn[data-loc]').forEach(b => b.classList.remove('selected'));
-    el.classList.add('selected');
-    _anjLocation = el.dataset.loc;
-}
-
-function handleAnjPhotos(input) {
-    const files = Array.from(input.files).slice(0, 5 - _anjPhotos.length);
-    files.forEach(file => {
-        if (file.size > 5 * 1024 * 1024) { toast('File too large (max 5MB)', 'error'); return; }
-        _anjPhotos.push({ file, previewUrl: URL.createObjectURL(file) });
-    });
-    renderAnjPhotoPreview();
-    input.value = '';
-}
-
-function renderAnjPhotoPreview() {
-    const grid = document.getElementById('anjPhotoPreview');
-    if (!grid) return;
-    grid.innerHTML = _anjPhotos.map((p, i) => `
-        <div style="position:relative;display:inline-block">
-            <img src="${p.previewUrl}" style="height:80px;width:80px;object-fit:cover;border-radius:8px;border:1px solid var(--border)">
-            <button onclick="_anjPhotos.splice(${i},1);renderAnjPhotoPreview()"
-                style="position:absolute;top:-6px;right:-6px;background:#dc2626;color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:11px;cursor:pointer;padding:0;line-height:20px;text-align:center">✕</button>
-        </div>`).join('');
-}
-
-async function submitNewJob() {
-    const storeCode = document.getElementById('anjStore')?.value;
-    const desc = (document.getElementById('anjDescription')?.value || '').trim();
-    const dateVal = document.getElementById('anjDate')?.value;
-    const equipment = (document.getElementById('anjEquipment')?.value || '').trim();
-
-    if (!storeCode) { toast('Select a store', 'error'); return; }
-    if (!_anjCategory) { toast('Select a category', 'error'); return; }
-    if (!dateVal) { toast('Enter the date the work was done', 'error'); return; }
-    if (!desc) { toast('Describe what you did', 'error'); return; }
-    if (_anjPhotos.length === 0) {
-        if (!confirm('No photo attached. A photo gives managers a visual record of the work. Submit anyway?')) return;
-    }
-
-    const btn = document.getElementById('anjSubmitBtn');
-    if (btn) { btn.innerHTML = '<span class="spinner"></span> Submitting…'; btn.disabled = true; }
-
-    try {
-        const store = stores.find(s => s.code === storeCode);
-        const photoUrls = [];
-        for (const p of _anjPhotos) photoUrls.push(await fileToBase64(p.file));
-
-        const catPrefix = { plumbing:'PLM', equipment:'EQP', it:'IT', structural:'STR', safety:'SAF', other:'GEN' }[_anjCategory] || 'GEN';
-        const counterSnap = await db.ref('counters/' + storeCode + '/' + catPrefix).transaction(v => (v || 0) + 1);
-        const ticketId = storeCode + '-' + catPrefix + '-' + String(counterSnap.snapshot.val()).padStart(4, '0');
-
-        const now = Date.now();
-        const ticket = {
-            id: ticketId,
-            storeCode,
-            storeName: store?.name || storeCode,
-            brand: store?.brand || '',
-            category: _anjCategory,
-            location: _anjLocation || 'interior',
-            priority: 'routine',
-            description: desc,
-            equipment: equipment || '',
-            photos: photoUrls,
-            status: 'resolved',
-            techSelfLog: true,
-            assignedTo: currentUser.email,
-            assigneeType: 'tech',
-            workDate: new Date(dateVal + 'T12:00:00').getTime(),
-            contactName: currentUser.name,
-            contactPhone: '',
-            createdBy: currentUser.email,
-            createdByName: currentUser.name,
-            createdAt: firebase.database.ServerValue.TIMESTAMP,
-            updatedAt: firebase.database.ServerValue.TIMESTAMP,
-            activity: [
-                { action: 'created', by: currentUser.name, byEmail: currentUser.email,
-                  timestamp: now, note: 'Proactive maintenance logged by technician' + (equipment ? ' — ' + equipment : '') },
-                { action: 'status_change', by: currentUser.name, byEmail: currentUser.email,
-                  timestamp: now + 1, oldStatus: 'unassigned', newStatus: 'resolved',
-                  note: 'Work completed on ' + dateVal }
-            ]
-        };
-
-        await db.ref('tickets/' + ticketId).set(ticket);
-        invalidateTicketCache();
-        closeAddNewJobModal();
-        toast('Work record submitted ✓', 'success');
-        loadTechJobs();
-    } catch (err) {
-        console.error('Add new job error:', err);
-        toast('Failed to submit: ' + err.message, 'error');
-        if (btn) { btn.innerHTML = '✅ Submit Work Record'; btn.disabled = false; }
-    }
-}
-
-// ============================================================
-// BATCH ADD USERS
-// ============================================================
-function parseBatchLine(line) {
-    const parts = line.split(',').map(s => s.trim());
-    if (parts.length < 3) return null;
-    const [name, email, role, ...rest] = parts;
-    const storeRaw = rest.join(',').trim();
-    if (!name || !email || !email.includes('@') || !role) return null;
-    return { name, email: email.toLowerCase(), role, storeRaw: storeRaw || 'all' };
-}
-
-function previewBatchUsers() {
-    const lines = (document.getElementById('batchUserInput')?.value || '').split('\n').filter(l => l.trim());
-    const el = document.getElementById('batchPreview');
-    if (!el) return;
-    if (!lines.length) { el.innerHTML = ''; return; }
-    let valid = 0, invalid = 0;
-    let html = '<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-top:4px">';
-    lines.forEach(line => {
-        const u = parseBatchLine(line);
-        if (u) {
-            valid++;
-            html += `<div style="padding:6px 10px;border-bottom:1px solid var(--border-light);display:flex;gap:8px;align-items:center;font-size:12px;flex-wrap:wrap">
-                <span style="color:#059669">✓</span>
-                <span style="font-weight:600">${escHtml(u.name)}</span>
-                <span style="color:var(--text-muted)">${escHtml(u.email)}</span>
-                <span style="background:var(--primary-light);color:var(--primary);padding:1px 7px;border-radius:10px;font-size:11px">${escHtml(u.role)}</span>
-                <span style="color:var(--text-muted);font-size:11px">${escHtml(u.storeRaw)}</span>
-            </div>`;
-        } else {
-            invalid++;
-            html += `<div style="padding:6px 10px;border-bottom:1px solid var(--border-light);display:flex;gap:8px;align-items:center;font-size:12px">
-                <span style="color:#dc2626">✗</span>
-                <span style="color:#dc2626">${escHtml(line.substring(0, 70))}</span>
-                <span style="color:var(--text-muted);font-size:11px">(invalid format)</span>
-            </div>`;
-        }
-    });
-    html += '</div>';
-    html += `<div style="margin-top:6px;font-size:12px;color:var(--text-mid)">${valid} valid · ${invalid} invalid</div>`;
-    el.innerHTML = html;
-}
-
-async function submitBatchUsers() {
-    const lines = (document.getElementById('batchUserInput')?.value || '').split('\n').filter(l => l.trim());
-    const users = lines.map(parseBatchLine).filter(Boolean);
-    if (!users.length) { toast('No valid rows found. Check format.', 'error'); return; }
-
-    const btn = document.getElementById('batchSubmitBtn');
-    if (btn) { btn.innerHTML = '<span class="spinner"></span> Adding…'; btn.disabled = true; }
-
-    let added = 0, failed = 0;
-    for (const u of users) {
-        try {
-            const emailKey = u.email.replace(/\./g, ',');
-            let storesVal;
-            if (u.storeRaw === 'all' || u.role === 'Admin' || u.role === 'Overwatch') {
-                storesVal = 'all';
-            } else {
-                const parts = u.storeRaw.split('|').map(s => s.trim()).filter(Boolean);
-                storesVal = parts.length === 1 ? parts[0] : parts;
-            }
-            await db.ref('preApproved/' + emailKey).set({
-                name: u.name, email: u.email, role: u.role, title: u.role,
-                stores: storesVal, status: 'active',
-                addedAt: firebase.database.ServerValue.TIMESTAMP,
-                addedBy: currentUser.email
-            });
-            added++;
-        } catch (e) {
-            console.error('Batch add failed:', u.email, e);
-            failed++;
-        }
-    }
-
-    if (btn) { btn.innerHTML = '➕ Add All Users'; btn.disabled = false; }
-    document.getElementById('batchUserInput').value = '';
-    document.getElementById('batchPreview').innerHTML = '';
-    toast(added + ' user(s) pre-approved' + (failed ? ', ' + failed + ' failed' : '') + '. They can sign in now.',
-        added > 0 ? 'success' : 'error');
 }
 
 function filterTechJobs(filter, btn) {
@@ -7588,24 +7301,6 @@ document.addEventListener('click', (e) => {
 // ============================================================
 let allTicketsData = [];
 let allTicketsDrilldown = null;
-
-// Global ticket cache — all views share one fetch, max 90s stale
-// syncAfterTicketMutation patches it in-place so local changes never miss
-let _ticketCache = null;
-let _ticketCacheTs = 0;
-const _TICKET_CACHE_TTL = 90000;
-
-async function getTicketsCached() {
-    if (_ticketCache && (Date.now() - _ticketCacheTs < _TICKET_CACHE_TTL)) return _ticketCache;
-    const snap = await db.ref('tickets').once('value');
-    const arr = [];
-    snap.forEach(child => arr.push({ _key: child.key, ...child.val() }));
-    _ticketCache = arr;
-    _ticketCacheTs = Date.now();
-    return arr;
-}
-
-function invalidateTicketCache() { _ticketCache = null; _ticketCacheTs = 0; }
 let allTicketsListenerRef = null;  // live Firebase listener for allTicketsScreen
 let globalPollInterval = null;    // 5-min cross-view polling
 
@@ -8945,10 +8640,6 @@ async function updateTicketStatus(key, status, el) {
 // Keep ticket collections and active views in sync after updates
 // ------------------------------------------------------------
 function syncAfterTicketMutation(ticketKey, patch) {
-    if (_ticketCache) {
-        const ci = _ticketCache.findIndex(x => x._key === ticketKey || x.id === ticketKey);
-        if (ci >= 0) _ticketCache[ci] = { ..._ticketCache[ci], ...patch };
-    }
     const applyPatch = (arr) => {
         const idx = arr.findIndex(x => x._key === ticketKey || x.id === ticketKey);
         if (idx >= 0) arr[idx] = { ...arr[idx], ...patch };
@@ -9487,4 +9178,9 @@ document.addEventListener('keydown', (e) => {
 
 
 <!-- Version Footer -->
-<div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rg
+<div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
+    <span>R&M Tracker v3.11</span>
+</div>
+
+</body>
+</html>
