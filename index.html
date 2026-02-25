@@ -3185,41 +3185,48 @@ body.kiosk .action-card[onclick*="showNewIssueScreen"] { display:none !important
         <h1 class="login-title">Repair &amp; Maintenance Tracker</h1>
         <p class="login-subtitle">Dossani Paradise Management</p>
 
-        <!-- Login Form -->
+        <!-- Step 1: Email entry -->
         <div id="loginForm">
             <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 14px;">
-                Enter your email to receive a secure sign-in link.
+                Enter your email to receive a one-time sign-in code.
             </p>
             <div class="form-group">
-                <input
-                    type="email"
-                    id="loginEmail"
-                    class="form-input"
-                    placeholder="you@dossaniparadise.com"
-                    autocomplete="email"
-                >
+                <input type="email" id="loginEmail" class="form-input"
+                    placeholder="you@dossaniparadise.com" autocomplete="email">
             </div>
-            <button class="btn btn-primary btn-full" onclick="sendSignInLink()" id="sendLinkBtn">
-                Send Sign-In Link
+            <button class="btn btn-primary btn-full" onclick="sendOtpCode()" id="sendLinkBtn">
+                Send Code
             </button>
         </div>
 
-        <!-- Email Sent Confirmation -->
-        <div id="emailSentMessage" class="hidden" style="text-align: center;">
-            <div style="font-size: 44px; margin-bottom: 12px;">📧</div>
-            <h3 style="margin-bottom: 6px; font-size: 18px;">Check your inbox</h3>
-            <p style="color: var(--text-muted); margin-bottom: 14px; font-size: 14px;">
-                We sent a sign-in link to<br>
-                <strong id="sentToEmail" style="color: var(--text);"></strong>
-            </p>
-            <div style="background: #fef9ee; border: 1px solid #fde68a; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px;">
-                <p style="color: var(--accent); font-size: 13px;">
-                    ⚠️ Check your <strong>spam/junk folder</strong> if you don't see it
+        <!-- Step 2: OTP code entry -->
+        <div id="otpForm" class="hidden">
+            <div style="text-align:center;margin-bottom:16px">
+                <div style="font-size:40px;margin-bottom:8px">🔑</div>
+                <h3 style="font-size:18px;margin-bottom:4px">Enter your code</h3>
+                <p style="color:var(--text-muted);font-size:13px">
+                    Sent a 6-digit code to<br>
+                    <strong id="otpSentTo" style="color:var(--text)"></strong>
                 </p>
             </div>
-            <button class="btn btn-ghost btn-full" onclick="resendEmail()">
-                Send Another Link
+            <div class="form-group">
+                <input type="text" id="otpInput" class="form-input"
+                    inputmode="numeric" pattern="[0-9]*" maxlength="6"
+                    placeholder="6-digit code"
+                    style="text-align:center;font-size:28px;font-weight:700;letter-spacing:10px;padding:12px 8px"
+                    oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,6)"
+                    onkeydown="if(event.key==='Enter')verifyOtpCode()">
+            </div>
+            <button class="btn btn-primary btn-full" onclick="verifyOtpCode()" id="verifyOtpBtn">
+                Sign In
             </button>
+            <div style="text-align:center;margin-top:10px">
+                <button class="btn btn-ghost" onclick="resendOtp()" style="font-size:13px">Resend code</button>
+                <button class="btn btn-ghost" onclick="resetToEmailStep()" style="font-size:13px">← Use different email</button>
+            </div>
+            <div style="background:#fef9ee;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;margin-top:12px">
+                <p style="color:var(--accent);font-size:12px">⚠️ Check spam/junk if you don't see it. Code expires in 10 min.</p>
+            </div>
         </div>
 
         <div id="loginError" class="error-message hidden"></div>
@@ -3288,9 +3295,12 @@ body.kiosk .action-card[onclick*="showNewIssueScreen"] { display:none !important
         <div id="techDashboard" class="hidden">
             <div class="tech-dash-header">
                 <h2>🔧 My Jobs</h2>
-                <div class="tech-dash-filters">
-                    <button class="filter-chip active" data-filter="active" onclick="filterTechJobs('active', this)">Active</button>
-                    <button class="filter-chip" data-filter="completed" onclick="filterTechJobs('completed', this)">Completed</button>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                    <div class="tech-dash-filters">
+                        <button class="filter-chip active" data-filter="active" onclick="filterTechJobs('active', this)">Active</button>
+                        <button class="filter-chip" data-filter="completed" onclick="filterTechJobs('completed', this)">Completed</button>
+                    </div>
+                    <button class="btn btn-primary btn-sm" onclick="showAddNewJobModal()" style="white-space:nowrap">➕ Add New Job</button>
                 </div>
             </div>
 
@@ -3789,6 +3799,31 @@ body.kiosk .action-card[onclick*="showNewIssueScreen"] { display:none !important
                 </div>
             </div>
 
+            <!-- Batch Add Users (for launch/onboarding) -->
+            <div class="admin-section">
+                <div class="admin-section-header">
+                    <h3>📋 Batch Add Users</h3>
+                </div>
+                <div class="admin-section-body">
+                    <p style="font-size:13px;color:var(--text-mid);margin-bottom:10px">
+                        Paste one user per line. Format:<br>
+                        <code style="font-size:11px;background:var(--bg);padding:2px 6px;border-radius:4px;display:inline-block;margin-top:3px">Name, email@dossaniparadise.com, Role, StoreCode(s)</code>
+                    </p>
+                    <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">
+                        Roles: Manager, Area Coach, Director, Admin, Technician, Overwatch<br>
+                        Store codes: single code like <em>BK27083</em>, multiple separated by | like <em>BK27083|BK27082</em>, or <em>all</em> for full access.
+                    </p>
+                    <textarea class="form-textarea" id="batchUserInput"
+                        style="min-height:110px;font-size:12px;font-family:'JetBrains Mono',monospace"
+                        placeholder="John Smith, jsmith@dossaniparadise.com, Manager, BK27083&#10;Jane Doe, jdoe@dossaniparadise.com, Manager, BK27082|BK27083&#10;Bob Lee, blee@dossaniparadise.com, Area Coach, all"></textarea>
+                    <div id="batchPreview" style="margin-top:8px;font-size:12px"></div>
+                    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+                        <button class="btn btn-secondary btn-sm" onclick="previewBatchUsers()">👁 Preview</button>
+                        <button class="btn btn-primary btn-sm" onclick="submitBatchUsers()" id="batchSubmitBtn">➕ Add All Users</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Database Cleanup -->
             <div class="admin-section">
                 <div class="admin-section-header">
@@ -3868,6 +3903,102 @@ body.kiosk .action-card[onclick*="showNewIssueScreen"] { display:none !important
 </div>
 
 <!-- Ticket Detail Modal -->
+<!-- ============================================================
+     ADD NEW JOB MODAL — tech self-log proactive maintenance
+     ============================================================ -->
+<div class="modal-overlay" id="addNewJobModal" onclick="if(event.target===this)closeAddNewJobModal()">
+    <div class="modal-content" style="max-width:520px">
+        <div class="modal-header">
+            <h3>➕ Log Completed Work</h3>
+            <button class="modal-close" onclick="closeAddNewJobModal()">✕</button>
+        </div>
+        <div class="modal-body" style="padding:20px;max-height:82vh;overflow-y:auto">
+            <p style="font-size:13px;color:var(--text-muted);margin-bottom:18px">
+                Log routine maintenance or work done proactively. It will appear as a <strong>Resolved</strong> ticket so managers and coaches have a complete service record.
+            </p>
+
+            <!-- Store -->
+            <div class="form-group">
+                <label class="form-label">Store <span style="color:var(--danger)">*</span></label>
+                <select class="form-select" id="anjStore">
+                    <option value="">Select store…</option>
+                </select>
+            </div>
+
+            <!-- Category -->
+            <div class="form-group">
+                <label class="form-label">Category <span style="color:var(--danger)">*</span></label>
+                <div class="category-grid" id="anjCategoryGrid">
+                    <button class="category-btn" data-cat="plumbing" onclick="anjSelectCat(this)"><span class="cat-icon">🚿</span><span class="cat-label">Plumbing</span></button>
+                    <button class="category-btn" data-cat="equipment" onclick="anjSelectCat(this)"><span class="cat-icon">⚙️</span><span class="cat-label">Equipment</span></button>
+                    <button class="category-btn" data-cat="it" onclick="anjSelectCat(this)"><span class="cat-icon">💻</span><span class="cat-label">IT</span></button>
+                    <button class="category-btn" data-cat="structural" onclick="anjSelectCat(this)"><span class="cat-icon">🧱</span><span class="cat-label">Structural</span></button>
+                    <button class="category-btn" data-cat="safety" onclick="anjSelectCat(this)"><span class="cat-icon">🛡️</span><span class="cat-label">Safety</span></button>
+                    <button class="category-btn" data-cat="other" onclick="anjSelectCat(this)"><span class="cat-icon">📎</span><span class="cat-label">Other</span></button>
+                </div>
+            </div>
+
+            <!-- Location Interior/Exterior -->
+            <div class="form-group">
+                <label class="form-label">Location</label>
+                <div class="priority-options" style="max-width:260px">
+                    <button class="priority-btn" data-loc="interior" onclick="anjSelectLoc(this)"><span class="priority-icon">🏠</span><span class="priority-label">Interior</span></button>
+                    <button class="priority-btn" data-loc="exterior" onclick="anjSelectLoc(this)"><span class="priority-icon">🏪</span><span class="priority-label">Exterior</span></button>
+                </div>
+            </div>
+
+            <!-- Date work was done -->
+            <div class="form-group">
+                <label class="form-label">Date Work Was Done <span style="color:var(--danger)">*</span></label>
+                <input type="date" class="form-input" id="anjDate" style="max-width:200px">
+            </div>
+
+            <!-- Equipment / Part name -->
+            <div class="form-group">
+                <label class="form-label">Equipment / Part Serviced</label>
+                <input type="text" class="form-input" id="anjEquipment"
+                    placeholder="e.g. Ice machine, fryer, walk-in cooler, HVAC filter…">
+            </div>
+
+            <!-- Description -->
+            <div class="form-group">
+                <label class="form-label">Work Done <span style="color:var(--danger)">*</span></label>
+                <textarea class="form-textarea" id="anjDescription"
+                    placeholder="What did you do? What was the condition before and after? Any follow-up needed?"
+                    style="min-height:88px"></textarea>
+            </div>
+
+            <!-- Photos — highly suggested -->
+            <div class="form-group">
+                <label class="form-label">
+                    📷 Photos
+                    <span style="font-weight:400;color:var(--text-muted);font-size:12px"> — highly recommended, gives managers a visual record</span>
+                </label>
+                <div class="photo-btn-row">
+                    <button type="button" class="photo-btn" onclick="document.getElementById('anjPhotoGallery').click()">
+                        <span class="photo-btn-icon">🖼️</span> Upload
+                    </button>
+                    <button type="button" class="photo-btn" onclick="document.getElementById('anjPhotoCamera').click()">
+                        <span class="photo-btn-icon">📷</span> Take Photo
+                    </button>
+                </div>
+                <div class="photo-btn-hint">JPG or PNG · max 5MB each</div>
+                <input type="file" id="anjPhotoGallery" accept="image/*" multiple style="display:none" onchange="handleAnjPhotos(this)">
+                <input type="file" id="anjPhotoCamera" accept="image/*" capture="environment" multiple style="display:none" onchange="handleAnjPhotos(this)">
+                <div id="anjPhotoPreview" class="photo-preview-grid"></div>
+            </div>
+
+            <!-- Actions -->
+            <div style="display:flex;gap:10px;margin-top:4px">
+                <button class="btn btn-secondary" onclick="closeAddNewJobModal()">Cancel</button>
+                <button class="btn btn-primary" style="flex:1" onclick="submitNewJob()" id="anjSubmitBtn">
+                    ✅ Submit Work Record
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal-overlay" id="ticketModal" onclick="if(event.target===this)closeModal()">
     <div class="modal-content">
         <div class="modal-header">
@@ -4132,29 +4263,45 @@ function syncStatusFilterUIFromConfig() {
 
 syncStatusFilterUIFromConfig();
 
+// ============================================================
+// AUTH — OTP (6-digit code) sign-in
+// Flow: user enters email → 6-digit code stored in Firebase
+//       signinCodes/{emailKey} with 10-min expiry → Firebase
+//       email-link used as transport (contains code in subject)
+//       → user enters code → verified → anon sign-in + profile loaded
+// ============================================================
+let _otpPendingEmail = '';
+let _otpSignInInProgress = false;
+
 auth.onAuthStateChanged(async (user) => {
-    if (user) {
-        console.log('Signed in:', user.email);
-        await loadUserData(user);
-    } else if (auth.isSignInWithEmailLink(window.location.href)) {
-        handleEmailLinkSignIn();
+    if (_otpSignInInProgress) return; // OTP verify in progress, ignore
+    if (user && !user.isAnonymous) {
+        // Legacy email-link session that was already authenticated
+        await loadUserDataByFirebaseUser(user);
+    } else if (user && user.isAnonymous) {
+        // Anon session — check if we have an OTP-verified identity
+        const verifiedEmail = window.localStorage.getItem('otpVerifiedEmail');
+        if (verifiedEmail) {
+            await loadUserDataByEmail(verifiedEmail, user.uid);
+        } else if (window.localStorage.getItem('kioskMode') === '1') {
+            activateKioskMode();
+        } else {
+            auth.signOut();
+            showLoginScreen();
+        }
     } else if (window.localStorage.getItem('kioskMode') === '1') {
-        // Restore kiosk session without Firebase auth — persists across refreshes
         activateKioskMode();
     } else {
         showLoginScreen();
     }
 });
 
-async function sendSignInLink() {
+async function sendOtpCode() {
     const email = document.getElementById('loginEmail').value.trim().toLowerCase();
     if (!email) { showError('Enter your email address.'); return; }
 
-    // KIOSK BYPASS — no email sent, no Firebase auth required, persists via localStorage
-    if (email === 'viewer@dossaniparadise.com') {
-        activateKioskMode();
-        return;
-    }
+    // KIOSK BYPASS
+    if (email === 'viewer@dossaniparadise.com') { activateKioskMode(); return; }
 
     if (!email.endsWith('@dossaniparadise.com') && email !== 'scroadmart@att.net') {
         showError('Only @dossaniparadise.com emails are allowed.');
@@ -4166,18 +4313,98 @@ async function sendSignInLink() {
     btn.disabled = true;
 
     try {
-        await auth.sendSignInLinkToEmail(email, { url: window.location.href, handleCodeInApp: true });
-        window.localStorage.setItem('emailForSignIn', email);
+        // Generate 6-digit code and store with 10-min expiry in Firebase
+        const code = String(Math.floor(100000 + Math.random() * 900000));
+        const emailKey = email.replace(/\./g, ',');
+        const expiry = Date.now() + 10 * 60 * 1000;
+        await db.ref('signinCodes/' + emailKey).set({ code, expiry, email, createdAt: Date.now() });
+
+        // Use Firebase's email-link flow purely as email transport.
+        // The email template subject/body will contain the sign-in URL;
+        // we piggyback the code in the URL so the Firebase email mentions it.
+        // Users enter the code manually — no clicking links needed.
+        await auth.sendSignInLinkToEmail(email, {
+            url: window.location.href + '?otpHint=' + code,
+            handleCodeInApp: true
+        });
+
+        _otpPendingEmail = email;
         document.getElementById('loginForm').classList.add('hidden');
-        document.getElementById('emailSentMessage').classList.remove('hidden');
-        document.getElementById('sentToEmail').textContent = email;
+        document.getElementById('otpForm').classList.remove('hidden');
+        document.getElementById('otpSentTo').textContent = email;
+        document.getElementById('otpInput').value = '';
+        setTimeout(() => document.getElementById('otpInput')?.focus(), 200);
+        showError('');
+        toast('Code sent! Check your email (including spam).', 'success');
     } catch (err) {
-        console.error('Send link error:', err);
-        showError(err.code === 'auth/invalid-email' ? 'Invalid email.' : 'Failed to send. Try again.');
+        console.error('OTP send error:', err);
+        showError(err.code === 'auth/invalid-email' ? 'Invalid email address.' : 'Failed to send. Try again.');
     } finally {
-        btn.innerHTML = 'Send Sign-In Link';
+        btn.innerHTML = 'Send Code';
         btn.disabled = false;
     }
+}
+
+// Keep old name as alias so any lingering references still work
+const sendSignInLink = sendOtpCode;
+
+async function verifyOtpCode() {
+    const inputCode = (document.getElementById('otpInput')?.value || '').trim();
+    if (!inputCode || inputCode.length < 6) { showError('Enter the 6-digit code.'); return; }
+    if (!_otpPendingEmail) { showError('Session lost. Please start over.'); resetToEmailStep(); return; }
+
+    const btn = document.getElementById('verifyOtpBtn');
+    if (btn) { btn.innerHTML = '<span class="spinner"></span>'; btn.disabled = true; }
+
+    try {
+        const emailKey = _otpPendingEmail.replace(/\./g, ',');
+        const snap = await db.ref('signinCodes/' + emailKey).once('value');
+        const stored = snap.val();
+
+        if (!stored) { showError('No code found for this email. Request a new one.'); return; }
+        if (Date.now() > stored.expiry) {
+            await db.ref('signinCodes/' + emailKey).remove();
+            showError('Code expired. Please request a new one.');
+            resetToEmailStep();
+            return;
+        }
+        if (stored.code !== inputCode) {
+            showError('Incorrect code. Try again.');
+            return;
+        }
+
+        // Code valid — clean up and complete sign-in
+        await db.ref('signinCodes/' + emailKey).remove();
+        window.localStorage.setItem('otpVerifiedEmail', _otpPendingEmail);
+
+        _otpSignInInProgress = true;
+        if (!auth.currentUser) await auth.signInAnonymously();
+        _otpSignInInProgress = false;
+
+        await loadUserDataByEmail(_otpPendingEmail, auth.currentUser?.uid);
+    } catch (err) {
+        console.error('OTP verify error:', err);
+        _otpSignInInProgress = false;
+        showError('Verification failed. Try again or request a new code.');
+    } finally {
+        if (btn) { btn.innerHTML = 'Sign In'; btn.disabled = false; }
+    }
+}
+
+async function resendOtp() {
+    if (!_otpPendingEmail) { resetToEmailStep(); return; }
+    document.getElementById('loginEmail').value = _otpPendingEmail;
+    document.getElementById('otpForm').classList.add('hidden');
+    document.getElementById('loginForm').classList.remove('hidden');
+    await sendOtpCode();
+}
+
+function resetToEmailStep() {
+    _otpPendingEmail = '';
+    document.getElementById('otpForm').classList.add('hidden');
+    document.getElementById('loginForm').classList.remove('hidden');
+    document.getElementById('loginEmail').value = '';
+    showError('');
 }
 
 function activateKioskMode() {
@@ -4191,102 +4418,115 @@ function activateKioskMode() {
         stores: 'all',
         status: 'active'
     };
-    // Sign in anonymously so Firebase security rules (auth != null) allow reads.
-    // If already authenticated (e.g., session restored), proceed immediately.
     if (auth.currentUser) {
         showAppScreen();
     } else {
         auth.signInAnonymously()
-            .catch(() => { /* proceed anyway — rules may allow unauthenticated reads */ })
+            .catch(() => {})
             .finally(() => showAppScreen());
     }
 }
 
-// Allow pressing Enter on email input
 document.getElementById('loginEmail').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') sendSignInLink();
+    if (e.key === 'Enter') sendOtpCode();
 });
 
-async function handleEmailLinkSignIn() {
-    let email = window.localStorage.getItem('emailForSignIn');
-    if (!email) email = window.prompt('Confirm your email:');
-    if (!email) { showLoginScreen(); return; }
-
+// Load user from Firebase Auth user object (legacy email-link compatibility)
+async function loadUserDataByFirebaseUser(user) {
     try {
-        await auth.signInWithEmailLink(email, window.location.href);
-        window.localStorage.removeItem('emailForSignIn');
-        window.history.replaceState({}, document.title, window.location.pathname);
-    } catch (err) {
-        console.error('Link sign-in error:', err);
-        const msgs = {
-            'auth/invalid-action-code': 'This link has expired or was already used. Request a new one.',
-            'auth/invalid-email': 'Invalid email. Try again.',
-            'auth/user-disabled': 'Account disabled. Contact IT.'
-        };
-        showError(msgs[err.code] || 'Sign-in failed: ' + err.message);
-        window.history.replaceState({}, document.title, window.location.pathname);
-        showLoginScreen();
-    }
-}
-
-function resendEmail() {
-    document.getElementById('emailSentMessage').classList.add('hidden');
-    document.getElementById('loginForm').classList.remove('hidden');
-}
-
-async function loadUserData(user) {
-    try {
-        const snap = await db.ref(`users/${user.uid}`).once('value');
+        const snap = await db.ref('users/' + user.uid).once('value');
         let data = snap.val();
-
         if (!data) {
-            // Check if user was pre-approved by admin
             const emailKey = user.email.toLowerCase().replace(/\./g, ',');
-            const preSnap = await db.ref(`preApproved/${emailKey}`).once('value');
+            const preSnap = await db.ref('preApproved/' + emailKey).once('value');
             const preData = preSnap.val();
-
             if (preData) {
-                // Auto-activate pre-approved user
-                data = {
-                    name: preData.name,
-                    email: user.email,
-                    role: preData.role,
-                    title: preData.title || preData.role,
-                    stores: preData.stores,
-                    status: 'active',
-                    activatedAt: firebase.database.ServerValue.TIMESTAMP
-                };
-                await db.ref(`users/${user.uid}`).set(data);
-                // Clean up pre-approval entry
-                await db.ref(`preApproved/${emailKey}`).remove();
+                data = { name: preData.name, email: user.email, role: preData.role,
+                    title: preData.title || preData.role, stores: preData.stores,
+                    status: 'active', activatedAt: firebase.database.ServerValue.TIMESTAMP };
+                await db.ref('users/' + user.uid).set(data);
+                await db.ref('preApproved/' + emailKey).remove();
             } else {
-                // Auto-register as pending
-                try {
-                    await db.ref(`pending/${user.uid}`).set({
-                        email: user.email,
-                        requestedAt: firebase.database.ServerValue.TIMESTAMP
-                    });
-                    showError('Your account is pending approval. An admin will set you up shortly.');
-                } catch (e) {
-                    console.warn('Could not write pending entry:', e);
-                    showError('Account not set up yet. Contact your administrator to get access.');
-                }
+                await db.ref('pending/' + user.uid).set({ email: user.email, requestedAt: firebase.database.ServerValue.TIMESTAMP }).catch(() => {});
+                showError('Your account is pending approval. An admin will set you up shortly.');
                 auth.signOut();
                 return;
             }
         }
-
         currentUser = resolveRuntimeProfile(user, data);
-
         showAppScreen();
     } catch (err) {
-        console.error('Load user error:', err);
+        console.error('Load user (firebase) error:', err);
         showError('Failed to load account. Try again.');
     }
 }
 
+// Load user by email address (OTP path — uses anon Firebase auth)
+async function loadUserDataByEmail(email, uid) {
+    try {
+        const emailKey = email.toLowerCase().replace(/\./g, ',');
+
+        // Check preApproved first
+        const preSnap = await db.ref('preApproved/' + emailKey).once('value');
+        const preData = preSnap.val();
+        if (preData) {
+            const userData = { name: preData.name, email, role: preData.role,
+                title: preData.title || preData.role, stores: preData.stores,
+                status: 'active', activatedAt: firebase.database.ServerValue.TIMESTAMP };
+            if (uid) await db.ref('users/' + uid).set(userData).catch(() => {});
+            await db.ref('preApproved/' + emailKey).remove();
+            currentUser = resolveRuntimeProfile({ uid: uid || emailKey, email }, userData);
+            window.localStorage.setItem('otpVerifiedEmail', email);
+            showAppScreen();
+            return;
+        }
+
+        // Search existing users by email field
+        const usersSnap = await db.ref('users').orderByChild('email').equalTo(email).once('value');
+        if (usersSnap.exists()) {
+            let record = null;
+            usersSnap.forEach(child => { record = { uid: child.key, ...child.val() }; });
+            if (record) {
+                currentUser = resolveRuntimeProfile({ uid: record.uid, email }, record);
+                window.localStorage.setItem('otpVerifiedEmail', email);
+                showAppScreen();
+                return;
+            }
+        }
+
+        // Also try uid-based lookup (covers users created while using email-link)
+        if (uid) {
+            const uidSnap = await db.ref('users/' + uid).once('value');
+            const uidData = uidSnap.val();
+            if (uidData) {
+                currentUser = resolveRuntimeProfile({ uid, email }, uidData);
+                window.localStorage.setItem('otpVerifiedEmail', email);
+                showAppScreen();
+                return;
+            }
+        }
+
+        // No user record — register as pending
+        const pendingUid = uid || emailKey;
+        await db.ref('pending/' + pendingUid).set({ email, requestedAt: firebase.database.ServerValue.TIMESTAMP }).catch(() => {});
+        showError('Your account is pending approval. An admin will set you up shortly.');
+        window.localStorage.removeItem('otpVerifiedEmail');
+        if (auth.currentUser) auth.signOut();
+        showLoginScreen();
+    } catch (err) {
+        console.error('Load user (email) error:', err);
+        showError('Failed to load account. Try again.');
+        showLoginScreen();
+    }
+}
+
+// loadUserData kept as alias for any internal references
+const loadUserData = loadUserDataByFirebaseUser;
+
 function logout() {
     window.localStorage.removeItem('kioskMode');
+    window.localStorage.removeItem('otpVerifiedEmail');
+    _otpPendingEmail = '';
     document.body.classList.remove('kiosk');
     currentUser = null;
     if (activeTicketListener) { activeTicketListener(); activeTicketListener = null; }
@@ -4457,18 +4697,10 @@ function initCoachLanding() {
             }).join('');
     });
 
-    // Load open tickets inline — no button click needed
+    // Load open tickets inline — use cache to avoid redundant full-collection fetches
     if (!ticketListEl) return;
-    db.ref('tickets').once('value', snap => {
-        const scoped = [];
-        snap.forEach(child => {
-            const t = child.val();
-            if (!t) return;
-            const ticket = { _key: child.key, ...t };
-            if (!codes.includes(ticket.storeCode)) return;
-            if (!isActiveStatus(ticket.status)) return;
-            scoped.push(ticket);
-        });
+    getTicketsCached().then(allT => {
+        const scoped = allT.filter(ticket => codes.includes(ticket.storeCode) && isActiveStatus(ticket.status));
 
         allTicketsData = scoped.slice();
 
@@ -4562,16 +4794,10 @@ function showCoachOpenTickets() {
     const myStores = getAccessibleStores();
     const codes = myStores.map(s => s.code);
 
-    db.ref('tickets').once('value', snap => {
-        const scoped = [];
-        snap.forEach(child => {
-            const t = child.val();
-            if (!t) return;
-            const ticket = { _key: child.key, ...t };
-            if (!codes.includes(ticket.storeCode)) return;
-            if (!isActiveStatus(ticket.status)) return; // "open" tickets only
-            scoped.push(ticket);
-        });
+    getTicketsCached().then(allT => {
+        const scoped = allT.filter(ticket =>
+            codes.includes(ticket.storeCode) && isActiveStatus(ticket.status)
+        );
 
         // Reuse the global list opener so ticket modal works everywhere
         allTicketsData = scoped.slice();
@@ -5101,35 +5327,22 @@ function loadMapOverview(type) {
 }
 
 function fetchTicketCounts(codes, callback) {
-    // Listen once for all tickets and count per store
-    // Priority weighting: emergency = auto red (score 3), urgent = 2, routine = 1
-    db.ref('tickets').once('value', snap => {
+    // Uses the shared 90-second cache instead of a fresh full-collection fetch each time
+    getTicketsCached().then(allT => {
         allTicketCounts = {};
-        const scopedTickets = [];
         codes.forEach(c => allTicketCounts[c] = { open: 0, unassigned: 0, total: 0, score: 0, hasEmergency: false });
-        snap.forEach(child => {
-            const t = { _key: child.key, ...child.val() };
-            if (codes.includes(t.storeCode)) {
-                scopedTickets.push(t);
-                if (!allTicketCounts[t.storeCode]) allTicketCounts[t.storeCode] = { open: 0, unassigned: 0, total: 0, score: 0, hasEmergency: false };
-                allTicketCounts[t.storeCode].total++;
-                if (isActiveStatus(t.status)) {
-                    allTicketCounts[t.storeCode].open++;
-                    if (normalizeTicketStatus(t.status) === 'unassigned') {
-                        allTicketCounts[t.storeCode].unassigned++;
-                    }
-                    if (t.priority === 'emergency') {
-                        allTicketCounts[t.storeCode].score += 3;
-                        allTicketCounts[t.storeCode].hasEmergency = true;
-                    } else if (t.priority === 'urgent') {
-                        allTicketCounts[t.storeCode].score += 2;
-                    } else {
-                        allTicketCounts[t.storeCode].score += 1;
-                    }
-                }
+        allT.forEach(t => {
+            if (!codes.includes(t.storeCode)) return;
+            if (!allTicketCounts[t.storeCode]) allTicketCounts[t.storeCode] = { open: 0, unassigned: 0, total: 0, score: 0, hasEmergency: false };
+            allTicketCounts[t.storeCode].total++;
+            if (isActiveStatus(t.status)) {
+                allTicketCounts[t.storeCode].open++;
+                if (normalizeTicketStatus(t.status) === 'unassigned') allTicketCounts[t.storeCode].unassigned++;
+                if (t.priority === 'emergency') { allTicketCounts[t.storeCode].score += 3; allTicketCounts[t.storeCode].hasEmergency = true; }
+                else if (t.priority === 'urgent') allTicketCounts[t.storeCode].score += 2;
+                else allTicketCounts[t.storeCode].score += 1;
             }
         });
-
         callback();
     });
 }
@@ -6560,13 +6773,13 @@ function initTechDashboard() {
 }
 
 function loadTechJobs() {
-    db.ref('tickets').once('value', snap => {
-        const allTickets = [];
-        snap.forEach(child => { allTickets.push({ _key: child.key, ...child.val() }); });
+    // Use the shared cache — avoids a fresh full fetch on every dashboard visit
+    getTicketsCached().then(allTickets => {
+        const myEmail = String(currentUser.email || '').trim().toLowerCase();
+        const assignedJobs = allTickets.filter(t =>
+            String(t.assignedTo || '').trim().toLowerCase() === myEmail
+        );
 
-        const assignedJobs = allTickets.filter(t => String(t.assignedTo || '').trim().toLowerCase() === String(currentUser.email || '').trim().toLowerCase());
-
-        // Optional browse context for unassigned work only (keeps assigned workload unfiltered by zone/store lists).
         let browseJobs = [];
         if (window.techBrowseUnassigned === true) {
             const techStores = currentUser.stores === 'all' ? stores.map(s => s.code) :
@@ -6621,6 +6834,12 @@ function renderTechDetailPane(key) {
             <span class="ticket-status-badge status-${getStatusColorClass(t.status)}" style="font-size:11px">${getStatusLabel(t.status)}</span>
         </div>
         <div style="font-size:13px;line-height:1.4;margin-bottom:8px">${catIcons[t.category] || '📎'} ${escHtml(t.description || '')}</div>
+        ${Array.isArray(t.photos) && t.photos.length ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+            ${t.photos.map((url,i) => `<img src="${url}" alt="Photo ${i+1}"
+                style="height:72px;width:72px;object-fit:cover;border-radius:8px;border:2px solid var(--border);cursor:pointer;transition:opacity 0.15s"
+                onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'"
+                onclick="openLightbox('${url}')" title="Tap to enlarge">`).join('')}
+        </div>` : ''}
         <div class="tjc-fast-actions" style="margin-bottom:10px">
             ${notes.map(n => `<button class="quick-chip" onclick="prefillTechNote('${escHtml(n)}')">${escHtml(n)}</button>`).join('')}
         </div>
@@ -6775,6 +6994,239 @@ async function saveMobileQuickNote(key) {
     } catch (err) {
         toast('Failed to save note: ' + err.message, 'error');
     }
+}
+
+// ============================================================
+// ADD NEW JOB — technician self-logs proactive maintenance
+// ============================================================
+let _anjPhotos = [];   // { file, previewUrl }
+let _anjCategory = null;
+let _anjLocation = null;
+
+function showAddNewJobModal() {
+    // Populate store dropdown
+    const sel = document.getElementById('anjStore');
+    if (sel) {
+        const accessible = getAccessibleStores();
+        sel.innerHTML = '<option value="">Select store…</option>' +
+            accessible.map(s => `<option value="${s.code}">${escHtml(s.name)}</option>`).join('');
+    }
+    // Default to today
+    const dateEl = document.getElementById('anjDate');
+    if (dateEl) dateEl.value = new Date().toISOString().slice(0, 10);
+    // Reset state
+    _anjPhotos = [];
+    _anjCategory = null;
+    _anjLocation = null;
+    document.getElementById('anjCategoryGrid')?.querySelectorAll('.category-btn').forEach(b => b.classList.remove('selected'));
+    document.querySelectorAll('#addNewJobModal .priority-btn[data-loc]').forEach(b => b.classList.remove('selected'));
+    const descEl = document.getElementById('anjDescription');
+    if (descEl) descEl.value = '';
+    const eqEl = document.getElementById('anjEquipment');
+    if (eqEl) eqEl.value = '';
+    document.getElementById('anjPhotoPreview').innerHTML = '';
+    const btn = document.getElementById('anjSubmitBtn');
+    if (btn) { btn.innerHTML = '✅ Submit Work Record'; btn.disabled = false; }
+    document.getElementById('addNewJobModal').classList.add('open');
+}
+
+function closeAddNewJobModal() {
+    document.getElementById('addNewJobModal').classList.remove('open');
+}
+
+function anjSelectCat(el) {
+    el.closest('#anjCategoryGrid').querySelectorAll('.category-btn').forEach(b => b.classList.remove('selected'));
+    el.classList.add('selected');
+    _anjCategory = el.dataset.cat;
+}
+
+function anjSelectLoc(el) {
+    document.querySelectorAll('#addNewJobModal .priority-btn[data-loc]').forEach(b => b.classList.remove('selected'));
+    el.classList.add('selected');
+    _anjLocation = el.dataset.loc;
+}
+
+function handleAnjPhotos(input) {
+    const files = Array.from(input.files).slice(0, 5 - _anjPhotos.length);
+    files.forEach(file => {
+        if (file.size > 5 * 1024 * 1024) { toast('File too large (max 5MB)', 'error'); return; }
+        const url = URL.createObjectURL(file);
+        _anjPhotos.push({ file, previewUrl: url });
+    });
+    renderAnjPhotoPreview();
+    input.value = '';
+}
+
+function renderAnjPhotoPreview() {
+    const grid = document.getElementById('anjPhotoPreview');
+    if (!grid) return;
+    grid.innerHTML = _anjPhotos.map((p, i) => `
+        <div style="position:relative;display:inline-block">
+            <img src="${p.previewUrl}" style="height:80px;width:80px;object-fit:cover;border-radius:8px;border:1px solid var(--border)">
+            <button onclick="_anjPhotos.splice(${i},1);renderAnjPhotoPreview()"
+                style="position:absolute;top:-6px;right:-6px;background:#dc2626;color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:11px;cursor:pointer;padding:0;line-height:20px;text-align:center">✕</button>
+        </div>`).join('');
+}
+
+async function submitNewJob() {
+    const storeCode = document.getElementById('anjStore')?.value;
+    const desc = (document.getElementById('anjDescription')?.value || '').trim();
+    const dateVal = document.getElementById('anjDate')?.value;
+    const equipment = (document.getElementById('anjEquipment')?.value || '').trim();
+
+    if (!storeCode) { toast('Select a store', 'error'); return; }
+    if (!_anjCategory) { toast('Select a category', 'error'); return; }
+    if (!dateVal) { toast('Enter the date the work was done', 'error'); return; }
+    if (!desc) { toast('Describe what you did', 'error'); return; }
+
+    if (_anjPhotos.length === 0) {
+        const go = confirm('No photo attached. A photo gives managers a visual record of the work. Submit anyway?');
+        if (!go) return;
+    }
+
+    const btn = document.getElementById('anjSubmitBtn');
+    if (btn) { btn.innerHTML = '<span class="spinner"></span> Submitting…'; btn.disabled = true; }
+
+    try {
+        const store = stores.find(s => s.code === storeCode);
+        const photoUrls = [];
+        for (const p of _anjPhotos) photoUrls.push(await fileToBase64(p.file));
+
+        const catPrefix = { plumbing:'PLM', equipment:'EQP', it:'IT', structural:'STR', safety:'SAF', other:'GEN' }[_anjCategory] || 'GEN';
+        const counterRef = db.ref('counters/' + storeCode + '/' + catPrefix);
+        const counterSnap = await counterRef.transaction(val => (val || 0) + 1);
+        const num = String(counterSnap.snapshot.val()).padStart(4, '0');
+        const ticketId = storeCode + '-' + catPrefix + '-' + num;
+
+        const workTs = new Date(dateVal + 'T12:00:00').getTime();
+        const now = Date.now();
+
+        const ticket = {
+            id: ticketId,
+            storeCode,
+            storeName: store?.name || storeCode,
+            brand: store?.brand || '',
+            category: _anjCategory,
+            location: _anjLocation || 'interior',
+            priority: 'routine',
+            description: desc,
+            equipment: equipment || '',
+            photos: photoUrls,
+            status: 'resolved',
+            techSelfLog: true,            // flag: proactive maintenance by tech
+            assignedTo: currentUser.email,
+            assigneeType: 'tech',
+            workDate: workTs,
+            contactName: currentUser.name,
+            contactPhone: '',
+            createdBy: currentUser.email,
+            createdByName: currentUser.name,
+            createdAt: firebase.database.ServerValue.TIMESTAMP,
+            updatedAt: firebase.database.ServerValue.TIMESTAMP,
+            activity: [
+                { action: 'created', by: currentUser.name, byEmail: currentUser.email,
+                  timestamp: now, note: 'Proactive maintenance logged by technician' + (equipment ? ' — ' + equipment : '') },
+                { action: 'status_change', by: currentUser.name, byEmail: currentUser.email,
+                  timestamp: now + 1, oldStatus: 'unassigned', newStatus: 'resolved',
+                  note: 'Work completed on ' + dateVal }
+            ]
+        };
+
+        await db.ref('tickets/' + ticketId).set(ticket);
+        invalidateTicketCache();   // force fresh load next time
+        closeAddNewJobModal();
+        toast('Work record submitted ✓', 'success');
+        loadTechJobs();
+    } catch (err) {
+        console.error('Add new job error:', err);
+        toast('Failed to submit: ' + err.message, 'error');
+        if (btn) { btn.innerHTML = '✅ Submit Work Record'; btn.disabled = false; }
+    }
+}
+
+// ============================================================
+// BATCH ADD USERS — admin panel onboarding tool
+// ============================================================
+function parseBatchLine(line) {
+    const parts = line.split(',').map(s => s.trim());
+    if (parts.length < 3) return null;
+    const [name, email, role, ...rest] = parts;
+    const storeRaw = rest.join(',').trim();
+    if (!name || !email || !email.includes('@') || !role) return null;
+    return { name, email: email.toLowerCase(), role, storeRaw: storeRaw || 'all' };
+}
+
+function previewBatchUsers() {
+    const lines = (document.getElementById('batchUserInput')?.value || '').split('\n').filter(l => l.trim());
+    const el = document.getElementById('batchPreview');
+    if (!el) return;
+    if (!lines.length) { el.innerHTML = ''; return; }
+    let valid = 0, invalid = 0;
+    let html = '<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-top:4px">';
+    lines.forEach(line => {
+        const u = parseBatchLine(line);
+        if (u) {
+            valid++;
+            html += `<div style="padding:6px 10px;border-bottom:1px solid var(--border-light);display:flex;gap:8px;align-items:center;font-size:12px">
+                <span style="color:#059669;font-size:14px">✓</span>
+                <span style="font-weight:600">${escHtml(u.name)}</span>
+                <span style="color:var(--text-muted)">${escHtml(u.email)}</span>
+                <span style="background:var(--primary-light);color:var(--primary);padding:1px 7px;border-radius:10px;font-size:11px">${escHtml(u.role)}</span>
+                <span style="color:var(--text-muted);font-size:11px">${escHtml(u.storeRaw)}</span>
+            </div>`;
+        } else {
+            invalid++;
+            html += `<div style="padding:6px 10px;border-bottom:1px solid var(--border-light);display:flex;gap:8px;align-items:center;font-size:12px">
+                <span style="color:#dc2626;font-size:14px">✗</span>
+                <span style="color:#dc2626">${escHtml(line.substring(0,70))}</span>
+                <span style="color:var(--text-muted);font-size:11px">(invalid format)</span>
+            </div>`;
+        }
+    });
+    html += '</div>';
+    html += `<div style="margin-top:6px;font-size:12px;color:var(--text-mid)">${valid} valid · ${invalid} invalid</div>`;
+    el.innerHTML = html;
+}
+
+async function submitBatchUsers() {
+    const lines = (document.getElementById('batchUserInput')?.value || '').split('\n').filter(l => l.trim());
+    const users = lines.map(parseBatchLine).filter(Boolean);
+    if (!users.length) { toast('No valid rows found. Check format.', 'error'); return; }
+
+    const btn = document.getElementById('batchSubmitBtn');
+    if (btn) { btn.innerHTML = '<span class="spinner"></span> Adding…'; btn.disabled = true; }
+
+    let added = 0, failed = 0;
+    for (const u of users) {
+        try {
+            const emailKey = u.email.replace(/\./g, ',');
+            // Parse store codes: single, pipe-separated, or "all"
+            let storesVal;
+            if (u.storeRaw === 'all' || u.role === 'Admin' || u.role === 'Overwatch') {
+                storesVal = 'all';
+            } else {
+                const parts = u.storeRaw.split('|').map(s => s.trim()).filter(Boolean);
+                storesVal = parts.length === 1 ? parts[0] : parts;
+            }
+            await db.ref('preApproved/' + emailKey).set({
+                name: u.name, email: u.email, role: u.role,
+                title: u.role, stores: storesVal, status: 'active',
+                addedAt: firebase.database.ServerValue.TIMESTAMP,
+                addedBy: currentUser.email
+            });
+            added++;
+        } catch (e) {
+            console.error('Batch add failed:', u.email, e);
+            failed++;
+        }
+    }
+
+    if (btn) { btn.innerHTML = '➕ Add All Users'; btn.disabled = false; }
+    document.getElementById('batchUserInput').value = '';
+    document.getElementById('batchPreview').innerHTML = '';
+    previewBatchUsers();
+    toast(added + ' user(s) pre-approved' + (failed ? ', ' + failed + ' failed' : '') + '. They can sign in now.',
+        added > 0 ? 'success' : 'error');
 }
 
 function filterTechJobs(filter, btn) {
@@ -7301,6 +7753,30 @@ document.addEventListener('click', (e) => {
 // ============================================================
 let allTicketsData = [];
 let allTicketsDrilldown = null;
+
+// ---- Global ticket cache — reduces redundant full-collection fetches ----
+// All views that previously fired separate once('value') on 'tickets' now share this.
+// TTL: 90 seconds. Patched in-place by syncAfterTicketMutation so it never goes stale.
+let _ticketCache = null;
+let _ticketCacheTs = 0;
+const _TICKET_CACHE_TTL = 90000; // 90 s
+
+async function getTicketsCached() {
+    if (_ticketCache && (Date.now() - _ticketCacheTs < _TICKET_CACHE_TTL)) {
+        return _ticketCache;
+    }
+    const snap = await db.ref('tickets').once('value');
+    const arr = [];
+    snap.forEach(child => arr.push({ _key: child.key, ...child.val() }));
+    _ticketCache = arr;
+    _ticketCacheTs = Date.now();
+    return arr;
+}
+
+function invalidateTicketCache() {
+    _ticketCache = null;
+    _ticketCacheTs = 0;
+}
 let allTicketsListenerRef = null;  // live Firebase listener for allTicketsScreen
 let globalPollInterval = null;    // 5-min cross-view polling
 
@@ -8640,6 +9116,11 @@ async function updateTicketStatus(key, status, el) {
 // Keep ticket collections and active views in sync after updates
 // ------------------------------------------------------------
 function syncAfterTicketMutation(ticketKey, patch) {
+    // Keep the global cache in sync so next fetch is still fresh
+    if (_ticketCache) {
+        const ci = _ticketCache.findIndex(x => x._key === ticketKey || x.id === ticketKey);
+        if (ci >= 0) _ticketCache[ci] = { ..._ticketCache[ci], ...patch };
+    }
     const applyPatch = (arr) => {
         const idx = arr.findIndex(x => x._key === ticketKey || x.id === ticketKey);
         if (idx >= 0) arr[idx] = { ...arr[idx], ...patch };
@@ -9179,7 +9660,7 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v3.11</span>
+    <span>R&M Tracker v3.12</span>
 </div>
 
 </body>
