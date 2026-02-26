@@ -1804,11 +1804,13 @@ body {
 
 /* Save bars for ticket updates (shown only when dirty) */
 .ticket-save-row {
-    display: none;
+    display: flex;
     margin-top: 10px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s;
 }
-.ticket-save-row.visible { display: flex; }
-.ticket-save-row.top { margin-top: 0; margin-bottom: 10px; position: sticky; top: 0; z-index: 3; }
+.ticket-save-row.visible { opacity: 1; pointer-events: auto; }
 .ticket-save-row .btn { width: 100%; }
 
 /* Activity log */
@@ -3799,7 +3801,7 @@ body.kiosk .action-card[onclick*="showNewIssueScreen"] { display:none !important
                 </div>
                 <div class="admin-section-body">
                     <p style="font-size:13px;color:var(--text-mid);margin-bottom:10px">
-                        Paste one user per line in this format:<br>
+                        Paste one user per line:<br>
                         <code style="font-size:11px;background:var(--bg);padding:2px 6px;border-radius:4px;display:inline-block;margin-top:3px">Name, email@dossaniparadise.com, Role, StoreCode(s)</code>
                     </p>
                     <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">
@@ -3808,7 +3810,7 @@ body.kiosk .action-card[onclick*="showNewIssueScreen"] { display:none !important
                     </p>
                     <textarea class="form-textarea" id="batchUserInput"
                         style="min-height:110px;font-size:12px;font-family:monospace"
-                        placeholder="John Smith, jsmith@dossaniparadise.com, Manager, BK27083&#10;Jane Doe, jdoe@dossaniparadise.com, Area Coach, BK27082|BK27083&#10;Bob Lee, blee@dossaniparadise.com, Technician, all"></textarea>
+                        placeholder="John Smith, jsmith@dossaniparadise.com, Manager, BK27083&#10;Jane Doe, jdoe@dossaniparadise.com, Area Coach, BK27082|BK27083"></textarea>
                     <div id="batchPreview" style="margin-top:8px;font-size:12px"></div>
                     <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
                         <button class="btn btn-secondary btn-sm" onclick="previewBatchUsers()">👁 Preview</button>
@@ -3895,7 +3897,7 @@ body.kiosk .action-card[onclick*="showNewIssueScreen"] { display:none !important
     </div>
 </div>
 
-<!-- Add New Job Modal — tech logs proactive maintenance -->
+<!-- Add New Job Modal -->
 <div class="modal-overlay" id="addNewJobModal" onclick="if(event.target===this)closeAddNewJobModal()">
     <div class="modal-content" style="max-width:520px">
         <div class="modal-header">
@@ -3904,7 +3906,7 @@ body.kiosk .action-card[onclick*="showNewIssueScreen"] { display:none !important
         </div>
         <div class="modal-body" style="padding:20px;max-height:82vh;overflow-y:auto">
             <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">
-                Record maintenance or repairs you did proactively. Submits as a <strong>Resolved</strong> ticket so managers and coaches have a full service record.
+                Record maintenance or repairs done proactively. Submits as a <strong>Resolved</strong> ticket so managers and coaches have a full service record.
             </p>
             <div class="form-group">
                 <label class="form-label">Store <span style="color:var(--danger)">*</span></label>
@@ -3938,9 +3940,7 @@ body.kiosk .action-card[onclick*="showNewIssueScreen"] { display:none !important
             </div>
             <div class="form-group">
                 <label class="form-label">Work Done <span style="color:var(--danger)">*</span></label>
-                <textarea class="form-textarea" id="anjDescription"
-                    placeholder="Describe what you did, the condition before and after, any parts replaced, and whether any follow-up is needed."
-                    style="min-height:88px"></textarea>
+                <textarea class="form-textarea" id="anjDescription" placeholder="Describe what you did, condition before/after, parts replaced, follow-up needed." style="min-height:88px"></textarea>
             </div>
             <div class="form-group">
                 <label class="form-label">📷 Photos <span style="font-weight:400;color:var(--text-muted);font-size:12px">— highly recommended</span></label>
@@ -4551,18 +4551,10 @@ function initCoachLanding() {
             }).join('');
     });
 
-    // Load open tickets inline — no button click needed
+    // Load open tickets inline — shared cache
     if (!ticketListEl) return;
-    db.ref('tickets').once('value', snap => {
-        const scoped = [];
-        snap.forEach(child => {
-            const t = child.val();
-            if (!t) return;
-            const ticket = { _key: child.key, ...t };
-            if (!codes.includes(ticket.storeCode)) return;
-            if (!isActiveStatus(ticket.status)) return;
-            scoped.push(ticket);
-        });
+    getTicketsCached(function(allT) {
+        const scoped = allT.filter(function(t) { return codes.includes(t.storeCode) && isActiveStatus(t.status); });
 
         allTicketsData = scoped.slice();
 
@@ -4656,16 +4648,8 @@ function showCoachOpenTickets() {
     const myStores = getAccessibleStores();
     const codes = myStores.map(s => s.code);
 
-    db.ref('tickets').once('value', snap => {
-        const scoped = [];
-        snap.forEach(child => {
-            const t = child.val();
-            if (!t) return;
-            const ticket = { _key: child.key, ...t };
-            if (!codes.includes(ticket.storeCode)) return;
-            if (!isActiveStatus(ticket.status)) return; // "open" tickets only
-            scoped.push(ticket);
-        });
+    getTicketsCached(function(allT) {
+        const scoped = allT.filter(function(t) { return codes.includes(t.storeCode) && isActiveStatus(t.status); });
 
         // Reuse the global list opener so ticket modal works everywhere
         allTicketsData = scoped.slice();
@@ -5195,35 +5179,21 @@ function loadMapOverview(type) {
 }
 
 function fetchTicketCounts(codes, callback) {
-    // Listen once for all tickets and count per store
-    // Priority weighting: emergency = auto red (score 3), urgent = 2, routine = 1
-    db.ref('tickets').once('value', snap => {
+    getTicketsCached(function(allT) {
         allTicketCounts = {};
-        const scopedTickets = [];
-        codes.forEach(c => allTicketCounts[c] = { open: 0, unassigned: 0, total: 0, score: 0, hasEmergency: false });
-        snap.forEach(child => {
-            const t = { _key: child.key, ...child.val() };
-            if (codes.includes(t.storeCode)) {
-                scopedTickets.push(t);
-                if (!allTicketCounts[t.storeCode]) allTicketCounts[t.storeCode] = { open: 0, unassigned: 0, total: 0, score: 0, hasEmergency: false };
-                allTicketCounts[t.storeCode].total++;
-                if (isActiveStatus(t.status)) {
-                    allTicketCounts[t.storeCode].open++;
-                    if (normalizeTicketStatus(t.status) === 'unassigned') {
-                        allTicketCounts[t.storeCode].unassigned++;
-                    }
-                    if (t.priority === 'emergency') {
-                        allTicketCounts[t.storeCode].score += 3;
-                        allTicketCounts[t.storeCode].hasEmergency = true;
-                    } else if (t.priority === 'urgent') {
-                        allTicketCounts[t.storeCode].score += 2;
-                    } else {
-                        allTicketCounts[t.storeCode].score += 1;
-                    }
-                }
+        codes.forEach(function(c) { allTicketCounts[c] = { open: 0, unassigned: 0, total: 0, score: 0, hasEmergency: false }; });
+        allT.forEach(function(t) {
+            if (!codes.includes(t.storeCode)) return;
+            if (!allTicketCounts[t.storeCode]) allTicketCounts[t.storeCode] = { open: 0, unassigned: 0, total: 0, score: 0, hasEmergency: false };
+            allTicketCounts[t.storeCode].total++;
+            if (isActiveStatus(t.status)) {
+                allTicketCounts[t.storeCode].open++;
+                if (normalizeTicketStatus(t.status) === 'unassigned') allTicketCounts[t.storeCode].unassigned++;
+                if (t.priority === 'emergency') { allTicketCounts[t.storeCode].score += 3; allTicketCounts[t.storeCode].hasEmergency = true; }
+                else if (t.priority === 'urgent') allTicketCounts[t.storeCode].score += 2;
+                else allTicketCounts[t.storeCode].score += 1;
             }
         });
-
         callback();
     });
 }
@@ -5372,12 +5342,9 @@ function renderStoreListView() {
     const listEl = document.getElementById('storeListView');
     if (!lastFilteredStores.length) { listEl.innerHTML = '<div class="empty-state">Select a store type first</div>'; return; }
     
-    // Fetch all tickets once, group by store
-    db.ref('tickets').once('value', snap => {
-        const allT = [];
-        snap.forEach(child => { allT.push({ _key: child.key, ...child.val() }); });
+    // Fetch all tickets once, group by store — uses shared cache
+    getTicketsCached(function(allT) {
         
-                
         // Only show stores that have unassigned tickets
         const storesWithTickets = lastFilteredStores.filter(s => {
             return allT.some(t => t.storeCode === s.code && isActiveStatus(t.status));
@@ -6654,25 +6621,25 @@ function initTechDashboard() {
 }
 
 function loadTechJobs() {
-    db.ref('tickets').once('value', snap => {
-        const allTickets = [];
-        snap.forEach(child => { allTickets.push({ _key: child.key, ...child.val() }); });
+    getTicketsCached(function(allTickets) {
+        const myEmail = String(currentUser.email || '').trim().toLowerCase();
+        const assignedJobs = allTickets.filter(function(t) {
+            return String(t.assignedTo || '').trim().toLowerCase() === myEmail;
+        });
 
-        const assignedJobs = allTickets.filter(t => String(t.assignedTo || '').trim().toLowerCase() === String(currentUser.email || '').trim().toLowerCase());
-
-        // Optional browse context for unassigned work only (keeps assigned workload unfiltered by zone/store lists).
-        let browseJobs = [];
+        // Optional browse context for unassigned work only
+        var browseJobs = [];
         if (window.techBrowseUnassigned === true) {
-            const techStores = currentUser.stores === 'all' ? stores.map(s => s.code) :
+            var techStores = currentUser.stores === 'all' ? stores.map(function(s) { return s.code; }) :
                 (Array.isArray(currentUser.stores) ? currentUser.stores : [currentUser.stores]);
-            browseJobs = allTickets.filter(t => {
+            browseJobs = allTickets.filter(function(t) {
                 if (String(t.assignedTo || '').trim()) return false;
                 return techStores.includes(t.storeCode);
             });
         }
 
         const byKey = new Map();
-        [...assignedJobs, ...browseJobs].forEach(t => byKey.set(t._key, t));
+        assignedJobs.concat(browseJobs).forEach(function(t) { byKey.set(t._key, t); });
         techJobs = Array.from(byKey.values());
 
         renderTechDashboard();
@@ -6715,7 +6682,7 @@ function renderTechDetailPane(key) {
             <span class="ticket-status-badge status-${getStatusColorClass(t.status)}" style="font-size:11px">${getStatusLabel(t.status)}</span>
         </div>
         <div style="font-size:13px;line-height:1.4;margin-bottom:8px">${catIcons[t.category] || '📎'} ${escHtml(t.description || '')}</div>
-        ${Array.isArray(t.photos) && t.photos.length ? '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">' + t.photos.map((url,i) => '<img src="' + url + '" alt="photo" style="height:68px;width:68px;object-fit:cover;border-radius:8px;border:2px solid var(--border);cursor:pointer" onclick="openLightbox(\'' + url + '\')" title="Tap to enlarge">').join('') + '</div>' : ''}
+        ${(Array.isArray(t.photos) && t.photos.length) ? '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">' + t.photos.map(function(url) { return '<img src="' + url + '" style="height:68px;width:68px;object-fit:cover;border-radius:8px;border:2px solid var(--border);cursor:pointer" onclick="openLightbox(\'' + url + '\')">'; }).join('') + '</div>' : ''}
         <div class="tjc-fast-actions" style="margin-bottom:10px">
             ${notes.map(n => `<button class="quick-chip" onclick="prefillTechNote('${escHtml(n)}')">${escHtml(n)}</button>`).join('')}
         </div>
@@ -6873,35 +6840,33 @@ async function saveMobileQuickNote(key) {
 }
 
 // ============================================================
-// ADD NEW JOB — technician self-logs proactive maintenance
+// ADD NEW JOB
 // ============================================================
-let _anjPhotos = [];
-let _anjCategory = null;
-let _anjLocation = null;
+var _anjPhotos = [];
+var _anjCategory = null;
+var _anjLocation = null;
 
 function showAddNewJobModal() {
-    // Populate store dropdown with accessible stores
-    const sel = document.getElementById('anjStore');
+    var sel = document.getElementById('anjStore');
     if (sel) {
-        const accessible = getAccessibleStores();
-        sel.innerHTML = '<option value="">Select store…</option>' +
-            accessible.map(s => '<option value="' + s.code + '">' + escHtml(s.name) + '</option>').join('');
+        var accessible = getAccessibleStores();
+        var opts = '<option value="">Select store…</option>';
+        for (var i = 0; i < accessible.length; i++) {
+            opts += '<option value="' + accessible[i].code + '">' + escHtml(accessible[i].name) + '</option>';
+        }
+        sel.innerHTML = opts;
     }
-    // Default date to today
-    const dateEl = document.getElementById('anjDate');
+    var dateEl = document.getElementById('anjDate');
     if (dateEl) dateEl.value = new Date().toISOString().slice(0, 10);
-    // Reset all state
-    _anjPhotos = [];
-    _anjCategory = null;
-    _anjLocation = null;
-    const cg = document.getElementById('anjCategoryGrid');
-    if (cg) cg.querySelectorAll('.category-btn').forEach(b => b.classList.remove('selected'));
-    document.querySelectorAll('#addNewJobModal .priority-btn[data-loc]').forEach(b => b.classList.remove('selected'));
-    const desc = document.getElementById('anjDescription'); if (desc) desc.value = '';
-    const eq = document.getElementById('anjEquipment'); if (eq) eq.value = '';
-    const prev = document.getElementById('anjPhotoPreview'); if (prev) prev.innerHTML = '';
-    const btn = document.getElementById('anjSubmitBtn');
-    if (btn) { btn.innerHTML = '✅ Submit Work Record'; btn.disabled = false; }
+    _anjPhotos = []; _anjCategory = null; _anjLocation = null;
+    var cg = document.getElementById('anjCategoryGrid');
+    if (cg) { var btns = cg.querySelectorAll('.category-btn'); for (var i=0;i<btns.length;i++) btns[i].classList.remove('selected'); }
+    var locBtns = document.querySelectorAll('#addNewJobModal .priority-btn[data-loc]');
+    for (var i=0;i<locBtns.length;i++) locBtns[i].classList.remove('selected');
+    var d = document.getElementById('anjDescription'); if (d) d.value = '';
+    var e = document.getElementById('anjEquipment'); if (e) e.value = '';
+    var p = document.getElementById('anjPhotoPreview'); if (p) p.innerHTML = '';
+    var sb = document.getElementById('anjSubmitBtn'); if (sb) { sb.innerHTML = '✅ Submit Work Record'; sb.disabled = false; }
     document.getElementById('addNewJobModal').classList.add('open');
 }
 
@@ -6910,120 +6875,90 @@ function closeAddNewJobModal() {
 }
 
 function anjSelectCat(el) {
-    el.closest('#anjCategoryGrid').querySelectorAll('.category-btn').forEach(b => b.classList.remove('selected'));
+    var grid = el.closest('#anjCategoryGrid');
+    if (grid) { var bs = grid.querySelectorAll('.category-btn'); for(var i=0;i<bs.length;i++) bs[i].classList.remove('selected'); }
     el.classList.add('selected');
     _anjCategory = el.dataset.cat;
 }
 
 function anjSelectLoc(el) {
-    document.querySelectorAll('#addNewJobModal .priority-btn[data-loc]').forEach(b => b.classList.remove('selected'));
+    var bs = document.querySelectorAll('#addNewJobModal .priority-btn[data-loc]');
+    for(var i=0;i<bs.length;i++) bs[i].classList.remove('selected');
     el.classList.add('selected');
     _anjLocation = el.dataset.loc;
 }
 
 function handleAnjPhotos(input) {
-    const remaining = 5 - _anjPhotos.length;
-    const files = Array.from(input.files).slice(0, remaining);
+    var files = Array.from(input.files).slice(0, 5 - _anjPhotos.length);
     files.forEach(function(file) {
         if (file.size > 5 * 1024 * 1024) { toast('File too large (max 5MB)', 'error'); return; }
-        _anjPhotos.push({ file: file, previewUrl: URL.createObjectURL(file) });
+        _anjPhotos.push({ file: file, url: URL.createObjectURL(file) });
     });
     renderAnjPhotoPreview();
     input.value = '';
 }
 
 function renderAnjPhotoPreview() {
-    const grid = document.getElementById('anjPhotoPreview');
+    var grid = document.getElementById('anjPhotoPreview');
     if (!grid) return;
-    grid.innerHTML = _anjPhotos.map(function(p, i) {
-        return '<div style="position:relative;display:inline-block">' +
-            '<img src="' + p.previewUrl + '" style="height:80px;width:80px;object-fit:cover;border-radius:8px;border:1px solid var(--border)">' +
-            '<button onclick="_anjPhotos.splice(' + i + ',1);renderAnjPhotoPreview()" ' +
-            'style="position:absolute;top:-6px;right:-6px;background:#dc2626;color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:11px;cursor:pointer;line-height:20px;text-align:center;padding:0">✕</button>' +
-            '</div>';
-    }).join('');
+    var html = '';
+    for (var i = 0; i < _anjPhotos.length; i++) {
+        html += '<div style="position:relative;display:inline-block">'
+            + '<img src="' + _anjPhotos[i].url + '" style="height:80px;width:80px;object-fit:cover;border-radius:8px;border:1px solid var(--border)">'
+            + '<button onclick="_anjPhotos.splice(' + i + ',1);renderAnjPhotoPreview()" '
+            + 'style="position:absolute;top:-6px;right:-6px;background:#dc2626;color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:11px;cursor:pointer;line-height:20px;text-align:center;padding:0">✕</button>'
+            + '</div>';
+    }
+    grid.innerHTML = html;
 }
 
 async function submitNewJob() {
-    const storeCode = (document.getElementById('anjStore') || {}).value || '';
-    const desc = ((document.getElementById('anjDescription') || {}).value || '').trim();
-    const dateVal = (document.getElementById('anjDate') || {}).value || '';
-    const equipment = ((document.getElementById('anjEquipment') || {}).value || '').trim();
-
+    var storeCode = (document.getElementById('anjStore') || {}).value || '';
+    var desc = ((document.getElementById('anjDescription') || {}).value || '').trim();
+    var dateVal = (document.getElementById('anjDate') || {}).value || '';
+    var equipment = ((document.getElementById('anjEquipment') || {}).value || '').trim();
     if (!storeCode) { toast('Select a store', 'error'); return; }
     if (!_anjCategory) { toast('Select a category', 'error'); return; }
-    if (!dateVal) { toast('Enter the date the work was done', 'error'); return; }
+    if (!dateVal) { toast('Enter the date', 'error'); return; }
     if (!desc) { toast('Describe what you did', 'error'); return; }
-    if (_anjPhotos.length === 0) {
-        if (!confirm('No photo attached. Photos give managers a visual record. Submit anyway?')) return;
-    }
-
-    const btn = document.getElementById('anjSubmitBtn');
+    if (_anjPhotos.length === 0 && !confirm('No photo attached. Photos give managers a visual record. Submit anyway?')) return;
+    var btn = document.getElementById('anjSubmitBtn');
     if (btn) { btn.innerHTML = '<span class="spinner"></span> Submitting…'; btn.disabled = true; }
-
     try {
-        const store = stores.find(function(s) { return s.code === storeCode; });
-        const photoUrls = [];
-        for (let i = 0; i < _anjPhotos.length; i++) {
-            photoUrls.push(await fileToBase64(_anjPhotos[i].file));
-        }
-
-        const catMap = { plumbing:'PLM', equipment:'EQP', it:'IT', structural:'STR', safety:'SAF', other:'GEN' };
-        const catPrefix = catMap[_anjCategory] || 'GEN';
-        const counterRef = db.ref('counters/' + storeCode + '/' + catPrefix);
-        const counterSnap = await counterRef.transaction(function(v) { return (v || 0) + 1; });
-        const ticketId = storeCode + '-' + catPrefix + '-' + String(counterSnap.snapshot.val()).padStart(4, '0');
-
-        const now = Date.now();
-        const workTs = new Date(dateVal + 'T12:00:00').getTime();
-
-        const ticket = {
-            id: ticketId,
-            storeCode: storeCode,
+        var store = stores.find(function(s) { return s.code === storeCode; });
+        var photoUrls = [];
+        for (var i = 0; i < _anjPhotos.length; i++) photoUrls.push(await fileToBase64(_anjPhotos[i].file));
+        var catMap = { plumbing:'PLM', equipment:'EQP', it:'IT', structural:'STR', safety:'SAF', other:'GEN' };
+        var catPrefix = catMap[_anjCategory] || 'GEN';
+        var cSnap = await db.ref('counters/' + storeCode + '/' + catPrefix).transaction(function(v) { return (v||0)+1; });
+        var ticketId = storeCode + '-' + catPrefix + '-' + String(cSnap.snapshot.val()).padStart(4,'0');
+        var now = Date.now();
+        var ticket = {
+            id: ticketId, storeCode: storeCode,
             storeName: (store && store.name) || storeCode,
             brand: (store && store.brand) || '',
-            category: _anjCategory,
-            location: _anjLocation || 'interior',
-            priority: 'routine',
-            description: desc,
-            equipment: equipment,
-            photos: photoUrls,
-            status: 'resolved',
-            techSelfLog: true,
-            assignedTo: currentUser.email,
-            assigneeType: 'tech',
-            workDate: workTs,
-            contactName: currentUser.name,
-            contactPhone: '',
-            createdBy: currentUser.email,
-            createdByName: currentUser.name,
+            category: _anjCategory, location: _anjLocation || 'interior',
+            priority: 'routine', description: desc, equipment: equipment,
+            photos: photoUrls, status: 'resolved', techSelfLog: true,
+            assignedTo: currentUser.email, assigneeType: 'tech',
+            workDate: new Date(dateVal + 'T12:00:00').getTime(),
+            contactName: currentUser.name, contactPhone: '',
+            createdBy: currentUser.email, createdByName: currentUser.name,
             createdAt: firebase.database.ServerValue.TIMESTAMP,
             updatedAt: firebase.database.ServerValue.TIMESTAMP,
             activity: [
-                {
-                    action: 'created',
-                    by: currentUser.name,
-                    byEmail: currentUser.email,
-                    timestamp: now,
-                    note: 'Proactive maintenance logged by technician' + (equipment ? ' — ' + equipment : '')
-                },
-                {
-                    action: 'status_change',
-                    by: currentUser.name,
-                    byEmail: currentUser.email,
-                    timestamp: now + 1,
-                    oldStatus: 'unassigned',
-                    newStatus: 'resolved',
-                    note: 'Work completed on ' + dateVal
-                }
+                { action:'created', by: currentUser.name, byEmail: currentUser.email, timestamp: now,
+                  note: 'Proactive maintenance logged by technician' + (equipment ? ' — ' + equipment : '') },
+                { action:'status_change', by: currentUser.name, byEmail: currentUser.email, timestamp: now+1,
+                  oldStatus:'unassigned', newStatus:'resolved', note:'Work completed on ' + dateVal }
             ]
         };
-
         await db.ref('tickets/' + ticketId).set(ticket);
+        invalidateTCache();
         closeAddNewJobModal();
         toast('Work record submitted ✓', 'success');
         loadTechJobs();
-    } catch (err) {
+    } catch(err) {
         console.error('submitNewJob error:', err);
         toast('Failed to submit: ' + err.message, 'error');
         if (btn) { btn.innerHTML = '✅ Submit Work Record'; btn.disabled = false; }
@@ -7031,46 +6966,40 @@ async function submitNewJob() {
 }
 
 // ============================================================
-// BATCH ADD USERS — admin onboarding
+// BATCH ADD USERS
 // ============================================================
 function parseBatchLine(line) {
-    const parts = line.split(',').map(function(s) { return s.trim(); });
+    var parts = line.split(',').map(function(s) { return s.trim(); });
     if (parts.length < 3) return null;
-    const name = parts[0];
-    const email = parts[1];
-    const role = parts[2];
-    const storeRaw = parts.slice(3).join(',').trim() || 'all';
-    if (!name || !email || !email.includes('@') || !role) return null;
+    var name = parts[0], email = parts[1], role = parts[2];
+    var storeRaw = parts.slice(3).join(',').trim() || 'all';
+    if (!name || !email || email.indexOf('@') < 0 || !role) return null;
     return { name: name, email: email.toLowerCase(), role: role, storeRaw: storeRaw };
 }
 
 function previewBatchUsers() {
-    const textarea = document.getElementById('batchUserInput');
-    const el = document.getElementById('batchPreview');
-    if (!el || !textarea) return;
-    const raw = textarea.value || '';
-    const lines = raw.split('\n').filter(function(l) { return l.trim(); });
+    var ta = document.getElementById('batchUserInput');
+    var el = document.getElementById('batchPreview');
+    if (!el || !ta) return;
+    var lines = ta.value.split('\n').filter(function(l) { return l.trim(); });
     if (!lines.length) { el.innerHTML = ''; return; }
-    let valid = 0, invalid = 0;
-    let html = '<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-top:4px">';
+    var valid = 0, invalid = 0;
+    var html = '<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden">';
     lines.forEach(function(line) {
-        const u = parseBatchLine(line);
+        var u = parseBatchLine(line);
         if (u) {
             valid++;
-            html += '<div style="padding:6px 10px;border-bottom:1px solid var(--border-light);display:flex;gap:8px;align-items:center;font-size:12px;flex-wrap:wrap">' +
-                '<span style="color:#059669">✓</span>' +
-                '<span style="font-weight:600">' + escHtml(u.name) + '</span>' +
-                '<span style="color:var(--text-muted)">' + escHtml(u.email) + '</span>' +
-                '<span style="background:var(--primary-light);color:var(--primary);padding:1px 7px;border-radius:10px;font-size:11px">' + escHtml(u.role) + '</span>' +
-                '<span style="color:var(--text-muted);font-size:11px">' + escHtml(u.storeRaw) + '</span>' +
-                '</div>';
+            html += '<div style="padding:6px 10px;border-bottom:1px solid var(--border-light);display:flex;gap:8px;align-items:center;font-size:12px;flex-wrap:wrap">'
+                + '<span style="color:#059669">✓</span>'
+                + '<span style="font-weight:600">' + escHtml(u.name) + '</span>'
+                + '<span style="color:var(--text-muted)">' + escHtml(u.email) + '</span>'
+                + '<span style="background:var(--primary-light);color:var(--primary);padding:1px 7px;border-radius:10px;font-size:11px">' + escHtml(u.role) + '</span>'
+                + '<span style="color:var(--text-muted);font-size:11px">' + escHtml(u.storeRaw) + '</span></div>';
         } else {
             invalid++;
-            html += '<div style="padding:6px 10px;border-bottom:1px solid var(--border-light);display:flex;gap:8px;align-items:center;font-size:12px">' +
-                '<span style="color:#dc2626">✗</span>' +
-                '<span style="color:#dc2626">' + escHtml(line.substring(0, 70)) + '</span>' +
-                '<span style="color:var(--text-muted);font-size:11px">(invalid format)</span>' +
-                '</div>';
+            html += '<div style="padding:6px 10px;border-bottom:1px solid var(--border-light);display:flex;gap:8px;align-items:center;font-size:12px">'
+                + '<span style="color:#dc2626">✗</span>'
+                + '<span style="color:#dc2626">' + escHtml(line.substring(0,70)) + '</span></div>';
         }
     });
     html += '</div><div style="margin-top:6px;font-size:12px;color:var(--text-mid)">' + valid + ' valid · ' + invalid + ' invalid</div>';
@@ -7078,47 +7007,39 @@ function previewBatchUsers() {
 }
 
 async function submitBatchUsers() {
-    const textarea = document.getElementById('batchUserInput');
-    if (!textarea) return;
-    const raw = textarea.value || '';
-    const lines = raw.split('\n').filter(function(l) { return l.trim(); });
-    const users = lines.map(parseBatchLine).filter(Boolean);
+    var ta = document.getElementById('batchUserInput');
+    if (!ta) return;
+    var lines = ta.value.split('\n').filter(function(l) { return l.trim(); });
+    var users = lines.map(parseBatchLine).filter(Boolean);
     if (!users.length) { toast('No valid rows found. Check format.', 'error'); return; }
-
-    const btn = document.getElementById('batchSubmitBtn');
+    var btn = document.getElementById('batchSubmitBtn');
     if (btn) { btn.innerHTML = '<span class="spinner"></span> Adding…'; btn.disabled = true; }
-
-    let added = 0, failed = 0;
-    for (let i = 0; i < users.length; i++) {
-        const u = users[i];
+    var added = 0, failed = 0;
+    for (var i = 0; i < users.length; i++) {
+        var u = users[i];
         try {
-            const emailKey = u.email.replace(/\./g, ',');
-            let storesVal;
+            var emailKey = u.email.replace(/\./g, ',');
+            var storesVal;
             if (u.storeRaw === 'all' || u.role === 'Admin' || u.role === 'Overwatch') {
                 storesVal = 'all';
             } else {
-                const parts = u.storeRaw.split('|').map(function(s) { return s.trim(); }).filter(Boolean);
+                var parts = u.storeRaw.split('|').map(function(s){return s.trim();}).filter(Boolean);
                 storesVal = parts.length === 1 ? parts[0] : parts;
             }
             await db.ref('preApproved/' + emailKey).set({
-                name: u.name,
-                email: u.email,
-                role: u.role,
-                title: u.role,
-                stores: storesVal,
-                status: 'active',
+                name: u.name, email: u.email, role: u.role, title: u.role,
+                stores: storesVal, status: 'active',
                 addedAt: firebase.database.ServerValue.TIMESTAMP,
                 addedBy: currentUser.email
             });
             added++;
-        } catch (e) {
-            console.error('Batch add failed for', u.email, e);
+        } catch(e) {
+            console.error('batch add failed:', u.email, e);
             failed++;
         }
     }
-
     if (btn) { btn.innerHTML = '➕ Add All Users'; btn.disabled = false; }
-    textarea.value = '';
+    ta.value = '';
     document.getElementById('batchPreview').innerHTML = '';
     toast(added + ' user(s) pre-approved' + (failed ? ', ' + failed + ' failed' : '') + '. They can sign in now.',
         added > 0 ? 'success' : 'error');
@@ -7648,6 +7569,30 @@ document.addEventListener('click', (e) => {
 // ============================================================
 let allTicketsData = [];
 let allTicketsDrilldown = null;
+
+// ---- Shared ticket cache (90s TTL) ----
+// All full-collection fetches share one Firebase read. Cache is patched
+// in-place by syncAfterTicketMutation so local edits are always reflected.
+var _tCache = null;
+var _tCacheTs = 0;
+var _T_TTL = 90000;
+
+function getTicketsCached(cb) {
+    if (_tCache && (Date.now() - _tCacheTs < _T_TTL)) {
+        cb(_tCache);
+        return;
+    }
+    db.ref('tickets').once('value', function(snap) {
+        var arr = [];
+        snap.forEach(function(child) { arr.push(Object.assign({ _key: child.key }, child.val())); });
+        _tCache = arr;
+        _tCacheTs = Date.now();
+        cb(arr);
+    });
+}
+
+function invalidateTCache() { _tCache = null; _tCacheTs = 0; }
+
 let allTicketsListenerRef = null;  // live Firebase listener for allTicketsScreen
 let globalPollInterval = null;    // 5-min cross-view polling
 
@@ -8579,9 +8524,6 @@ function openTicketDetail(key, forceModal = true) {
         html += `
         <div class="status-update-section">
             <h4>Update Status</h4>
-            <div class="ticket-save-row top" id="saveRowTop">
-                <button class="btn btn-primary btn-sm" onclick="saveStatusUpdate('${key}')" id="saveStatusBtnTop">Save Update</button>
-            </div>
             <div class="status-select-grid">
                 ${statuses.map(s => `
                     <button class="status-option ${normalizedStatus === s ? 'active' : ''}" onclick="updateTicketStatus('${key}', '${s}', this)">
@@ -8866,14 +8808,14 @@ function hasTicketEditChanges() {
 
 function setModalSaveVisibility() {
     const visible = hasTicketEditChanges();
-    ['saveRowTop', 'saveRowBottom'].forEach(id => {
+    ['saveRowBottom'].forEach(id => {
         const row = document.getElementById(id);
         if (row) row.classList.toggle('visible', visible);
     });
 }
 
 function setModalSaveBusy(isBusy) {
-    ['saveStatusBtnTop', 'saveStatusBtnBottom'].forEach(id => {
+    ['saveStatusBtnBottom'].forEach(id => {
         const btn = document.getElementById(id);
         if (!btn) return;
         btn.disabled = isBusy;
@@ -8987,6 +8929,11 @@ async function updateTicketStatus(key, status, el) {
 // Keep ticket collections and active views in sync after updates
 // ------------------------------------------------------------
 function syncAfterTicketMutation(ticketKey, patch) {
+    // Keep the shared cache in sync so subsequent reads stay fresh
+    if (_tCache) {
+        var ci = _tCache.findIndex(function(x) { return x._key === ticketKey || x.id === ticketKey; });
+        if (ci >= 0) _tCache[ci] = Object.assign({}, _tCache[ci], patch);
+    }
     const applyPatch = (arr) => {
         const idx = arr.findIndex(x => x._key === ticketKey || x.id === ticketKey);
         if (idx >= 0) arr[idx] = { ...arr[idx], ...patch };
