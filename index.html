@@ -6333,8 +6333,22 @@ function renderInlineAssignControls(ticket, contextPrefix = 'inline') {
     // Assigned + vendor: show inline dispatch row with contacted question.
     // Tech-assigned tickets go straight to 'dispatched' on assignment, so
     // this block only applies to external vendors who need to be contacted.
+    // Exception: ITSupport (Usman) is handled as internal — no contact prompt, no sample email.
     if (status === 'assigned' && assigneeLabel && ticket.assigneeType !== 'tech') {
         const dispName = getAssigneeDisplayName(ticket) || escHtml(assigneeLabel);
+        const isITSupport = String(ticket.assignedTo || '').toLowerCase().includes('itsupport');
+        if (isITSupport) {
+            return `
+                <div class="inline-assigned-row" onclick="event.stopPropagation()">
+                    <div class="inline-dispatch-row">
+                        <div class="inline-dispatch-q">Assigned to <b>${escHtml(dispName)}</b></div>
+                        <div class="inline-dispatch-btns">
+                            <button class="btn btn-outline-danger btn-sm" onclick="event.stopPropagation();unassignTicket('${escAttr(ticketKey)}')">Unassign</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
         return `
             <div class="inline-assigned-row" onclick="event.stopPropagation()">
                 <div class="inline-dispatch-row">
@@ -6424,9 +6438,11 @@ async function markAssignedContactedNo(ticketKey) {
     const tCheck = allTicketsData.find(x => x._key === ticketKey || x.id === ticketKey) || currentTickets.find(x => x._key === ticketKey || x.id === ticketKey);
     if (tCheck && tCheck.assigneeType === 'tech') return;
 
-    // Ask if they want the email draft
+    // Ask if they want the email draft — skip for ITSupport (internal, no external contact needed)
     const t = tCheck;
     if (!t) return;
+    const isITSupport = String(t.assignedTo || '').toLowerCase().includes('itsupport');
+    if (isITSupport) return;
 
     const label = String(t.assignedTo || '').trim() || 'the technician';
     const want = await confirmBox(
@@ -6660,7 +6676,9 @@ async function quickAssignTicket(ticketKey, selectId) {
 
         toast(isTech ? 'Dispatched to technician' : 'Ticket assigned', 'success');
         // Only show the reminder prompt for external vendors — they don't have the app.
-        if (!isTech) {
+        // Skip for ITSupport (Usman) — internal assignment, no external contact needed.
+        const isITSupport = String(parsed.assignedTo || '').toLowerCase().includes('itsupport');
+        if (!isTech && !isITSupport) {
             showAssignReminder({ ...ticket, _key: ticketKey, status: 'assigned' }, parsed.assignedTo);
         }
     } catch (err) {
@@ -9633,7 +9651,7 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v3.13</span>
+    <span>R&M Tracker v3.14</span>
 </div>
 
 </body>
