@@ -3802,7 +3802,7 @@ body.kiosk .action-card[onclick*="showNewIssueScreen"] { display:none !important
                 <div class="admin-section-body">
                     <p style="font-size:13px;color:var(--text-mid);margin-bottom:10px">
                         Paste one user per line:<br>
-                        <code style="font-size:11px;background:var(--bg);padding:2px 6px;border-radius:4px;display:inline-block;margin-top:3px">Name, email@dossaniparadise.com, Role, StoreCode(s)</code>
+                        <code style="font-size:11px;background:var(--bg);padding:2px 6px;border-radius:4px;display:inline-block;margin-top:3px">Name, <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="ed88808c8481ad89829e9e8c83849d8c9f8c89849e88c38e8280">[email&#160;protected]</a>, Role, StoreCode(s)</code>
                     </p>
                     <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">
                         Roles: Manager, Area Coach, Director, Admin, Technician, Overwatch<br>
@@ -4145,6 +4145,71 @@ const BRAND_LOGOS = {
 // APP STATE
 // ============================================================
 let currentUser = null;
+
+// ── i18n ─────────────────────────────────────────────────────────────────────
+window._appLang = 'en';
+const _TRANSLATIONS = {
+    // Tech dashboard
+    'Active Jobs':        'Trabajos Activos',
+    'Urgent':             'Urgente',
+    'Waiting':            'En Espera',
+    'Completed':          'Completados',
+    'Assigned to you':    'Asignado a ti',
+    'No jobs assigned to you': 'No tienes trabajos asignados',
+    'No completed jobs yet':   'Aún no hay trabajos completados',
+    'Clock In':           'Registrar Entrada',
+    'Clock Out':          'Registrar Salida',
+    '▶ Clock In':         '▶ Registrar Entrada',
+    'Finish current job first': 'Termina el trabajo actual primero',
+    '📦 Mark Waiting':    '📦 Marcar En Espera',
+    '▶ Resume Work':      '▶ Reanudar Trabajo',
+    'On site — troubleshooting now': 'En sitio — diagnosticando',
+    'Waiting on parts':   'Esperando piezas',
+    'Need callback from store': 'Necesito llamada de la tienda',
+    'On site':            'En sitio',
+    'Waiting parts':      'Esperando piezas',
+    'Need callback':      'Necesito llamada',
+    'Add a note…':        'Agregar una nota…',
+    'Save Note':          'Guardar Nota',
+    'Open Full Details':  'Ver Detalles Completos',
+    'Select a job to view full details.': 'Selecciona un trabajo para ver los detalles.',
+    'Quick update note':  'Nota de actualización rápida',
+    'Save Update':        'Guardar Actualización',
+    'On site — troubleshooting now': 'En sitio — diagnosticando ahora',
+    'Part ordered — ETA pending': 'Pieza ordenada — ETA pendiente',
+    'Temporary fix in place': 'Solución temporal aplicada',
+    'Need manager follow-up': 'Se necesita seguimiento del gerente',
+    // Status labels
+    'Unassigned':         'Sin Asignar',
+    'Assigned':           'Asignado',
+    'Dispatched':         'Despachado',
+    'In Progress':        'En Progreso',
+    'Waiting':            'En Espera',
+    'Resolved':           'Resuelto',
+    'Closed':             'Cerrado',
+    // Priorities
+    'Routine':            'Rutina',
+    'Urgent':             'Urgente',
+    'Emergency':          'Emergencia',
+    // Clock out screen
+    'Complete Clock Out': 'Completar Salida',
+    'Clock out notes (optional)': 'Notas de salida (opcional)',
+    'A photo is required to clock out': 'Se requiere una foto para registrar la salida',
+    // General
+    'Loading...':         'Cargando...',
+    'Sign Out':           'Cerrar Sesión',
+    'Add a quick note first.': 'Agrega una nota primero.',
+    'Note added':         'Nota agregada',
+    'Update saved':       'Actualización guardada',
+    'Already clocked into a job. Clock out first.': 'Ya registraste entrada en un trabajo. Registra la salida primero.',
+    'Repair & Maintenance': 'Reparación y Mantenimiento',
+};
+function t(str) {
+    if (window._appLang !== 'es') return str;
+    return _TRANSLATIONS[str] || str;
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 let selectedStore = null;
 let selectedCategory = null;
 let selectedLocation = null;
@@ -4154,6 +4219,7 @@ let currentTickets = [];
 let currentFilter = 'all'; // default; set after auth based on role
 
 let activeTicketListener = null;
+let lastLoadedStoreCode = null;
 let vendorList = [];
 let desktopStoreData = [];
 let dslShowAll = false;
@@ -4372,6 +4438,9 @@ async function loadUserData(user) {
 
         currentUser = resolveRuntimeProfile(user, data);
 
+        // Language detection — rmtech3 gets Spanish UI
+        window._appLang = (currentUser.email || '').toLowerCase().includes('rmtech3') ? 'es' : 'en';
+
         showAppScreen();
     } catch (err) {
         console.error('Load user error:', err);
@@ -4384,6 +4453,7 @@ function logout() {
     document.body.classList.remove('kiosk');
     currentUser = null;
     if (activeTicketListener) { activeTicketListener(); activeTicketListener = null; }
+    lastLoadedStoreCode = null;
     if (notifyListenerRef && notifyListenerCallback) {
         notifyListenerRef.off('value', notifyListenerCallback);
         notifyListenerRef = null;
@@ -5675,6 +5745,7 @@ async function saveEditUser(uid) {
 
     try {
         await db.ref(`users/${uid}`).update({ name, role, stores: storeVal });
+        sessionStorage.removeItem('cache_techUsers');
         document.getElementById('editUserModal').remove();
         showToast('User updated', 'success');
         loadActiveUsers();
@@ -5889,13 +5960,27 @@ async function saveNotifyRouting() {
 // VENDOR MANAGEMENT
 // ============================================================
 async function loadVendors() {
-    const snap = await db.ref('config/vendors').once('value');
-    vendorList = [];
-    snap.forEach(child => { vendorList.push({ id: child.key, ...child.val() }); });
-    renderVendorRows();
-    populateAssignDropdown();
-    renderVendorCatCheckboxes();
-    renderVendorManagerRows();
+    try {
+        const cached = sessionStorage.getItem('cache_vendors');
+        if (cached) {
+            vendorList = JSON.parse(cached);
+            renderVendorRows();
+            populateAssignDropdown();
+            renderVendorCatCheckboxes();
+            renderVendorManagerRows();
+            return;
+        }
+        const snap = await db.ref('config/vendors').once('value');
+        vendorList = [];
+        snap.forEach(child => { vendorList.push({ id: child.key, ...child.val() }); });
+        sessionStorage.setItem('cache_vendors', JSON.stringify(vendorList));
+        renderVendorRows();
+        populateAssignDropdown();
+        renderVendorCatCheckboxes();
+        renderVendorManagerRows();
+    } catch(e) {
+        console.warn('loadVendors failed:', e);
+    }
 }
 
 function renderVendorRows() {
@@ -5969,6 +6054,7 @@ async function openVendorEdit(vendorId) {
 
         try {
             await db.ref('config/vendors/' + vendorId).update({ phone: phone || '', email: email || '' });
+            sessionStorage.removeItem('cache_vendors');
             v.phone = phone || '';
             v.email = email || '';
             renderVendorRows();
@@ -5999,6 +6085,7 @@ async function addVendor() {
     try {
         const newVendorRef = db.ref('config/vendors').push();
         await newVendorRef.set({ name, categories: cats });
+        sessionStorage.removeItem('cache_vendors');
         vendorList.push({ id: newVendorRef.key, name, categories: cats });
         document.getElementById('newVendorName').value = '';
         document.querySelectorAll('.vendor-cat-cb').forEach(c => c.checked = false);
@@ -6018,6 +6105,7 @@ async function removeVendor(id) {
     if (!canEdit) { showToast('No permission', 'error'); return; }
     try {
         await db.ref('config/vendors/' + id).remove();
+        sessionStorage.removeItem('cache_vendors');
         showToast('Vendor removed', 'success');
         loadVendors();
     } catch (err) {
@@ -6084,6 +6172,7 @@ async function addVendorFromManager() {
     try {
         const newVendorRef = db.ref('config/vendors').push();
         await newVendorRef.set({ name, categories: cats });
+        sessionStorage.removeItem('cache_vendors');
         vendorList.push({ id: newVendorRef.key, name, categories: cats });
         renderVendorRows();
         renderVendorManagerRows();
@@ -6123,6 +6212,12 @@ let techUserCache = [];
 
 async function loadTechUsers() {
     try {
+        const cached = sessionStorage.getItem('cache_techUsers');
+        if (cached) {
+            techUserCache = JSON.parse(cached);
+            populateAssignDropdown();
+            return;
+        }
         const snap = await db.ref('users').once('value');
         techUserCache = [];
         snap.forEach(child => {
@@ -6131,6 +6226,7 @@ async function loadTechUsers() {
                 techUserCache.push({ uid: child.key, email: u.email || '', name: u.name || u.email || 'Technician' });
             }
         });
+        sessionStorage.setItem('cache_techUsers', JSON.stringify(techUserCache));
     } catch(e) {
         console.warn('loadTechUsers failed:', e);
     }
@@ -6661,35 +6757,35 @@ function getTicketByKey(key) {
 function renderTechDetailPane(key) {
     const pane = document.getElementById('techDetailPane');
     if (!pane) return;
-    const t = getTicketByKey(key || (activeClockIn && activeClockIn.ticketKey));
-    if (!t) {
-        pane.innerHTML = '<div class="tech-detail-empty">Select a job to view full details.</div>';
+    const ticket = getTicketByKey(key || (activeClockIn && activeClockIn.ticketKey));
+    if (!ticket) {
+        pane.innerHTML = `<div class="tech-detail-empty">${t('Select a job to view full details.')}</div>`;
         return;
     }
         const catIcons = { plumbing:'🚿', equipment:'⚙️', it:'💻', structural:'🧱', safety:'🛡️', other:'📎' };
     const notes = [
-        'On site — troubleshooting now',
-        'Part ordered — ETA pending',
-        'Temporary fix in place',
-        'Need manager follow-up'
+        t('On site — troubleshooting now'),
+        t('Part ordered — ETA pending'),
+        t('Temporary fix in place'),
+        t('Need manager follow-up')
     ];
     pane.innerHTML = `
         <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;flex-wrap:wrap;margin-bottom:10px">
             <div>
-                <div style="font-weight:700">${escHtml(t.id || t._key)}</div>
-                <div style="font-size:12px;color:var(--text-muted)">${escHtml((stores.find(s => s.code === t.storeCode) || {}).name || t.storeCode || '')}</div>
+                <div style="font-weight:700">${escHtml(ticket.id || ticket._key)}</div>
+                <div style="font-size:12px;color:var(--text-muted)">${escHtml((stores.find(s => s.code === ticket.storeCode) || {}).name || ticket.storeCode || '')}</div>
             </div>
-            <span class="ticket-status-badge status-${getStatusColorClass(t.status)}" style="font-size:11px">${getStatusLabel(t.status)}</span>
+            <span class="ticket-status-badge status-${getStatusColorClass(ticket.status)}" style="font-size:11px">${getStatusLabel(ticket.status)}</span>
         </div>
-        <div style="font-size:13px;line-height:1.4;margin-bottom:8px">${catIcons[t.category] || '📎'} ${escHtml(t.description || '')}</div>
-        ${(Array.isArray(t.photos) && t.photos.length) ? '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">' + t.photos.map(function(url) { return '<img src="' + url + '" style="height:68px;width:68px;object-fit:cover;border-radius:8px;border:2px solid var(--border);cursor:pointer" onclick="openLightbox(\'' + url + '\')">'; }).join('') + '</div>' : ''}
+        <div style="font-size:13px;line-height:1.4;margin-bottom:8px">${catIcons[ticket.category] || '📎'} ${escHtml(ticket.description || '')}</div>
+        ${(Array.isArray(ticket.photos) && ticket.photos.length) ? '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">' + ticket.photos.map(function(url) { return '<img src="' + url + '" style="height:68px;width:68px;object-fit:cover;border-radius:8px;border:2px solid var(--border);cursor:pointer" onclick="openLightbox(\'' + url + '\')">'; }).join('') + '</div>' : ''}
         <div class="tjc-fast-actions" style="margin-bottom:10px">
             ${notes.map(n => `<button class="quick-chip" onclick="prefillTechNote('${escHtml(n)}')">${escHtml(n)}</button>`).join('')}
         </div>
-        <textarea class="form-textarea" id="techQuickNote" placeholder="Quick update note" style="min-height:78px;font-size:13px"></textarea>
+        <textarea class="form-textarea" id="techQuickNote" placeholder="${t('Quick update note')}" style="min-height:78px;font-size:13px"></textarea>
         <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
-            <button class="btn btn-sm" style="background:var(--primary);color:#fff;border:none" onclick="saveTechQuickUpdate('${t._key}', 'inprogress')">Save Update</button>
-            <button class="btn-view-ticket" onclick="openTicketDetail('${t._key}', true)">Open Full Details</button>
+            <button class="btn btn-sm" style="background:var(--primary);color:#fff;border:none" onclick="saveTechQuickUpdate('${ticket._key}', 'inprogress')">${t('Save Update')}</button>
+            <button class="btn-view-ticket" onclick="openTicketDetail('${ticket._key}', true)">${t('Open Full Details')}</button>
         </div>`;
 }
 
@@ -6719,19 +6815,19 @@ function renderTechDashboard() {
     document.getElementById('techStats').innerHTML = `
         <div class="tech-stat-card" onclick="filterTechJobs('active',null)">
             <div class="tsc-num" style="color:#d97706">${active.length}</div>
-            <div class="tsc-label">Active Jobs</div>
+            <div class="tsc-label">${t('Active Jobs')}</div>
         </div>
         <div class="tech-stat-card">
             <div class="tsc-num" style="color:#dc2626">${urgent.length}</div>
-            <div class="tsc-label">Urgent</div>
+            <div class="tsc-label">${t('Urgent')}</div>
         </div>
         <div class="tech-stat-card">
             <div class="tsc-num" style="color:#ea580c">${waiting.length}</div>
-            <div class="tsc-label">Waiting</div>
+            <div class="tsc-label">${t('Waiting')}</div>
         </div>
         <div class="tech-stat-card" onclick="filterTechJobs('completed',null)">
             <div class="tsc-num" style="color:#059669">${completed.length}</div>
-            <div class="tsc-label">Completed</div>
+            <div class="tsc-label">${t('Completed')}</div>
         </div>`;
 
     let displayJobs = techFilter === 'completed'
@@ -6752,7 +6848,7 @@ function renderTechDashboard() {
 
     const listEl = document.getElementById('techJobList');
     if (displayJobs.length === 0) {
-        const msg = techFilter === 'active' ? 'No jobs assigned to you' : 'No completed jobs yet';
+        const msg = techFilter === 'active' ? t('No jobs assigned to you') : t('No completed jobs yet');
         listEl.innerHTML = `<div class="empty-state" style="padding:40px;text-align:center;color:var(--text-muted)">${msg}</div>`;
         return;
     }
@@ -6760,53 +6856,53 @@ function renderTechDashboard() {
         const catIcons = { plumbing:'🚿', equipment:'⚙️', it:'💻', structural:'🧱', safety:'🛡️', other:'📎' };
     const isClocked = activeClockIn !== null;
 
-    listEl.innerHTML = displayJobs.map(t => {
-        const storeName = (stores.find(s => s.code === t.storeCode) || {}).name || t.storeCode;
+    listEl.innerHTML = displayJobs.map(ticket => {
+        const storeName = (stores.find(s => s.code === ticket.storeCode) || {}).name || ticket.storeCode;
         const shortStore = storeName.replace(/^Burger King /, 'BK ').replace(/^Paradise QS /, 'PQS ');
-        const isActiveJob = activeClockIn && activeClockIn.ticketKey === t._key;
-        const prBadge = {routine:'<span class="priority-word p-routine">Routine</span>',urgent:'<span class="priority-word p-urgent">Urgent</span>',emergency:'<span class="priority-word p-emergency">Emergency</span>'}[t.priority] || '';
-        const desc = (t.description || '').substring(0, 100) + ((t.description || '').length > 100 ? '...' : '');
-        const time = getTimeAgo(t.createdAt);
+        const isActiveJob = activeClockIn && activeClockIn.ticketKey === ticket._key;
+        const prBadge = {routine:'<span class="priority-word p-routine">Routine</span>',urgent:'<span class="priority-word p-urgent">Urgent</span>',emergency:'<span class="priority-word p-emergency">Emergency</span>'}[ticket.priority] || '';
+        const desc = (ticket.description || '').substring(0, 100) + ((ticket.description || '').length > 100 ? '...' : '');
+        const time = getTimeAgo(ticket.createdAt);
         const zoneBadge = ''; // zone system removed
 
         let actionBtn = '';
         if (isActiveJob) {
             const modeStatus = activeClockIn.modeStatus || 'inprogress';
-            const btnLabel = modeStatus === 'inprogress' ? '📦 Mark Waiting' : '▶ Resume Work';
+            const btnLabel = modeStatus === 'inprogress' ? t('📦 Mark Waiting') : t('▶ Resume Work');
             actionBtn = `<button class="btn-tech-primary" onclick="event.stopPropagation();techAdvanceExecutionMode()">${btnLabel}</button>`;
-        } else if (!isClocked && isActiveStatus(t.status)) {
-            actionBtn = `<button class="btn-clock-in" onclick="event.stopPropagation();clockIn('${t._key}','${escHtml(t.id)}','${escHtml(shortStore)}', '${t.priority || ''}')">▶ Clock In</button>`;
+        } else if (!isClocked && isActiveStatus(ticket.status)) {
+            actionBtn = `<button class="btn-clock-in" onclick="event.stopPropagation();clockIn('${ticket._key}','${escHtml(ticket.id)}','${escHtml(shortStore)}', '${ticket.priority || ''}')">${t('▶ Clock In')}</button>`;
         } else if (isClocked && !isActiveJob) {
-            actionBtn = `<button class="btn-clock-in" disabled title="Finish current job first">▶ Clock In</button>`;
+            actionBtn = `<button class="btn-clock-in" disabled title="${t('Finish current job first')}">${t('▶ Clock In')}</button>`;
         }
 
-        return `<div class="tech-job-card ${isActiveJob ? 'active-job' : ''}" onclick="if(!this.classList.contains('active-job'))techOpenTicket('${t._key}')">
+        return `<div class="tech-job-card ${isActiveJob ? 'active-job' : ''}" onclick="if(!this.classList.contains('active-job'))techOpenTicket('${ticket._key}')">
             <div class="tjc-main">
                 <div class="tjc-top">
                     <span class="tjc-store">${escHtml(shortStore)}</span>
-                    <span class="tjc-id">${escHtml(t.id || t._key)}</span>
+                    <span class="tjc-id">${escHtml(ticket.id || ticket._key)}</span>
                     ${prBadge}
                 </div>
-                <div class="tjc-desc">${catIcons[t.category] || ''} ${escHtml(desc)}</div>
+                <div class="tjc-desc">${catIcons[ticket.category] || ''} ${escHtml(desc)}</div>
                 <div class="tjc-meta">
-                    <span class="ticket-status-badge status-${getStatusColorClass(t.status)}" style="font-size:11px;padding:2px 8px">${getStatusLabel(t.status)}</span>
+                    <span class="ticket-status-badge status-${getStatusColorClass(ticket.status)}" style="font-size:11px;padding:2px 8px">${getStatusLabel(ticket.status)}</span>
                     <span style="color:var(--text-muted)">${time}</span>
-                    <span style="color:#059669;font-weight:600">Assigned to you</span>
+                    <span style="color:#059669;font-weight:600">${t('Assigned to you')}</span>
                     ${zoneBadge}
                 </div>
                 <div class="tjc-fast-actions">
-                    <button class="quick-chip" onclick="event.stopPropagation();saveTechQuickChip('${t._key}','On site — troubleshooting now')">On site</button>
-                    <button class="quick-chip" onclick="event.stopPropagation();saveTechQuickChip('${t._key}','Waiting on parts')">Waiting parts</button>
-                    <button class="quick-chip" onclick="event.stopPropagation();saveTechQuickChip('${t._key}','Need callback from store')">Need callback</button>
+                    <button class="quick-chip" onclick="event.stopPropagation();saveTechQuickChip('${ticket._key}','On site — troubleshooting now')">${t('On site')}</button>
+                    <button class="quick-chip" onclick="event.stopPropagation();saveTechQuickChip('${ticket._key}','Waiting on parts')">${t('Waiting parts')}</button>
+                    <button class="quick-chip" onclick="event.stopPropagation();saveTechQuickChip('${ticket._key}','Need callback from store')">${t('Need callback')}</button>
                 </div>
                 ${isActiveJob ? `<div class="tjc-note-row" onclick="event.stopPropagation()">
-                    <textarea class="tjc-note-input" id="mobileQuickNote_${t._key}" placeholder="Add a note…" rows="2"></textarea>
-                    <button class="tjc-note-save" onclick="event.stopPropagation();saveMobileQuickNote('${t._key}')">Save Note</button>
+                    <textarea class="tjc-note-input" id="mobileQuickNote_${ticket._key}" placeholder="${t('Add a note…')}" rows="2"></textarea>
+                    <button class="tjc-note-save" onclick="event.stopPropagation();saveMobileQuickNote('${ticket._key}')">${t('Save Note')}</button>
                 </div>` : ''}
             </div>
             <div class="tjc-actions">
                 ${actionBtn}
-                ${isActiveJob ? '<button class="btn-view-ticket" onclick="event.stopPropagation();showClockOutPrompt()">Clock Out</button>' : ''}
+                ${isActiveJob ? `<button class="btn-view-ticket" onclick="event.stopPropagation();showClockOutPrompt()">${t('Clock Out')}</button>` : ''}
             </div>
         </div>`;
     }).join('');
@@ -6927,11 +7023,17 @@ async function submitNewJob() {
     try {
         var store = stores.find(function(s) { return s.code === storeCode; });
         var photoUrls = [];
-        for (var i = 0; i < _anjPhotos.length; i++) photoUrls.push(await fileToBase64(_anjPhotos[i].file));
         var catMap = { plumbing:'PLM', equipment:'EQP', it:'IT', structural:'STR', safety:'SAF', other:'GEN' };
         var catPrefix = catMap[_anjCategory] || 'GEN';
         var cSnap = await db.ref('counters/' + storeCode + '/' + catPrefix).transaction(function(v) { return (v||0)+1; });
         var ticketId = storeCode + '-' + catPrefix + '-' + String(cSnap.snapshot.val()).padStart(4,'0');
+        for (var i = 0; i < _anjPhotos.length; i++) {
+            var anjFile = _anjPhotos[i].file;
+            var anjExt = anjFile.name.split('.').pop() || 'jpg';
+            var anjRef = storage.ref('tickets/' + ticketId + '/anj_' + i + '.' + anjExt);
+            await anjRef.put(anjFile);
+            photoUrls.push(await anjRef.getDownloadURL());
+        }
         var now = Date.now();
         var ticket = {
             id: ticketId, storeCode: storeCode,
@@ -7231,9 +7333,12 @@ async function confirmClockOut() {
         const notes = document.getElementById('clockOutNotes').value.trim();
 
         const photoUrls = [];
-        for (const f of clockOutPhotos) {
-            const dataUrl = await fileToBase64(f);
-            photoUrls.push(dataUrl);
+        for (let i = 0; i < clockOutPhotos.length; i++) {
+            const f = clockOutPhotos[i];
+            const ext = f.name.split('.').pop() || 'jpg';
+            const coRef = storage.ref(`timeEntries/${activeClockIn.entryKey}/photo_${i}.${ext}`);
+            await coRef.put(f);
+            photoUrls.push(await coRef.getDownloadURL());
         }
 
         await db.ref('timeEntries/' + activeClockIn.entryKey).update({ endTime: now });
@@ -7369,10 +7474,12 @@ function subscribeAdminSummary() {
     }
 
     adminSummaryListenerRef = db.ref('tickets');
+    let _summaryDebounce = null;
     adminSummaryListenerCallback = snap => {
         const tickets = [];
         snap.forEach(child => { tickets.push({ _key: child.key, ...child.val() }); });
-        renderAdminSummaryFromTickets(tickets);
+        clearTimeout(_summaryDebounce);
+        _summaryDebounce = setTimeout(() => renderAdminSummaryFromTickets(tickets), 1500);
     };
 
     adminSummaryListenerRef.on('value', adminSummaryListenerCallback);
@@ -7575,7 +7682,7 @@ let allTicketsDrilldown = null;
 // in-place by syncAfterTicketMutation so local edits are always reflected.
 var _tCache = null;
 var _tCacheTs = 0;
-var _T_TTL = 90000;
+var _T_TTL = 5 * 60 * 1000; // 5 minutes (was 90s)
 
 function getTicketsCached(cb) {
     if (_tCache && (Date.now() - _tCacheTs < _T_TTL)) {
@@ -7607,16 +7714,38 @@ function attachAllTicketsListener() {
     teardownAllTicketsListener();
     const listEl = document.getElementById('allTicketsList');
     if (listEl) listEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted)"><span class="spinner spinner-dark"></span> Loading...</div>';
-    allTicketsListenerRef = db.ref('tickets');
-    allTicketsListenerRef.on('value', snap => {
+
+    // Scope to user's stores where possible to avoid pulling all 53 stores
+    const accessibleCodes = getAccessibleStores().map(s => s.code);
+    const isFullAccess = !accessibleCodes.length || getEffectiveUserRole(currentUser) === 'Overwatch' || getEffectiveUserRole(currentUser) === 'Admin' || getEffectiveUserRole(currentUser) === 'Viewer';
+
+    if (!isFullAccess && accessibleCodes.length <= 6) {
+        // Parallel scoped queries — much faster than pulling everything
+        let pending = accessibleCodes.length;
         allTicketsData = [];
-        snap.forEach(child => { allTicketsData.push({ _key: child.key, ...child.val() }); });
-        allTicketsData.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-        // Only re-render if the screen is still active (avoids ghost updates)
-        if (!document.getElementById('allTicketsScreen').classList.contains('hidden')) {
-            filterAllTickets();
-        }
-    });
+        const handlers = [];
+        accessibleCodes.forEach(code => {
+            const ref = db.ref('tickets').orderByChild('storeCode').equalTo(code);
+            const handler = ref.on('value', snap => {
+                // Remove existing entries for this store then re-add
+                allTicketsData = allTicketsData.filter(t => t.storeCode !== code);
+                snap.forEach(child => { allTicketsData.push({ _key: child.key, ...child.val() }); });
+                allTicketsData.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+                if (!document.getElementById('allTicketsScreen').classList.contains('hidden')) filterAllTickets();
+            });
+            handlers.push({ ref, handler });
+        });
+        allTicketsListenerRef = { off: () => handlers.forEach(h => h.ref.off('value', h.handler)) };
+    } else {
+        // Full access roles: listen to entire tickets node
+        allTicketsListenerRef = db.ref('tickets');
+        allTicketsListenerRef.on('value', snap => {
+            allTicketsData = [];
+            snap.forEach(child => { allTicketsData.push({ _key: child.key, ...child.val() }); });
+            allTicketsData.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+            if (!document.getElementById('allTicketsScreen').classList.contains('hidden')) filterAllTickets();
+        });
+    }
 }
 
 function showAllTickets(defaultStatus) {
@@ -7714,36 +7843,59 @@ function filterAllTickets() {
         listEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted)">No tickets found</div>';
         return;
     }
+
+    // Group dispatched tickets by assignee
+    if (status === 'dispatched') {
+        const groups = {};
+        filtered.forEach(t => {
+            const key = String(t.assignedTo || '').trim() || '__unassigned__';
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(t);
+        });
+        const sortedGroupKeys = Object.keys(groups).sort((a, b) => {
+            if (a === '__unassigned__') return 1;
+            if (b === '__unassigned__') return -1;
+            return a.localeCompare(b);
+        });
+        listEl.innerHTML = sortedGroupKeys.map(groupKey => {
+            const groupTickets = groups[groupKey];
+            const displayName = groupKey === '__unassigned__' ? 'Unassigned' : groupKey.split('@')[0];
+            const header = `<div style="padding:8px 12px 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);background:var(--bg);border-bottom:1px solid var(--border);margin-bottom:4px">👤 ${escHtml(displayName)} — ${groupTickets.length} ticket${groupTickets.length !== 1 ? 's' : ''}</div>`;
+            const cards = groupTickets.map(t => renderAllTicketCard(t)).join('');
+            return `<div style="margin-bottom:12px;border:1px solid var(--border);border-radius:10px;overflow:hidden">${header}${cards}</div>`;
+        }).join('');
+        return;
+    }
     
-    listEl.innerHTML = filtered.map(t => {
-        const brandIcon = BRAND_LOGOS[t.brand] ? `<img src="${BRAND_LOGOS[t.brand]}" style="height:14px;width:14px;object-fit:contain;border-radius:2px">` : '';
-        const timeAgo = getTimeAgo(t.createdAt);
-        const photoCount = t.photos ? t.photos.length : 0;
-        const shortDesc = (t.description || '').substring(0, 80) + ((t.description || '').length > 80 ? '...' : '');
-        const statusClass = getStatusColorClass(t.status);
-        const prColor = t.priority === 'emergency' ? '#dc2626' : t.priority === 'urgent' ? '#d97706' : '#059669';
-        const staleInProgress = normalizeTicketStatus(t.status) === 'inprogress' && ((Date.now() - (t.updatedAt || t.createdAt || 0)) >= 24 * 60 * 60 * 1000);
-        
-        return `<div class="ticket-card" onclick="openTicketFromAllByKey('${esc(t._key || t.id)}')">
-            <div class="ticket-card-top">
-                <span class="ticket-store-name">${esc(t.storeName || t.storeCode)}</span>
-                ${getAssigneeBadgeHtml(t)}
-            </div>
-            <div class="ticket-card-desc">
-                <span class="cat-emoji">${getCategoryEmoji(t.category)}</span> ${esc(shortDesc)}
-            </div>
-            <div class="ticket-card-meta">
-                <span class="ticket-id">${esc(t.id)}</span>
-                <span style="color:${prColor}">● ${capitalize(t.priority || 'routine')}</span>
-                <span>${catLabel(t.category)}${t.location ? ' · ' + capitalize(t.location) : ''}</span>
-                ${brandIcon}
-                <span>${timeAgo}</span>
-                ${photoCount ? '<span>📷 ' + photoCount + '</span>' : ''}
-                ${staleInProgress ? '<span class="priority-badge p-urgent">⏱️ In Progress 24h+</span>' : ''}
-            </div>
-            ${renderInlineAssignControls(t, 'all')}
-        </div>`;
-    }).join('');
+    listEl.innerHTML = filtered.map(t => renderAllTicketCard(t)).join('');
+}
+
+function renderAllTicketCard(t) {
+    const brandIcon = BRAND_LOGOS[t.brand] ? `<img src="${BRAND_LOGOS[t.brand]}" style="height:14px;width:14px;object-fit:contain;border-radius:2px">` : '';
+    const timeAgo = getTimeAgo(t.createdAt);
+    const photoCount = t.photos ? t.photos.length : 0;
+    const shortDesc = (t.description || '').substring(0, 80) + ((t.description || '').length > 80 ? '...' : '');
+    const prColor = t.priority === 'emergency' ? '#dc2626' : t.priority === 'urgent' ? '#d97706' : '#059669';
+    const staleInProgress = normalizeTicketStatus(t.status) === 'inprogress' && ((Date.now() - (t.updatedAt || t.createdAt || 0)) >= 24 * 60 * 60 * 1000);
+    return `<div class="ticket-card" onclick="openTicketFromAllByKey('${esc(t._key || t.id)}')">
+        <div class="ticket-card-top">
+            <span class="ticket-store-name">${esc(t.storeName || t.storeCode)}</span>
+            ${getAssigneeBadgeHtml(t)}
+        </div>
+        <div class="ticket-card-desc">
+            <span class="cat-emoji">${getCategoryEmoji(t.category)}</span> ${esc(shortDesc)}
+        </div>
+        <div class="ticket-card-meta">
+            <span class="ticket-id">${esc(t.id)}</span>
+            <span style="color:${prColor}">● ${capitalize(t.priority || 'routine')}</span>
+            <span>${catLabel(t.category)}${t.location ? ' · ' + capitalize(t.location) : ''}</span>
+            ${brandIcon}
+            <span>${timeAgo}</span>
+            ${photoCount ? '<span>📷 ' + photoCount + '</span>' : ''}
+            ${staleInProgress ? '<span class="priority-badge p-urgent">⏱️ In Progress 24h+</span>' : ''}
+        </div>
+        ${renderInlineAssignControls(t, 'all')}
+    </div>`;
 }
 
 function openTicketFromAllByKey(ticketKey) {
@@ -8190,11 +8342,14 @@ async function submitTicket() {
     btn.disabled = true;
 
     try {
-        // Convert photos to base64 data URLs (stored directly in ticket)
+        // Upload photos to Firebase Storage (store URLs, not base64)
         const photoUrls = [];
-        for (const p of uploadedPhotos) {
-            const dataUrl = await fileToBase64(p.file);
-            photoUrls.push(dataUrl);
+        for (let i = 0; i < uploadedPhotos.length; i++) {
+            const p = uploadedPhotos[i];
+            const ext = p.file.name.split('.').pop() || 'jpg';
+            const photoRef = storage.ref(`tickets/${ticketId}/photo_${i}.${ext}`);
+            await photoRef.put(p.file);
+            photoUrls.push(await photoRef.getDownloadURL());
         }
 
         // Generate sequential ticket ID: STORE-CAT-0001
@@ -8300,14 +8455,21 @@ function switchManagerTab(tab) {
 }
 
 function loadTickets() {
+    const code = getStoreCode(selectedStore);
+    if (activeTicketListener && lastLoadedStoreCode === code) {
+        renderTickets();
+        return;
+    }
+
     const listEl = document.getElementById('ticketsList');
     listEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted);"><span class="spinner spinner-dark"></span><br><br>Loading tickets...</div>';
 
     // Detach previous listener
     if (activeTicketListener) { activeTicketListener(); }
+    lastLoadedStoreCode = code;
 
     // Real-time listener for this store's tickets
-    const ref = db.ref('tickets').orderByChild('storeCode').equalTo(getStoreCode(selectedStore));
+    const ref = db.ref('tickets').orderByChild('storeCode').equalTo(code);
 
     const handler = ref.on('value', (snap) => {
         currentTickets = [];
@@ -8717,10 +8879,14 @@ async function saveTicketEdits(key) {
 
     try {
         const updates = { description: newDesc, updatedAt: firebase.database.ServerValue.TIMESTAMP };
-        // Convert new photos to base64 and append
+        // Upload new photos to Firebase Storage and append URLs
         const photoUrls = [];
-        for (const f of editPhotos) {
-            photoUrls.push(await fileToBase64(f));
+        for (let i = 0; i < editPhotos.length; i++) {
+            const f = editPhotos[i];
+            const ext = f.name.split('.').pop() || 'jpg';
+            const eRef = storage.ref(`tickets/${key}/edit_${Date.now()}_${i}.${ext}`);
+            await eRef.put(f);
+            photoUrls.push(await eRef.getDownloadURL());
         }
         const t = currentTickets.find(x => x._key === key);
         if (photoUrls.length && t) {
@@ -9033,9 +9199,12 @@ async function saveStatusUpdate(key) {
 
 
         const statusPhotoUrls = [];
-        for (const f of statusPhotos) {
-            const dataUrl = await fileToBase64(f);
-            statusPhotoUrls.push(dataUrl);
+        for (let i = 0; i < statusPhotos.length; i++) {
+            const f = statusPhotos[i];
+            const ext = f.name.split('.').pop() || 'jpg';
+            const sRef = storage.ref(`tickets/${key}/status_${Date.now()}_${i}.${ext}`);
+            await sRef.put(f);
+            statusPhotoUrls.push(await sRef.getDownloadURL());
         }
 
         const actSnap = await db.ref(`tickets/${key}/activity`).once('value');
@@ -9338,15 +9507,6 @@ function getCategoryEmoji(cat) {
     return map[cat] || '📎';
 }
 
-function fileToBase64(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-}
-
 function showToast(msg, type = 'success') {
     const t = document.getElementById('toast');
     t.textContent = msg;
@@ -9473,7 +9633,7 @@ document.addEventListener('keydown', (e) => {
 
 <!-- Version Footer -->
 <div id="versionFooter" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.03);border-top:1px solid rgba(0,0,0,0.06);padding:2px 8px;font-size:10px;color:#94a3b8;display:flex;justify-content:center;gap:16px;z-index:1;font-family:'JetBrains Mono',monospace;letter-spacing:0.3px">
-    <span>R&M Tracker v3.12</span>
+    <span>R&M Tracker v3.13</span>
 </div>
 
 </body>
