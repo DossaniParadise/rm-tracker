@@ -499,6 +499,17 @@ button.inv-success:hover{background:rgba(5,150,105,.14)}
 .imp-done p{color:var(--ink-dim);font-size:13px;margin:0}
 .imp-bad{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;background:rgba(248,113,113,.14);color:var(--red);border-radius:99px;padding:3px 8px}
 .imp-warn{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;background:rgba(245,158,11,.16);color:var(--amber-deep);border-radius:99px;padding:3px 8px}
+.cr-hero{display:flex;align-items:center;gap:16px;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.cr-big{font-family:var(--disp);font-weight:800;font-size:52px;line-height:1;color:var(--amber-deep)}
+.cr-sub{font-size:13.5px;color:var(--ink-mid);line-height:1.5}
+.cr-sub .mono{font-size:11.5px;color:var(--ink-dim)}
+.cr-chart{display:flex;flex-direction:column;gap:7px}
+.cr-row{display:grid;grid-template-columns:120px 1fr 34px;align-items:center;gap:10px}
+.cr-label{font-size:12.5px;color:var(--ink);text-align:right;overflow-wrap:anywhere}
+.cr-track{height:22px;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.cr-bar{height:100%;background:linear-gradient(90deg,var(--amber),var(--amber-deep));border-radius:5px;transition:width .3s}
+.cr-n{font-family:var(--mono);font-size:12.5px;font-weight:700;color:var(--ink-mid)}
+@media(max-width:600px){.cr-row{grid-template-columns:92px 1fr 30px;gap:7px}.cr-big{font-size:44px}}
 .ce-tabs{display:flex;gap:6px;flex-wrap:wrap}
 .ce-tab{border:1px solid var(--line);background:var(--panel-2);border-radius:99px;padding:7px 13px;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--ink-mid)}
 .ce-tab.on{background:var(--amber);border-color:var(--amber-deep);color:#fff}
@@ -738,6 +749,7 @@ body.simulating .wrap{padding-bottom:40px}
     <button class="icon-btn" id="refreshBtn" title="Refresh now" onclick="manualRefresh()">⟳</button>
     <button class="icon-btn hidden" id="viewAsBtn" title="View as another person" onclick="openViewAs()">👁</button>
     <button class="icon-btn hidden" id="techReportBtn" title="Tech day report" onclick="openTechReport()">📊</button>
+    <button class="icon-btn hidden" id="closedRptBtn" title="Closed ticket report" onclick="openClosedReport()">📈</button>
     <button class="icon-btn hidden" id="vendorTopBtn" title="Techs &amp; vendors" onclick="openVendors()">🏢</button>
     <button class="icon-btn hidden" id="settingsBtn" title="Settings" onclick="openSettings()">⚙</button>
     <button class="icon-btn" title="Sign out" onclick="logout()">⏻</button>
@@ -760,7 +772,7 @@ const API_BASE_URL = "https://alignment-api-khaki.vercel.app/api/dpm-alignment";
 const APP_WRITE_PASSWORD = "rm123"; // must match ROLES.MAINTENANCE on the API
 const IMGBB_API_KEY = "b733862d15744e2bfaa4329d122f4ba0";
 const POLL_MS = 20000;
-const APP_VERSION = "6.12";
+const APP_VERSION = "6.13";
 let   SHOW_REF_TAGS = false; // default OFF — toggle with the # button in the top bar
 
 const ROLE_PASSWORDS = {
@@ -1763,6 +1775,7 @@ function enterAppChrome(){
   $("viewAsBtn").classList.toggle("hidden",!canViewAs);
   // Tech-location overwatch: any overwatch/admin (real or simulated) can view.
   $("techReportBtn").classList.toggle("hidden",SESSION.role!=="admin");
+  $("closedRptBtn").classList.toggle("hidden",SESSION.role!=="admin");
   $("settingsBtn").classList.toggle("hidden",!realAdmin);
   document.body.classList.toggle("no-reftags",!SHOW_REF_TAGS);
 }
@@ -4624,6 +4637,81 @@ async function invSave(sid,key,val){
     toast((e.message||"Could not save")+" — not saved","err");
     openInventoryStore(sid);
   }
+}
+
+
+/* ============================================================ CLOSED TICKET REPORT (overwatch)
+   How many tickets were closed in a window, and the split by category, as a
+   bar chart meant to be screenshotted. Closed tickets are lazily loaded, so
+   this pulls them first. */
+let CR_DAYS=30;
+/* When was this ticket actually closed? The activity trail is authoritative;
+   updatedAt is the fallback for imports and older records. */
+function closedAt(t){
+  const acts=Array.isArray(t.activity)?t.activity:[];
+  for(let i=acts.length-1;i>=0;i--){
+    const a=acts[i];
+    if(a&&a.toStatus==="closed"&&a.ts) return a.ts;
+  }
+  return t.updatedAt||t.finishedAt||t.createdAt||0;
+}
+async function openClosedReport(days){
+  if(days)CR_DAYS=days;
+  await ensureClosedLoaded();      // closed tickets aren't in the default payload
+  renderClosedReport();
+}
+function renderClosedReport(){
+  const since=now()-CR_DAYS*86400000;
+  const rows=Object.values(TICKETS).filter(t=>t.status==="closed"&&closedAt(t)>=since);
+
+  // group by TOP-LEVEL category so the chart stays readable
+  const byCat={};
+  rows.forEach(t=>{
+    const k=t.category||"__none";
+    const label=ALL_CATEGORIES[t.category]||"Uncategorised";
+    if(!byCat[k])byCat[k]={label,n:0};
+    byCat[k].n++;
+  });
+  const cats=Object.values(byCat).sort((a,b)=>b.n-a.n||a.label.localeCompare(b.label));
+  const max=cats.length?cats[0].n:0;
+  const total=rows.length;
+
+  // a few headline numbers worth screenshotting alongside the chart
+  const emerg=rows.filter(t=>t.priority==="emergency").length;
+  const stores=new Set(rows.map(t=>t.storeId)).size;
+  const durs=rows.map(t=>closedAt(t)-(t.createdAt||0)).filter(d=>d>0);
+  const medDays=durs.length?(()=>{const a=durs.slice().sort((x,y)=>x-y);
+    const m=a[Math.floor(a.length/2)];return (m/86400000).toFixed(1)})():"—";
+
+  const bars=cats.map(c=>`
+    <div class="cr-row">
+      <div class="cr-label">${esc(c.label)}</div>
+      <div class="cr-track"><div class="cr-bar" style="width:${max?Math.max(2,Math.round(c.n/max*100)):0}%"></div></div>
+      <div class="cr-n">${c.n}</div>
+    </div>`).join("");
+
+  const pick=[30,60,90].map(d=>`<button class="ce-tab${CR_DAYS===d?" on":""}" onclick="openClosedReport(${d})">${d} days</button>`).join("");
+  const from=new Date(since).toLocaleDateString("en-US",{month:"short",day:"numeric"});
+  const to=new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
+
+  modal(`<div class="sheet-head"><h2>Closed tickets</h2><button class="x-btn" onclick="closeModal()">✕</button></div>
+    <div class="sheet-body">
+      <div class="ce-tabs" style="margin-bottom:14px">${pick}</div>
+      <div class="cr-hero">
+        <div class="cr-big">${total}</div>
+        <div class="cr-sub">closed in the last ${CR_DAYS} days<br><span class="mono">${esc(from)} – ${esc(to)}</span></div>
+      </div>
+      <div class="imp-summary" style="margin:14px 0 4px">
+        <div class="rp-stat"><div class="rp-n">${cats.length}</div><div class="rp-l">categories</div></div>
+        <div class="rp-stat"><div class="rp-n">${stores}</div><div class="rp-l">stores</div></div>
+        <div class="rp-stat"><div class="rp-n">${emerg}</div><div class="rp-l">emergencies</div></div>
+        <div class="rp-stat"><div class="rp-n">${medDays}</div><div class="rp-l">median days open</div></div>
+      </div>
+      <div class="section-label" style="margin-top:18px">By category<span class="ln"></span></div>
+      ${total?`<div class="cr-chart">${bars}</div>`
+        :`<div class="rp-empty">No tickets were closed in this window.</div>`}
+    </div>
+    <div class="sheet-foot"><button class="btn btn-ghost btn-block" onclick="closeModal()">Done</button></div>`);
 }
 
 /* ============================================================ VENDORS */
