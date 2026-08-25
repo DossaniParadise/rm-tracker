@@ -743,6 +743,9 @@ body.simulating .wrap{padding-bottom:40px}
 .jc-left .jc-filters{margin:0;position:sticky;top:0;background:var(--panel);z-index:1;padding-bottom:2px}
 .jc-chk{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-mid);white-space:nowrap;cursor:pointer}
 .jc-cands{display:flex;flex-direction:column;gap:8px}
+.jc-pool{font-family:var(--mono);font-size:10.5px;color:var(--ink-dim);letter-spacing:.04em}
+.jc-pool.err{font-family:var(--body);font-size:12.5px;color:var(--red);background:rgba(220,38,38,.07);border:1px solid rgba(220,38,38,.25);border-radius:8px;padding:8px 10px;letter-spacing:0}
+.jc-retry{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:3px 9px;font-size:12px;font-weight:600;cursor:pointer;color:var(--ink);margin-left:6px}
 .jc-right{min-height:0;display:flex;flex-direction:column;gap:8px}
 .jc-inv-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 .jc-inv-amt{font-family:var(--disp);font-weight:800;font-size:30px;color:var(--amber-deep);line-height:1;white-space:nowrap}
@@ -2276,20 +2279,25 @@ function pickStatus(key){
    Only Overwatch ever renders closed rows, so everyone else skips the fetch
    entirely. Re-fetches when the cache is older than CLOSED_TTL_MS so the tab
    stays honest without ever being polled. */
+let CLOSED_ERR=null;        // last closed-fetch failure message (job-costs panel shows it)
 async function ensureClosedLoaded(){
-  if(SESSION.role!=="admin") return;
-  if(CLOSED_LOADED && (Date.now()-CLOSED_FETCHED_AT)<CLOSED_TTL_MS) return;
+  if(SESSION.role!=="admin") return false;
+  if(CLOSED_LOADED && (Date.now()-CLOSED_FETCHED_AT)<CLOSED_TTL_MS) return true;
   showLoader(true);
   try{
-    const r=await fetchWithTimeout(API_BASE_URL+"?closed=only",{cache:"no-store"},25000);
-    if(!r.ok) throw new Error("Could not load closed tickets");
+    // The closed set is the biggest payload this app pulls and the API may be
+    // cold-starting — give it well over the usual 25s before giving up.
+    const r=await fetchWithTimeout(API_BASE_URL+"?closed=only",{cache:"no-store"},60000);
+    if(!r.ok) throw new Error("Could not load closed tickets (HTTP "+r.status+")");
     const data=await r.json();
     CLOSED_TICKETS={...CLOSED_TICKETS,...(data[TICKETS_NODE]||{})};
     if(typeof data.closedTicketCount==="number") CLOSED_COUNT=data.closedTicketCount;
-    CLOSED_LOADED=true; CLOSED_FETCHED_AT=Date.now();
+    CLOSED_LOADED=true; CLOSED_FETCHED_AT=Date.now(); CLOSED_ERR=null;
     TICKETS={...TICKETS,...CLOSED_TICKETS};
+    console.log("[Closed] "+Object.keys(CLOSED_TICKETS).length+" closed tickets loaded");
     render();
-  }catch(e){toast(e.message||"Could not load closed tickets","err")}
+    return true;
+  }catch(e){CLOSED_ERR=(e&&e.name==="AbortError")?"Timed out loading closed tickets":(e.message||"Could not load closed tickets");toast(CLOSED_ERR,"err");return false}
   finally{showLoader(false)}
 }
 // expand the middle status tiles. Hover toggles on desktop; tap (the ⟨ ⟩ button)
@@ -5020,6 +5028,7 @@ async function openJobCosts(tab,opts){
   try{
     // Invoices almost always arrive after the job is closed, and closed tickets
     // aren't in the default payload — pull both before drawing anything.
+    if(CLOSED_ERR)CLOSED_LOADED=false;          // a failed attempt earlier — try again now
     await Promise.all([pmFetchAll(false),ensureClosedLoaded()]);
   }finally{showLoader(false)}
   renderJobCosts();
@@ -5031,6 +5040,11 @@ async function jcReload(){
   renderJobCosts(); toast("Invoices refreshed");
 }
 function jcSet(k,v){JC[k]=v;renderJobCosts()}
+async function jcRetryClosed(){
+  CLOSED_LOADED=false;
+  await ensureClosedLoaded();
+  renderJobCosts();
+}
 /* Invoices currently in play, in the order the arrows walk them. */
 function jcInvoiceList(){
   const q=normTxt(JC.q);
@@ -5044,6 +5058,15 @@ function jcInvoiceList(){
   });
 }
 function jcSelect(id){JC.sel=id;JC.tq="";JC.allStores=false;renderJobCosts()}
+/* Called BEFORE an action that removes the current invoice from the queue
+   (fully placed, or marked not-a-repair): move to the next one in line so the
+   arrows don't snap back to #1. */
+function jcAdvanceFrom(invId){
+  const list=jcInvoiceList(), i=list.findIndex(x=>x.id===invId);
+  if(i<0)return;
+  const nxt=list[i+1]||list[i-1]||null;
+  JC.sel=nxt?nxt.id:null;
+}
 function jcNav(dir){
   const list=jcInvoiceList(); if(!list.length)return;
   let i=list.findIndex(x=>x.id===JC.sel); if(i<0)i=0;
@@ -5072,7 +5095,11 @@ function ticketVendorName(t){
 function jcCandidates(inv){
   const sids=invStoreIds(inv), invAt=inv.createdAt||0, q=normTxt(JC.tq);
   const rows=[]; let hiddenByDate=0;
-  Object.entries(TICKETS).forEach(([id,t])=>{
+  // Search open AND closed jobs — the job is usually already closed by the
+  // time its invoice shows up. CLOSED_TICKETS is merged in explicitly so a
+  // poll that raced the closed fetch can't drop them.
+  const pool={...CLOSED_TICKETS,...TICKETS};
+  Object.entries(pool).forEach(([id,t])=>{
     if(!t)return;
     const inStore=sids.includes(t.storeId);
     if(!JC.allStores&&!inStore&&!q)return;
@@ -5099,6 +5126,7 @@ function jcCandidates(inv){
     const already=linksForInvoice(inv.id).some(l=>l.ticketId===id);
     if(already)score-=1000;
     rows.push({id,t,score,why,already});
+    if(t.status==="closed")rows.closedN=(rows.closedN||0)+1; else rows.openN=(rows.openN||0)+1;
   });
   rows.sort((a,b)=>b.score-a.score||(b.t.createdAt||0)-(a.t.createdAt||0));
   rows._hiddenByDate=hiddenByDate;
@@ -5119,8 +5147,11 @@ async function jcLink(invId,tid){
     by:SESSION.email,byName:SESSION.name,at:now()};
   MASTER.admins.jobCosts=MASTER.admins.jobCosts||{};
   MASTER.admins.jobCosts[id]=rec; COST_ECHO[id]=rec;
-  // Stay on this invoice while money remains on it; otherwise hand back the list.
-  if(invRemaining(inv)<=0.005&&!JC.focusTicket)JC.sel=null;
+  // Stay on this invoice while money remains on it; once it's fully placed it
+  // leaves the "needs matching" queue, so step to the next one in line.
+  if(invRemaining(inv)<=0.005&&!JC.focusTicket&&!jcInvoiceList().some(x=>x.id===inv.id)){
+    delete MASTER.admins.jobCosts[id]; jcAdvanceFrom(inv.id); MASTER.admins.jobCosts[id]=rec;
+  }
   renderJobCosts();
   toast(fmtMoney(amt)+" placed on #"+(t.shortId||tid.slice(0,6).toUpperCase()));
   render();
@@ -5134,7 +5165,8 @@ async function jcSkip(invId){
     inv:{vendor:inv.vendor||"",invoiceNumber:inv.invoiceNumber||"",amount:inv.amount||0,storeName:inv.storeName||"",status:inv.status||"",fileUrl:inv.fileUrl||null,createdAt:inv.createdAt||0},
     by:SESSION.email,byName:SESSION.name,at:now()};
   MASTER.admins.jobCosts=MASTER.admins.jobCosts||{};
-  MASTER.admins.jobCosts[id]=rec; COST_ECHO[id]=rec; JC.sel=null;
+  jcAdvanceFrom(inv.id);                       // next in line, before it leaves the queue
+  MASTER.admins.jobCosts[id]=rec; COST_ECHO[id]=rec;
   renderJobCosts(); toast("Marked as not a repair");
   try{await apiWrite(`${COSTS_NODE}/${id}`,rec);refreshInBackground();}
   catch(e){delete MASTER.admins.jobCosts[id];delete COST_ECHO[id];renderJobCosts();toast(e.message||"Save failed","err")}
@@ -5204,7 +5236,13 @@ function invFileView(inv){
 }
 function jcMatchTab(){
   const list=jcInvoiceList();
-  if(!list.some(x=>x.id===JC.sel))JC.sel=list.length?list[0].id:null;
+  if(!list.some(x=>x.id===JC.sel)){
+    // Current invoice fell out of the filtered set (filter change, or it was
+    // just matched elsewhere): stay near where we were instead of jumping to #1.
+    const i=Math.min(JC.lastIdx||0,list.length-1);
+    JC.sel=list.length?list[Math.max(0,i)].id:null;
+  }
+  JC.lastIdx=Math.max(0,list.findIndex(x=>x.id===JC.sel));
   const inv=JC.sel?pmById(JC.sel):null;
   const focusT=JC.focusTicket?TICKETS[JC.focusTicket]:null;
   const storeOpts=Object.keys(RESTAURANTS).map(id=>[id,storeName(id)]).sort((a,b)=>a[1].localeCompare(b[1]))
@@ -5232,6 +5270,9 @@ function jcMatchTab(){
     ${focusT?"":`<div class="jc-filters"><input class="input" id="jcTq" placeholder="Find a job by #, words, store…" value="${escA(JC.tq)}" oninput="jcSearch(this,'tq')">
       <label class="jc-chk"><input type="checkbox" ${JC.allStores?"checked":""} onchange="jcSet('allStores',this.checked)"> All stores</label>
       <label class="jc-chk" title="An invoice is almost never dated before the job it bills"><input type="checkbox" ${JC.anyDate?"checked":""} onchange="jcSet('anyDate',this.checked)"> Include jobs opened after ${esc(when||"the invoice")}</label></div>`}
+    <div class="jc-pool${CLOSED_ERR?" err":""}">${CLOSED_ERR
+      ?`⚠ ${esc(CLOSED_ERR)} — only open jobs are listed. <button class="jc-retry" onclick="jcRetryClosed()">Retry</button>`
+      :`Searched ${cands.openN||0} open · ${cands.closedN||0} closed job${(cands.closedN||0)===1?"":"s"}${JC.allStores||JC.tq?" (all stores)":" at "+esc(invStoreLabel(inv))}${hiddenByDate?` · ${hiddenByDate} hidden by date`:""}`}</div>
     <div class="jc-cands">${shown.length?shown.map((c,i)=>candCard(inv,c,i)).join(""):`<div class="jc-empty">No jobs at ${esc(invStoreLabel(inv))} opened before this invoice.${hiddenByDate?`<br>${hiddenByDate} newer job${hiddenByDate===1?"":"s"} hidden — tick the date box to see them.`:""}<br>Search above or tick “All stores” if the invoice was filed under the wrong store.</div>`}
       ${cands.length>shown.length?`<div class="jc-empty" style="padding:10px">${cands.length-shown.length} more — narrow with the search box.</div>`:""}</div>
   </div>`;
