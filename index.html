@@ -503,6 +503,14 @@ button.inv-success:hover{background:rgba(5,150,105,.14)}
 .cr-big{font-family:var(--disp);font-weight:800;font-size:52px;line-height:1;color:var(--amber-deep)}
 .cr-sub{font-size:13.5px;color:var(--ink-mid);line-height:1.5}
 .cr-sub .mono{font-size:11.5px;color:var(--ink-dim)}
+.cr-click{width:100%;text-align:left;background:none;border:none;padding:0;cursor:pointer}
+.cr-click:hover .cr-bar{filter:brightness(1.12)}
+.cr-click:hover .cr-label{color:var(--amber-deep);font-weight:600}
+.cr-back{background:none;border:none;color:var(--ink-dim);font-size:12.5px;font-weight:600;cursor:pointer;padding:0 0 8px}
+.cr-back:hover{color:var(--amber-deep)}
+.cr-top{font-size:12.5px;color:var(--ink-mid);background:var(--panel-2);border:1px solid var(--line);
+  border-radius:8px;padding:7px 11px;margin:10px 0 4px}
+.cr-hint{font-size:11.5px;color:var(--ink-dim);margin:6px 0 8px}
 .cr-chart{display:flex;flex-direction:column;gap:7px}
 .cr-row{display:grid;grid-template-columns:120px 1fr 34px;align-items:center;gap:10px}
 .cr-label{font-size:12.5px;color:var(--ink);text-align:right;overflow-wrap:anywhere}
@@ -772,7 +780,7 @@ const API_BASE_URL = "https://alignment-api-khaki.vercel.app/api/dpm-alignment";
 const APP_WRITE_PASSWORD = "rm123"; // must match ROLES.MAINTENANCE on the API
 const IMGBB_API_KEY = "b733862d15744e2bfaa4329d122f4ba0";
 const POLL_MS = 20000;
-const APP_VERSION = "6.13";
+const APP_VERSION = "6.14";
 let   SHOW_REF_TAGS = false; // default OFF — toggle with the # button in the top bar
 
 const ROLE_PASSWORDS = {
@@ -4644,7 +4652,7 @@ async function invSave(sid,key,val){
    How many tickets were closed in a window, and the split by category, as a
    bar chart meant to be screenshotted. Closed tickets are lazily loaded, so
    this pulls them first. */
-let CR_DAYS=30;
+let CR_DAYS=30, CR_MODE="cat", CR_FILTER=null;   // CR_FILTER = {dim,key,label}
 /* When was this ticket actually closed? The activity trail is authoritative;
    updatedAt is the fallback for imports and older records. */
 function closedAt(t){
@@ -4656,60 +4664,113 @@ function closedAt(t){
   return t.updatedAt||t.finishedAt||t.createdAt||0;
 }
 async function openClosedReport(days){
-  if(days)CR_DAYS=days;
+  if(days){CR_DAYS=days;}
   await ensureClosedLoaded();      // closed tickets aren't in the default payload
   renderClosedReport();
 }
-function renderClosedReport(){
+function crSetMode(m){CR_MODE=m;renderClosedReport()}
+function crDrill(dim,key){CR_FILTER={dim,key,label:crLabel(dim,key)};renderClosedReport()}
+function crBack(){CR_FILTER=null;renderClosedReport()}
+
+/* One row per dimension value. "item" = subcategory, which is where persistent
+   problems show up (same asset failing over and over). */
+function crKey(t,dim){
+  if(dim==="cat")   return t.category||"__none";
+  if(dim==="store") return t.storeId||"__none";
+  return t.subcategory||"";          // blank items are skipped, not bucketed
+}
+function crLabel(dim,key){
+  if(dim==="cat")   return key==="__none"?"Uncategorised":(ALL_CATEGORIES[key]||key);
+  if(dim==="store") return key==="__none"?"Unknown store":storeName(key);
+  const parent=(SUBCATEGORIES[key]||{}).parent;
+  return (subLabel(key)||key)+(parent?` · ${ALL_CATEGORIES[parent]||parent}`:"");
+}
+function crRows(){
   const since=now()-CR_DAYS*86400000;
-  const rows=Object.values(TICKETS).filter(t=>t.status==="closed"&&closedAt(t)>=since);
-
-  // group by TOP-LEVEL category so the chart stays readable
-  const byCat={};
-  rows.forEach(t=>{
-    const k=t.category||"__none";
-    const label=ALL_CATEGORIES[t.category]||"Uncategorised";
-    if(!byCat[k])byCat[k]={label,n:0};
-    byCat[k].n++;
+  return Object.values(TICKETS).filter(t=>{
+    if(t.status!=="closed"||closedAt(t)<since)return false;
+    if(CR_FILTER&&crKey(t,CR_FILTER.dim)!==CR_FILTER.key)return false;
+    return true;
   });
-  const cats=Object.values(byCat).sort((a,b)=>b.n-a.n||a.label.localeCompare(b.label));
-  const max=cats.length?cats[0].n:0;
-  const total=rows.length;
-
-  // a few headline numbers worth screenshotting alongside the chart
-  const emerg=rows.filter(t=>t.priority==="emergency").length;
-  const stores=new Set(rows.map(t=>t.storeId)).size;
-  const durs=rows.map(t=>closedAt(t)-(t.createdAt||0)).filter(d=>d>0);
-  const medDays=durs.length?(()=>{const a=durs.slice().sort((x,y)=>x-y);
-    const m=a[Math.floor(a.length/2)];return (m/86400000).toFixed(1)})():"—";
-
-  const bars=cats.map(c=>`
-    <div class="cr-row">
+}
+function crGroup(rows,dim){
+  const by={};
+  rows.forEach(t=>{
+    const k=crKey(t,dim);
+    if(dim==="item"&&!k)return;      // ticket has no subcategory
+    if(!by[k])by[k]={key:k,label:crLabel(dim,k),n:0};
+    by[k].n++;
+  });
+  return Object.values(by).sort((a,b)=>b.n-a.n||a.label.localeCompare(b.label));
+}
+function crBars(list,dim,clickable){
+  if(!list.length)return `<div class="rp-empty" style="padding:14px">Nothing to show.</div>`;
+  const max=list[0].n;
+  return `<div class="cr-chart">${list.map(c=>{
+    const w=max?Math.max(2,Math.round(c.n/max*100)):0;
+    const tag=clickable?`<button class="cr-row cr-click" onclick="crDrill('${dim}','${escA(c.key)}')">`:`<div class="cr-row">`;
+    const end=clickable?`</button>`:`</div>`;
+    return `${tag}
       <div class="cr-label">${esc(c.label)}</div>
-      <div class="cr-track"><div class="cr-bar" style="width:${max?Math.max(2,Math.round(c.n/max*100)):0}%"></div></div>
-      <div class="cr-n">${c.n}</div>
-    </div>`).join("");
+      <div class="cr-track"><div class="cr-bar" style="width:${w}%"></div></div>
+      <div class="cr-n">${c.n}</div>${end}`;}).join("")}</div>`;
+}
 
-  const pick=[30,60,90].map(d=>`<button class="ce-tab${CR_DAYS===d?" on":""}" onclick="openClosedReport(${d})">${d} days</button>`).join("");
+function renderClosedReport(){
+  const rows=crRows();
+  const total=rows.length;
+  const since=now()-CR_DAYS*86400000;
   const from=new Date(since).toLocaleDateString("en-US",{month:"short",day:"numeric"});
   const to=new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
+  const pick=[30,60,90].map(d=>`<button class="ce-tab${CR_DAYS===d?" on":""}" onclick="openClosedReport(${d})">${d}d</button>`).join("");
+
+  let body,heroSub,backBtn="";
+  if(CR_FILTER){
+    // Drilled in: show the two OTHER dimensions inside this slice.
+    backBtn=`<button class="cr-back" onclick="crBack()">‹ All closed tickets</button>`;
+    heroSub=`closed in <b>${esc(CR_FILTER.label)}</b><br><span class="mono">last ${CR_DAYS} days · ${esc(from)} – ${esc(to)}</span>`;
+    const other=CR_FILTER.dim==="store"
+      ? [["cat","By category"],["item","By item"]]
+      : [["store","By store"],["item","By item"]];
+    body=other.map(([d,t])=>{
+      const list=crGroup(rows,d);
+      return `<div class="section-label" style="margin-top:16px">${t}<span class="ln"></span></div>
+        ${crBars(list,d,d!==CR_FILTER.dim)}`;}).join("");
+  }else{
+    const modes=[["cat","Category"],["store","Store"],["item","Item"]];
+    const tabs=modes.map(([k,l])=>`<button class="ce-tab${CR_MODE===k?" on":""}" onclick="crSetMode('${k}')">${l}</button>`).join("");
+    const list=crGroup(rows,CR_MODE);
+    const top=list[0];
+    heroSub=`closed in the last ${CR_DAYS} days<br><span class="mono">${esc(from)} – ${esc(to)}</span>`;
+    const hint=CR_MODE==="item"
+      ? `<p class="cr-hint">Items repeating across the window are your persistent problems.</p>`
+      : (CR_MODE==="store"?`<p class="cr-hint">Ranked by volume — the busiest store is first.</p>`:"");
+    body=`<div class="ce-tabs" style="margin-top:16px">${tabs}</div>
+      ${top?`<div class="cr-top">Most: <b>${esc(top.label)}</b> · ${top.n}</div>`:""}
+      ${hint}
+      ${crBars(list,CR_MODE,true)}
+      <p class="cr-hint" style="margin-top:10px">Tap any bar to break it down.</p>`;
+  }
+
+  const emerg=rows.filter(t=>t.priority==="emergency").length;
+  const stores=new Set(rows.map(t=>t.storeId)).size;
+  const durs=rows.map(t=>closedAt(t)-(t.createdAt||0)).filter(d=>d>0).sort((a,b)=>a-b);
+  const medDays=durs.length?(durs[Math.floor(durs.length/2)]/86400000).toFixed(1):"—";
 
   modal(`<div class="sheet-head"><h2>Closed tickets</h2><button class="x-btn" onclick="closeModal()">✕</button></div>
     <div class="sheet-body">
+      ${backBtn}
       <div class="ce-tabs" style="margin-bottom:14px">${pick}</div>
       <div class="cr-hero">
         <div class="cr-big">${total}</div>
-        <div class="cr-sub">closed in the last ${CR_DAYS} days<br><span class="mono">${esc(from)} – ${esc(to)}</span></div>
+        <div class="cr-sub">${heroSub}</div>
       </div>
       <div class="imp-summary" style="margin:14px 0 4px">
-        <div class="rp-stat"><div class="rp-n">${cats.length}</div><div class="rp-l">categories</div></div>
         <div class="rp-stat"><div class="rp-n">${stores}</div><div class="rp-l">stores</div></div>
         <div class="rp-stat"><div class="rp-n">${emerg}</div><div class="rp-l">emergencies</div></div>
         <div class="rp-stat"><div class="rp-n">${medDays}</div><div class="rp-l">median days open</div></div>
       </div>
-      <div class="section-label" style="margin-top:18px">By category<span class="ln"></span></div>
-      ${total?`<div class="cr-chart">${bars}</div>`
-        :`<div class="rp-empty">No tickets were closed in this window.</div>`}
+      ${total?body:`<div class="rp-empty">No tickets were closed in this window.</div>`}
     </div>
     <div class="sheet-foot"><button class="btn btn-ghost btn-block" onclick="closeModal()">Done</button></div>`);
 }
