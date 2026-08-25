@@ -720,16 +720,63 @@ body.simulating .wrap{padding-bottom:40px}
 .jc-src{font-family:var(--mono);font-size:10.5px;color:var(--ink-dim);letter-spacing:.06em;text-transform:uppercase}
 .jc-src b{color:var(--green)}
 .jc-src.err b{color:var(--red)}
-/* the ledger: invoices on the left, jobs on the right */
-.jc-ledger{display:grid;grid-template-columns:minmax(280px,5fr) minmax(300px,6fr);gap:16px;margin-top:14px;align-items:start}
-@media(max-width:760px){.jc-ledger{grid-template-columns:1fr}}
-.jc-col-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
-.jc-col-head .section-label{margin:0;flex:1}
-.jc-filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
-.jc-filters .input{padding:9px 11px;font-size:13px;flex:1 1 120px;min-width:0}
-.jc-filters select.input{flex:0 1 auto;max-width:180px}
-.jc-list{display:flex;flex-direction:column;gap:7px;max-height:60vh;overflow-y:auto;padding-right:2px;-webkit-overflow-scrolling:touch}
-@media(max-width:760px){.jc-list{max-height:none}}
+
+/* ===== JOB COSTS — workspace layout =====
+   Jobs on the left, the invoice itself on the right, filters up top, arrows
+   at the bottom. The sheet takes the whole viewport so the PDF is readable. */
+.overlay.jc .sheet{max-width:min(1560px,100%);height:calc(100vh - 20px)}
+.overlay.jc .sheet-head{flex-wrap:wrap;gap:10px 14px;padding:14px 20px}
+.overlay.jc .sheet-head h2{flex:0 0 auto}
+.overlay.jc .jc-tabs{flex:1}
+.jc-right-src{display:flex;align-items:center;gap:8px;margin-left:auto}
+.sheet-body.jc-match{display:flex;flex-direction:column;overflow:hidden;padding:14px 20px 10px;gap:12px}
+.jc-filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.jc-filters .input{padding:9px 11px;font-size:13px;flex:1 1 160px;min-width:0;width:auto}
+.jc-filters select.input{flex:0 1 220px;width:auto}
+.jc-filters.top{margin:0}
+.jc-filters.top .input{flex:1 1 220px}
+.jc-filters.top select.input{flex:0 1 220px;max-width:260px}
+.jc-focus-chip{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--amber-deep);background:rgba(29,118,187,.1);border-radius:99px;padding:6px 12px;white-space:nowrap}
+.jc-focus-chip button{background:none;border:none;color:inherit;cursor:pointer;font-size:13px;padding:0}
+.jc-work{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(340px,5fr) minmax(0,7fr);gap:16px}
+.jc-left{min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-right:4px;display:flex;flex-direction:column;gap:10px}
+.jc-left .jc-filters{margin:0;position:sticky;top:0;background:var(--panel);z-index:1;padding-bottom:2px}
+.jc-chk{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-mid);white-space:nowrap;cursor:pointer}
+.jc-cands{display:flex;flex-direction:column;gap:8px}
+.jc-right{min-height:0;display:flex;flex-direction:column;gap:8px}
+.jc-inv-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.jc-inv-amt{font-family:var(--disp);font-weight:800;font-size:30px;color:var(--amber-deep);line-height:1;white-space:nowrap}
+.jc-inv-who{flex:1;min-width:180px;font-size:14px;line-height:1.4;overflow-wrap:anywhere}
+.jc-inv-who .mono{color:var(--ink-mid);font-size:12.5px}
+.jc-inv-sub{font-size:12.5px;color:var(--ink-mid)}
+.jc-inv-pills{display:flex;align-items:center;gap:6px}
+.jc-inv-state{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.jc-inv-state .jc-remain{margin:0}
+.jc-pdf{flex:1 1 auto;min-height:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel-2)}
+.jc-pdf iframe{width:100%;height:100%;border:0;display:block;background:#fff}
+.jc-pdf-img{width:100%;height:100%;overflow:auto;display:flex;align-items:flex-start;justify-content:center;padding:10px}
+.jc-pdf-img img{max-width:100%;height:auto;border-radius:6px;box-shadow:var(--shadow)}
+.jc-pdf-empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--ink-dim);font-size:13.5px;text-align:center;padding:20px}
+.jc-foot{align-items:center;gap:10px}
+.jc-foot .jc-arrow{width:52px;padding:10px 0;font-size:22px;line-height:1}
+.jc-foot .jc-pos{flex:1;text-align:center;font-size:13.5px;color:var(--ink-mid)}
+.jc-foot .jc-pos b{color:var(--ink);font-family:var(--mono)}
+.cand-act .input{width:120px}
+@media(max-width:900px){
+  .sheet-body.jc-match{overflow-y:auto;display:block}
+  .jc-work{display:flex;flex-direction:column;margin-top:12px}
+  .jc-left{overflow:visible;order:2;flex:0 0 auto}
+  .jc-left .jc-filters{position:static}
+  .jc-right{order:1;flex:0 0 auto;margin-bottom:14px}
+  .jc-pdf{flex:0 0 auto;height:62vh}
+  .jc-inv-amt{font-size:24px}
+}
+@media(max-width:639px){
+  .overlay.jc .sheet-head{padding:12px 14px}
+  .overlay.jc .jc-tabs{order:5;flex:1 1 100%}
+  .overlay.jc .sheet-head h2{font-size:17px}
+  .jc-foot .jc-pos{font-size:12.5px}
+}
 /* invoice stub */
 .inv{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:11px 13px;cursor:pointer;transition:.12s;position:relative}
 .inv:hover{border-color:var(--amber)}
@@ -2559,7 +2606,7 @@ function modal(html){
   // new modal opens before that timer fires, the wipe would erase it — cancel
   // any pending wipe so back-to-back close→open is always safe.
   if(o._wipeTimer){clearTimeout(o._wipeTimer);o._wipeTimer=null;}
-  o.classList.remove("wide");o.classList.remove("tall");   // only the importer changes sheet size
+  o.classList.remove("wide");o.classList.remove("tall");o.classList.remove("jc");   // only the importer / job-costs change sheet size
   // Guarantee a close affordance: if the modal's own markup doesn't include an
   // X button, inject a floating one in the top-right that dismisses the modal.
   const hasOwnX = /class="x-btn"/.test(html);
@@ -4903,7 +4950,7 @@ let COST_ECHO={};                          // linkId -> rec we just wrote, or {_
 let PM_INV=null, PM_FETCHED_AT=0, PM_ERR=null, PM_BUSY=false;
 const PM_TTL_MS=5*60*1000;
 /* panel state */
-let JC={tab:"match", sel:null, q:"", store:"all", show:"open", tq:"", allStores:false,
+let JC={tab:"match", sel:null, q:"", store:"all", show:"open", tq:"", allStores:false, anyDate:false,
         focusTicket:null, jobsQ:"", period:90, moreInv:false};
 
 function fmtMoney(n){
@@ -4984,10 +5031,24 @@ async function jcReload(){
   renderJobCosts(); toast("Invoices refreshed");
 }
 function jcSet(k,v){JC[k]=v;renderJobCosts()}
-function jcSelect(id){
-  JC.sel=(JC.sel===id?null:id);JC.moreInv=false;JC.tq="";JC.allStores=false;renderJobCosts();
-  // Phones stack the two columns — bring the jobs into view once an invoice is picked.
-  if(JC.sel&&window.innerWidth<=760){const col=document.querySelector(".jc-ledger > div:nth-child(2)");if(col)setTimeout(()=>col.scrollIntoView({behavior:"smooth",block:"start"}),30);}
+/* Invoices currently in play, in the order the arrows walk them. */
+function jcInvoiceList(){
+  const q=normTxt(JC.q);
+  return (PM_INV||[]).filter(inv=>{
+    const st=invMatchState(inv);
+    if(JC.show==="open"&&(st==="MATCHED"||st==="SKIP"))return false;
+    if(JC.show==="done"&&!(st==="MATCHED"||st==="SKIP"))return false;
+    if(JC.store!=="all"&&!invStoreIds(inv).includes(JC.store))return false;
+    if(q){const hay=normTxt([inv.vendor,inv.invoiceNumber,inv.storeName,invStoreLabel(inv),String(inv.amount)].join(" "));if(!hay.includes(q))return false}
+    return true;
+  });
+}
+function jcSelect(id){JC.sel=id;JC.tq="";JC.allStores=false;renderJobCosts()}
+function jcNav(dir){
+  const list=jcInvoiceList(); if(!list.length)return;
+  let i=list.findIndex(x=>x.id===JC.sel); if(i<0)i=0;
+  i=(i+dir+list.length)%list.length;
+  jcSelect(list[i].id);
 }
 function jcSearch(el,key){
   JC[key]=el.value; const caret=el.selectionStart;
@@ -5010,11 +5071,14 @@ function ticketVendorName(t){
 }
 function jcCandidates(inv){
   const sids=invStoreIds(inv), invAt=inv.createdAt||0, q=normTxt(JC.tq);
-  const rows=[];
+  const rows=[]; let hiddenByDate=0;
   Object.entries(TICKETS).forEach(([id,t])=>{
     if(!t)return;
     const inStore=sids.includes(t.storeId);
     if(!JC.allStores&&!inStore&&!q)return;
+    // An invoice is almost never dated before the job it bills: a ticket opened
+    // after the invoice was filed (plus a day of slack) is hidden unless asked for.
+    if(!JC.anyDate&&invAt&&(t.createdAt||0)>invAt+86400000){hiddenByDate++;return}
     if(q){
       const hay=normTxt([t.shortId,t.description,catPath(t),storeName(t.storeId),ticketVendorName(t)].join(" "));
       if(!hay.includes(q))return;
@@ -5037,6 +5101,7 @@ function jcCandidates(inv){
     rows.push({id,t,score,why,already});
   });
   rows.sort((a,b)=>b.score-a.score||(b.t.createdAt||0)-(a.t.createdAt||0));
+  rows._hiddenByDate=hiddenByDate;
   return rows;
 }
 
@@ -5130,78 +5195,73 @@ function candCard(inv,c,idx){
 }
 
 /* ---- tabs ---- */
+function invFileView(inv){
+  if(!inv.fileUrl)return `<div class="jc-pdf-empty"><div style="font-size:30px;opacity:.4">📄</div>No file attached to this invoice in PayMi.</div>`;
+  const ext=String(inv.fileName||inv.fileUrl).split("?")[0].split(".").pop().toLowerCase();
+  if(["png","jpg","jpeg","gif","webp","bmp"].includes(ext))
+    return `<div class="jc-pdf-img"><img src="${escA(inv.fileUrl)}" alt="Invoice"></div>`;
+  return `<iframe src="${escA(inv.fileUrl)}#toolbar=0&navpanes=0" title="Invoice"></iframe>`;
+}
 function jcMatchTab(){
-  const q=normTxt(JC.q);
+  const list=jcInvoiceList();
+  if(!list.some(x=>x.id===JC.sel))JC.sel=list.length?list[0].id:null;
+  const inv=JC.sel?pmById(JC.sel):null;
   const focusT=JC.focusTicket?TICKETS[JC.focusTicket]:null;
-  // left: invoices
-  let list=(PM_INV||[]).filter(inv=>{
-    const st=invMatchState(inv);
-    if(JC.show==="open"&&(st==="MATCHED"||st==="SKIP"))return false;
-    if(JC.show==="done"&&!(st==="MATCHED"||st==="SKIP"))return false;
-    if(JC.store!=="all"&&!invStoreIds(inv).includes(JC.store))return false;
-    if(q){const hay=normTxt([inv.vendor,inv.invoiceNumber,inv.storeName,invStoreLabel(inv),String(inv.amount)].join(" "));if(!hay.includes(q))return false}
-    return true;
-  });
-  const total=list.length; if(!JC.moreInv)list=list.slice(0,60);
   const storeOpts=Object.keys(RESTAURANTS).map(id=>[id,storeName(id)]).sort((a,b)=>a[1].localeCompare(b[1]))
     .map(([id,n])=>`<option value="${id}"${JC.store===id?" selected":""}>${esc(n)}</option>`).join("");
-  const left=`<div class="jc-col-head"><div class="section-label">Invoices from PayMi<span class="ln"></span></div></div>
-    <div class="jc-filters">
+  const filters=`<div class="jc-filters top">
       <input class="input" id="jcQ" placeholder="Vendor, invoice #, amount…" value="${escA(JC.q)}" oninput="jcSearch(this,'q')">
       <select class="input" onchange="jcSet('store',this.value)"><option value="all">All stores</option>${storeOpts}</select>
       <select class="input" onchange="jcSet('show',this.value)">
         <option value="open"${JC.show==="open"?" selected":""}>Needs matching</option>
         <option value="done"${JC.show==="done"?" selected":""}>Matched / not a repair</option>
         <option value="all"${JC.show==="all"?" selected":""}>Everything</option></select>
-    </div>
-    <div class="jc-list">${list.length?list.map(invCard).join(""):`<div class="jc-empty">${PM_ERR?"Couldn't read PayMi: "+esc(PM_ERR):(JC.show==="open"?"Nothing waiting — every invoice here is on a job.":"No invoices match these filters.")}</div>`}
-      ${total>list.length?`<button class="jc-more" onclick="jcSet('moreInv',true)">Show all ${total} invoices</button>`:""}</div>`;
-
-  // right: the job side
-  let right;
-  const inv=JC.sel?pmById(JC.sel):null;
-  if(focusT&&!inv){
-    // Came here from a ticket: pick any invoice on the left to put on it.
-    right=`<div class="jc-col-head"><div class="section-label">Putting cost on a job<span class="ln"></span></div></div>
-      <div class="jc-focus"><div class="jc-focus-row"><div class="jc-focus-big">${fmtMoney(ticketCost(JC.focusTicket))}</div>
-        <div class="jc-focus-sub">${ticketLine(JC.focusTicket,focusT)}</div>
-        <button class="btn btn-ghost btn-sm" onclick="jcSet('focusTicket',null)">Done</button></div>
-        ${jcLinksBlock(linksForTicket(JC.focusTicket),"ticket")}
-      </div>
-      <div class="jc-empty">Tap an invoice on the left, then confirm the amount to place on this job.</div>`;
-  }else if(!inv){
-    right=`<div class="jc-col-head"><div class="section-label">Jobs<span class="ln"></span></div></div>
-      <div class="jc-empty">Pick an invoice on the left.<br>Likely jobs at that store will line up here — same vendor and closed just before the invoice date float to the top.</div>`;
-  }else{
-    const remain=invRemaining(inv), links=linksForInvoice(inv.id).filter(l=>!l.skip);
-    let cands=jcCandidates(inv);
-    // Ticket-first mode: only that ticket is offered.
-    if(focusT)cands=cands.filter(c=>c.id===JC.focusTicket);
-    const shown=cands.slice(0,25);
-    right=`<div class="jc-col-head"><div class="section-label">Jobs for this invoice<span class="ln"></span></div>
-        <button class="btn btn-ghost btn-sm" onclick="jcSelect('${inv.id}')">✕</button></div>
-      <div class="jc-focus">
-        <div class="jc-focus-row"><div class="jc-focus-big">${fmtMoney(inv.amount)}</div>
-          <div class="jc-focus-sub"><b>${esc(inv.vendor||"(no vendor)")}</b> · #${esc(inv.invoiceNumber||"—")}<br>${esc(invStoreLabel(inv))}${inv.fileUrl?` · <a href="${escA(inv.fileUrl)}" target="_blank" rel="noopener" style="color:var(--amber-deep);font-weight:600">📄 open invoice</a>`:""}</div></div>
-        <div class="jc-remain">${remain>0.005?`<b>${fmtMoney(remain)}</b> still to place${links.length?" · "+fmtMoney(invAllocated(inv.id))+" placed":""}`:`<b style="color:var(--green)">Fully placed</b> on ${links.length} job${links.length===1?"":"s"}`}</div>
-        ${jcLinksBlock(links,"inv")}
-        ${remain>0.005&&!links.length&&!focusT?`<div style="margin-top:9px"><button class="btn btn-ghost btn-sm" onclick="jcSkip('${inv.id}')">Not a repair job — hide it</button></div>`:""}
-      </div>
-      ${focusT?"":`<div class="jc-filters"><input class="input" id="jcTq" placeholder="Find any job by #, words, store…" value="${escA(JC.tq)}" oninput="jcSearch(this,'tq')">
-        <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-mid);white-space:nowrap"><input type="checkbox" ${JC.allStores?"checked":""} onchange="jcSet('allStores',this.checked)"> All stores</label></div>`}
-      <div class="jc-list">${shown.length?shown.map((c,i)=>candCard(inv,c,i)).join(""):`<div class="jc-empty">No jobs at ${esc(invStoreLabel(inv))}.<br>Search above or tick “All stores” if the invoice was filed under the wrong store.</div>`}
-        ${cands.length>shown.length?`<div class="jc-empty" style="padding:10px">${cands.length-shown.length} more — narrow with the search box.</div>`:""}</div>`;
+      ${focusT?`<span class="jc-focus-chip">Putting cost on <span class="mono">#${esc(focusT.shortId||JC.focusTicket)}</span> <button onclick="jcSet('focusTicket',null)" title="Stop">✕</button></span>`:""}
+    </div>`;
+  if(!inv){
+    return filters+`<div class="jc-empty" style="margin-top:14px">${PM_ERR?"Couldn't read PayMi: "+esc(PM_ERR):(JC.show==="open"?"Nothing waiting — every invoice here is on a job.":"No invoices match these filters.")}</div>`;
   }
-  return `<div class="jc-ledger"><div>${left}</div><div>${right}</div></div>`;
+  const remain=invRemaining(inv), links=linksForInvoice(inv.id).filter(l=>!l.skip), st=invMatchState(inv);
+  const when=inv.createdAt?new Date(inv.createdAt).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):"";
+  // ---- left: jobs ----
+  let cands=jcCandidates(inv);
+  if(focusT)cands=cands.filter(c=>c.id===JC.focusTicket);
+  const shown=cands.slice(0,40);
+  const hiddenByDate=focusT?0:cands._hiddenByDate||0;
+  const left=`<div class="jc-left">
+    ${focusT?"":`<div class="jc-filters"><input class="input" id="jcTq" placeholder="Find a job by #, words, store…" value="${escA(JC.tq)}" oninput="jcSearch(this,'tq')">
+      <label class="jc-chk"><input type="checkbox" ${JC.allStores?"checked":""} onchange="jcSet('allStores',this.checked)"> All stores</label>
+      <label class="jc-chk" title="An invoice is almost never dated before the job it bills"><input type="checkbox" ${JC.anyDate?"checked":""} onchange="jcSet('anyDate',this.checked)"> Include jobs opened after ${esc(when||"the invoice")}</label></div>`}
+    <div class="jc-cands">${shown.length?shown.map((c,i)=>candCard(inv,c,i)).join(""):`<div class="jc-empty">No jobs at ${esc(invStoreLabel(inv))} opened before this invoice.${hiddenByDate?`<br>${hiddenByDate} newer job${hiddenByDate===1?"":"s"} hidden — tick the date box to see them.`:""}<br>Search above or tick “All stores” if the invoice was filed under the wrong store.</div>`}
+      ${cands.length>shown.length?`<div class="jc-empty" style="padding:10px">${cands.length-shown.length} more — narrow with the search box.</div>`:""}</div>
+  </div>`;
+  // ---- right: the invoice itself ----
+  const mpill=st==="OPEN"?"":`<span class="ipill ${st}">${st==="MATCHED"?"matched":st==="PART"?"partly matched":"not a repair"}</span>`;
+  const right=`<div class="jc-right">
+    <div class="jc-inv-head">
+      <div class="jc-inv-amt">${fmtMoney(inv.amount)}</div>
+      <div class="jc-inv-who"><b>${esc(inv.vendor||"(no vendor)")}</b> <span class="mono">#${esc(inv.invoiceNumber||"—")}</span><br>
+        <span class="jc-inv-sub">${esc(invStoreLabel(inv))}${when?" · "+esc(when):""}</span></div>
+      <div class="jc-inv-pills">${inv.status?`<span class="ipill ${esc(inv.status)}">${esc(inv.status.toLowerCase())}</span>`:""}${mpill}
+        ${inv.fileUrl?`<a class="btn btn-ghost btn-sm" href="${escA(inv.fileUrl)}" target="_blank" rel="noopener" title="Open in a new tab">↗</a>`:""}</div>
+    </div>
+    <div class="jc-inv-state">
+      <span class="jc-remain">${st==="SKIP"?`Marked <b>not a repair</b>`:remain>0.005?`<b>${fmtMoney(remain)}</b> still to place${links.length?" · "+fmtMoney(invAllocated(inv.id))+" placed":""}`:`<b style="color:var(--green)">Fully placed</b> on ${links.length} job${links.length===1?"":"s"}`}</span>
+      ${st==="OPEN"&&!focusT?`<button class="btn btn-ghost btn-sm" onclick="jcSkip('${inv.id}')">Not a repair job</button>`:""}
+    </div>
+    ${jcLinksBlock(linksForInvoice(inv.id),"inv")}
+    <div class="jc-pdf">${invFileView(inv)}</div>
+  </div>`;
+  return filters+`<div class="jc-work">${left}${right}</div>`;
 }
 function jcLinksBlock(links,mode){
   if(!links.length)return"";
   return `<div class="jc-links">${links.map(l=>{
     const t=l.ticketId?TICKETS[l.ticketId]:null;
     const label=mode==="inv"
-      ?(t?ticketLine(l.ticketId,t):`<span class="mono">#${esc(l.ticketId||"")}</span> (ticket not loaded)`)
+      ?(l.skip?"Not a repair job":t?ticketLine(l.ticketId,t):`<span class="mono">#${esc(l.ticketId||"")}</span> (ticket not loaded)`)
       :`<b>${esc((l.inv||{}).vendor||"")}</b> · #${esc((l.inv||{}).invoiceNumber||"—")} of ${fmtMoney((l.inv||{}).amount)}`;
-    return `<div class="jc-link"><span class="amt">${fmtMoney(l.amount)}</span><span class="t">${label}</span>
+    return `<div class="jc-link">${l.skip?"":`<span class="amt">${fmtMoney(l.amount)}</span>`}<span class="t">${label}</span>
       <button class="jc-unlink" title="Remove this link" onclick="jcUnlink('${l.id}')">✕</button></div>`}).join("")}</div>`;
 }
 
@@ -5256,21 +5316,40 @@ function renderJobCosts(){
     .map(([k,l,b])=>`<button class="ce-tab${JC.tab===k?" on":""}" onclick="jcSet('tab','${k}')">${l}${b}</button>`).join("");
   const src=PM_ERR?`<span class="jc-src err"><b>●</b> PayMi offline</span>`
     :`<span class="jc-src"><b>●</b> PayMi · ${(PM_INV||[]).length} invoices</span>`;
+  const isMatch=JC.tab==="match";
   const body=JC.tab==="jobs"?jcJobsTab():JC.tab==="stores"?jcStoresTab():jcMatchTab();
+  let foot;
+  if(isMatch){
+    const list=jcInvoiceList(), i=list.findIndex(x=>x.id===JC.sel);
+    foot=`<button class="btn btn-ghost jc-arrow" onclick="jcNav(-1)" ${list.length<2?"disabled":""} title="Previous invoice (←)">‹</button>
+      <div class="jc-pos">${list.length?`Invoice <b>${i+1}</b> of <b>${list.length}</b>`:"No invoices"}${JC.show==="open"?" needing a job":""}</div>
+      <button class="btn btn-ghost jc-arrow" onclick="jcNav(1)" ${list.length<2?"disabled":""} title="Next invoice (→)">›</button>
+      <button class="btn btn-ghost" onclick="closeModal()">Done</button>`;
+  }else foot=`<button class="btn btn-ghost btn-block" onclick="closeModal()">Done</button>`;
   const o=$("modalOverlay");
   const fresh=!(o&&o.classList.contains("on")&&o.querySelector("#jcRoot"));
-  const html=`<div class="sheet-head"><h2>Job costs</h2><button class="x-btn" onclick="closeModal()">✕</button></div>
-    <div class="sheet-body" id="jcRoot">
-      <div class="jc-tabs">${tabs}<div class="jc-right">${src}<button class="btn btn-ghost btn-sm" onclick="jcReload()" title="Re-read PayMi">⟳</button></div></div>
-      ${body}
-    </div>
-    <div class="sheet-foot"><button class="btn btn-ghost btn-block" onclick="closeModal()">Done</button></div>`;
-  if(fresh){modal(html);o&&o.classList.add("wide");const oo=$("modalOverlay");oo.classList.add("wide");oo.classList.add("tall");}
-  else{
-    // Re-render in place so the sheet doesn't flicker and scroll doesn't jump.
-    const sb=o.querySelector(".sheet-body"), top=sb?sb.scrollTop:0;
+  const html=`<div class="sheet-head"><h2>Job costs</h2>
+      <div class="jc-tabs">${tabs}</div><div class="jc-right-src">${src}<button class="btn btn-ghost btn-sm" onclick="jcReload()" title="Re-read PayMi">⟳</button></div>
+      <button class="x-btn" onclick="closeModal()">✕</button></div>
+    <div class="sheet-body${isMatch?" jc-match":""}" id="jcRoot">${body}</div>
+    <div class="sheet-foot jc-foot">${foot}</div>`;
+  if(fresh){
+    modal(html);
+    const oo=$("modalOverlay");oo.classList.add("wide");oo.classList.add("tall");oo.classList.add("jc");
+    oo._jcKeys=e=>{
+      if(!oo.querySelector("#jcRoot")||!oo.classList.contains("on")){document.removeEventListener("keydown",oo._jcKeys);oo._jcKeys=null;return}
+      if(JC.tab!=="match")return;
+      const tag=(document.activeElement||{}).tagName;
+      if(tag==="INPUT"||tag==="TEXTAREA"||tag==="SELECT")return;
+      if(e.key==="ArrowLeft"){jcNav(-1);e.preventDefault()}
+      else if(e.key==="ArrowRight"){jcNav(1);e.preventDefault()}
+    };
+    document.addEventListener("keydown",oo._jcKeys);
+  }else{
+    // Re-render in place so the sheet doesn't flicker; keep the job list's scroll.
+    const lf=o.querySelector(".jc-left"), top=lf?lf.scrollTop:0;
     o.querySelector(".sheet").innerHTML=html; applyTags();
-    const nb=o.querySelector(".sheet-body"); if(nb)nb.scrollTop=top;
+    const nl=o.querySelector(".jc-left"); if(nl)nl.scrollTop=top;
   }
 }
 
