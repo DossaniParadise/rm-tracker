@@ -1930,7 +1930,7 @@ function enterAppChrome(){
   $("viewAsBtn").classList.toggle("hidden",!canViewAs);
   // Tech-location overwatch: any overwatch/admin (real or simulated) can view.
   $("techReportBtn").classList.toggle("hidden",SESSION.role!=="admin");
-  $("closedRptBtn").classList.toggle("hidden",SESSION.role!=="admin");
+  $("closedRptBtn").classList.toggle("hidden",!canSeeClosedReport());
   $("costBtn").classList.toggle("hidden",SESSION.role!=="admin");
   $("settingsBtn").classList.toggle("hidden",!realAdmin);
   document.body.classList.toggle("no-reftags",!SHOW_REF_TAGS);
@@ -2280,8 +2280,11 @@ function pickStatus(key){
    entirely. Re-fetches when the cache is older than CLOSED_TTL_MS so the tab
    stays honest without ever being polled. */
 let CLOSED_ERR=null;        // last closed-fetch failure message (job-costs panel shows it)
+/* Admins see the whole company; directors and area coaches (district managers)
+   get the same report scoped to their own stores. */
+function canSeeClosedReport(){return ["admin","director","coach"].includes(SESSION.role)}
 async function ensureClosedLoaded(){
-  if(SESSION.role!=="admin") return false;
+  if(!canSeeClosedReport()) return false;
   if(CLOSED_LOADED && (Date.now()-CLOSED_FETCHED_AT)<CLOSED_TTL_MS) return true;
   showLoader(true);
   try{
@@ -4819,6 +4822,7 @@ function closedAt(t){
   return t.updatedAt||t.finishedAt||t.createdAt||0;
 }
 async function openClosedReport(days){
+  if(!canSeeClosedReport())return;
   if(days){CR_DAYS=days;}
   await ensureClosedLoaded();      // closed tickets aren't in the default payload
   renderClosedReport();
@@ -4842,8 +4846,10 @@ function crLabel(dim,key){
 }
 function crRows(){
   const since=now()-CR_DAYS*86400000;
+  const mine=SESSION.scope==="all"?null:new Set(myStoreIds());
   return Object.values(TICKETS).filter(t=>{
     if(t.status!=="closed"||closedAt(t)<since)return false;
+    if(mine&&!mine.has(t.storeId))return false;         // directors / coaches: own stores only
     if(CR_FILTER&&crKey(t,CR_FILTER.dim)!==CR_FILTER.key)return false;
     return true;
   });
@@ -4896,7 +4902,8 @@ function renderClosedReport(){
     const tabs=modes.map(([k,l])=>`<button class="ce-tab${CR_MODE===k?" on":""}" onclick="crSetMode('${k}')">${l}</button>`).join("");
     const list=crGroup(rows,CR_MODE);
     const top=list[0];
-    heroSub=`closed in the last ${CR_DAYS} days<br><span class="mono">${esc(from)} – ${esc(to)}</span>`;
+    const scopeTxt=SESSION.scope==="all"?"":` across your ${myStoreIds().length} store${myStoreIds().length===1?"":"s"}`;
+    heroSub=`closed in the last ${CR_DAYS} days${scopeTxt}<br><span class="mono">${esc(from)} – ${esc(to)}</span>`;
     const hint=CR_MODE==="item"
       ? `<p class="cr-hint">Items repeating across the window are your persistent problems.</p>`
       : (CR_MODE==="store"?`<p class="cr-hint">Ranked by volume — the busiest store is first.</p>`:"");
