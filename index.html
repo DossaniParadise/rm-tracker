@@ -133,6 +133,22 @@ body.no-reftags .reftag{display:none}
 .sort-select{max-width:210px}
 @media(max-width:600px){.sort-select{max-width:none}}
 .loc-select{max-width:300px;flex:0 1 auto}
+.sp{position:relative;flex:1 1 220px;min-width:0}
+.sp-native{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}
+.sp-input{width:100%;padding-right:34px}
+.sp-caret{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;
+  color:var(--ink-dim);font-size:13px;cursor:pointer;padding:4px 6px;line-height:1}
+.sp-menu{display:none;position:absolute;z-index:70;left:0;right:0;top:calc(100% + 4px);max-height:260px;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--panel);border:1px solid var(--line);
+  border-radius:10px;box-shadow:0 10px 28px rgba(20,30,45,.18)}
+.sp-menu.on{display:block}
+.sp-opt{display:block;width:100%;text-align:left;background:none;border:none;padding:11px 13px;
+  font-size:13.5px;color:var(--ink);cursor:pointer;border-bottom:1px solid var(--line)}
+.sp-opt:last-child{border-bottom:none}
+.sp-opt:hover{background:var(--panel-2)}
+.sp-opt.cur{background:rgba(29,118,187,.10);font-weight:700}
+.sp-none{padding:14px 13px;font-size:12.5px;color:var(--ink-dim)}
+@media(max-width:600px){.sp{flex:1 1 100%}.sp-menu{max-height:min(320px,52vh)}.sp-opt{padding:13px;font-size:14px}}
 .search{flex:1;min-width:160px}
 .list-head{font-family:var(--disp);font-weight:800;font-size:18px;margin:0 0 12px}
 .list-head .lh-n{color:var(--ink-dim);font-weight:600}
@@ -510,6 +526,20 @@ button.inv-success:hover{background:rgba(5,150,105,.14)}
 .cr-back:hover{color:var(--amber-deep)}
 .cr-top{font-size:12.5px;color:var(--ink-mid);background:var(--panel-2);border:1px solid var(--line);
   border-radius:8px;padding:7px 11px;margin:10px 0 4px}
+.cr-tix{display:flex;flex-direction:column;gap:8px}
+.cr-tix-row{background:var(--panel-2);border:1px solid var(--line);border-radius:9px;padding:10px 12px}
+.cr-tix-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+.cr-tix-store{font-weight:700;font-size:12.5px}
+.cr-tix-when{font-size:11px;color:var(--ink-dim);margin-left:auto}
+.cr-tix-desc{font-size:13.5px;color:var(--ink);line-height:1.45;overflow-wrap:anywhere}
+.cr-tix-meta{font-size:10.5px;color:var(--ink-dim);margin-top:4px}
+.cr-tix-note{font-size:12px;color:var(--ink-mid);font-style:italic;margin-top:6px;
+  border-left:3px solid var(--line);padding-left:8px;overflow-wrap:anywhere}
+.cr-click{width:100%;text-align:left;background:none;border:none;padding:0;cursor:pointer}
+.cr-click:hover .cr-bar{filter:brightness(1.12)}
+.cr-click:hover .cr-label{color:var(--amber-deep);font-weight:600}
+.cr-back{background:none;border:none;color:var(--ink-dim);font-size:12.5px;font-weight:600;cursor:pointer;padding:0 0 8px}
+.cr-back:hover{color:var(--amber-deep)}
 .cr-hint{font-size:11.5px;color:var(--ink-dim);margin:6px 0 8px}
 .cr-chart{display:flex;flex-direction:column;gap:7px}
 .cr-row{display:grid;grid-template-columns:120px 1fr 34px;align-items:center;gap:10px}
@@ -913,7 +943,7 @@ const API_BASE_URL = "https://alignment-api-khaki.vercel.app/api/dpm-alignment";
 const APP_WRITE_PASSWORD = "rm123"; // must match ROLES.MAINTENANCE on the API
 const IMGBB_API_KEY = "b733862d15744e2bfaa4329d122f4ba0";
 const POLL_MS = 20000;
-const APP_VERSION = "6.15";
+const APP_VERSION = "6.16";
 let   SHOW_REF_TAGS = false; // default OFF — toggle with the # button in the top bar
 
 const ROLE_PASSWORDS = {
@@ -2159,10 +2189,8 @@ function renderBoard(){
       </div>
       ${techTiles}
       <div class="board-controls">
-        ${storeIds.length>1?`<select class="input loc-select" onchange="curStore=this.value;render()">
-          <option value="all"${curStore==="all"?" selected":""}>All stores (${storeIds.length})</option>
-          ${storeIds.slice().sort((a,b)=>storeName(a).localeCompare(storeName(b))).map(id=>`<option value="${id}"${curStore===id?" selected":""}>${esc(storeName(id))}</option>`).join("")}
-        </select>`:""}
+        ${storeIds.length>1?storePicker({id:"boardStore",ids:storeIds,selected:curStore,
+          allLabel:`All stores (${storeIds.length})`,onChange:"curStore=this.value;render()"}):""}
         ${sortSelect()}
         <input class="input search" placeholder="Search store, issue, ticket #…" value="${escA(curSearch)}" oninput="onSearchInput(this)">
       </div>
@@ -2234,10 +2262,8 @@ function renderBoard(){
     </div>
     ${tilesBlock}
     <div class="board-controls">
-      ${storeIds.length>1?`<select class="input loc-select" onchange="curStore=this.value;render()">
-        <option value="all"${curStore==="all"?" selected":""}>All stores (${storeIds.length})</option>
-        ${storeIds.slice().sort((a,b)=>storeName(a).localeCompare(storeName(b))).map(id=>`<option value="${id}"${curStore===id?" selected":""}>${esc(storeName(id))}</option>`).join("")}
-      </select>`:""}
+      ${storeIds.length>1?storePicker({id:"boardStore2",ids:storeIds,selected:curStore,
+        allLabel:`All stores (${storeIds.length})`,onChange:"curStore=this.value;render()"}):""}
       ${(curFilter==="dispatched"||curFilter==="assigned")?assigneeFilterSelect(allTickets):""}
       ${SESSION.role==="admin"?categoryFilterSelect():""}
       ${sortSelect()}
@@ -2640,7 +2666,8 @@ function openCreate(preStore){
     <div class="sheet-head"><h2>Report new issue</h2><button class="x-btn" onclick="closeModal()">✕</button></div>
     <div class="sheet-body">
       <div class="field"><label class="label">Store</label>
-        <select class="input" id="cStore" ${ids.length===1?"disabled":""} onchange="syncCreateCats()">${storeOpts}</select></div>
+        ${storePicker({id:"cStore",ids,selected:preStore||(ids.length===1?ids[0]:""),
+          disabled:ids.length===1,onChange:"syncCreateCats()"})}</div>
       <div style="display:flex;gap:12px;margin-top:14px">
         <div class="field" style="flex:1"><label class="label">Category</label><select class="input" id="cCat" onchange="syncCreateSubs()"></select></div>
         <div class="field" style="flex:1"><label class="label">Priority</label><select class="input" id="cPri">${priOpts}</select></div>
@@ -3499,7 +3526,9 @@ function openEdit(id){
     : "";
   modal(`<div class="sheet-head"><h2>Edit ticket</h2><button class="x-btn" onclick="openTicket('${id}')">✕</button></div>
     <div class="sheet-body">
-      ${canMoveStore?`<div class="field"><label class="label">Store</label><select class="input" id="eStore" onchange="openEdit(EDIT_ID)">${storeOpts}</select></div>`:""}
+      ${canMoveStore?`<div class="field"><label class="label">Store</label>
+        ${storePicker({id:"eStore",ids:(SESSION.role==="admin"?Object.keys(RESTAURANTS):myStoreIds()),
+          selected:t.storeId,onChange:"openEdit(EDIT_ID)"})}</div>`:""}
       <div style="display:flex;gap:12px${canMoveStore?";margin-top:14px":""}">
         <div class="field" style="flex:1"><label class="label">Category</label><select class="input" id="eCat" onchange="syncEditSubs()">${catOpts}</select></div>
         <div class="field" style="flex:1"><label class="label">Priority</label><select class="input" id="ePri">${priOpts}</select></div></div>
@@ -4432,9 +4461,7 @@ function renderImportStep(){
     ${r.dupOf?`<div class="imp-warnbox">Looks like an existing ticket (${esc(r.dupOf)}). Skip if it's the same issue.</div>`:""}
     ${r.sibling?`<div class="imp-warnbox">Similar to ${esc(r.sibling)} earlier in this file — check it isn't the same issue.</div>`:""}
     <div class="imp-fields"><div class="field full"><label class="label">Store</label>
-      <select class="input" id="isStore" onchange="impStepStoreChanged()">
-        ${stores.map(id=>`<option value="${id}"${id===r.sid?" selected":""}>${esc(storeName(id))}</option>`).join("")}
-      </select>
+      ${storePicker({id:"isStore",ids:stores,selected:r.sid,onChange:"impStepStoreChanged()"})}
       <div class="uz-h mono" style="margin-top:4px;color:var(--ink-dim)">OwlOps said: ${esc(r.dept)}</div></div>
       <div class="field"><label class="label">Category</label>
         <select class="input" id="isCat" onchange="impStepCatChanged()">${catOpts}</select></div>
@@ -4810,7 +4837,9 @@ async function invSave(sid,key,val){
    How many tickets were closed in a window, and the split by category, as a
    bar chart meant to be screenshotted. Closed tickets are lazily loaded, so
    this pulls them first. */
-let CR_DAYS=30, CR_MODE="cat", CR_FILTER=null;   // CR_FILTER = {dim,key,label}
+let CR_DAYS=30, CR_MODE="cat";
+let CR_PATH=[];          // breadcrumb chain of {dim,key,label} — drill as deep as you like
+let CR_LIST=false;       // showing the actual tickets rather than bars
 /* When was this ticket actually closed? The activity trail is authoritative;
    updatedAt is the fallback for imports and older records. */
 function closedAt(t){
@@ -4822,43 +4851,38 @@ function closedAt(t){
   return t.updatedAt||t.finishedAt||t.createdAt||0;
 }
 async function openClosedReport(days){
-  if(!canSeeClosedReport())return;
-  if(days){CR_DAYS=days;}
+  if(days){CR_DAYS=days;CR_PATH=[];CR_LIST=false;}
   await ensureClosedLoaded();      // closed tickets aren't in the default payload
   renderClosedReport();
 }
-function crSetMode(m){CR_MODE=m;renderClosedReport()}
-function crDrill(dim,key){CR_FILTER={dim,key,label:crLabel(dim,key)};renderClosedReport()}
-function crBack(){CR_FILTER=null;renderClosedReport()}
+function crSetMode(m){CR_MODE=m;CR_LIST=false;renderClosedReport()}
+function crDrill(dim,key){CR_PATH.push({dim,key,label:crLabel(dim,key)});CR_LIST=false;renderClosedReport()}
+function crBack(){ if(CR_LIST){CR_LIST=false;} else {CR_PATH.pop();} renderClosedReport(); }
+function crShowList(){CR_LIST=true;renderClosedReport()}
 
-/* One row per dimension value. "item" = subcategory, which is where persistent
-   problems show up (same asset failing over and over). */
 function crKey(t,dim){
   if(dim==="cat")   return t.category||"__none";
   if(dim==="store") return t.storeId||"__none";
-  return t.subcategory||"";          // blank items are skipped, not bucketed
+  return t.subcategory||"__nosub";
 }
 function crLabel(dim,key){
   if(dim==="cat")   return key==="__none"?"Uncategorised":(ALL_CATEGORIES[key]||key);
   if(dim==="store") return key==="__none"?"Unknown store":storeName(key);
+  if(key==="__nosub")return "(no item set)";
   const parent=(SUBCATEGORIES[key]||{}).parent;
   return (subLabel(key)||key)+(parent?` · ${ALL_CATEGORIES[parent]||parent}`:"");
 }
 function crRows(){
   const since=now()-CR_DAYS*86400000;
-  const mine=SESSION.scope==="all"?null:new Set(myStoreIds());
   return Object.values(TICKETS).filter(t=>{
     if(t.status!=="closed"||closedAt(t)<since)return false;
-    if(mine&&!mine.has(t.storeId))return false;         // directors / coaches: own stores only
-    if(CR_FILTER&&crKey(t,CR_FILTER.dim)!==CR_FILTER.key)return false;
-    return true;
+    return CR_PATH.every(f=>crKey(t,f.dim)===f.key);
   });
 }
 function crGroup(rows,dim){
   const by={};
   rows.forEach(t=>{
     const k=crKey(t,dim);
-    if(dim==="item"&&!k)return;      // ticket has no subcategory
     if(!by[k])by[k]={key:k,label:crLabel(dim,k),n:0};
     by[k].n++;
   });
@@ -4869,49 +4893,72 @@ function crBars(list,dim,clickable){
   const max=list[0].n;
   return `<div class="cr-chart">${list.map(c=>{
     const w=max?Math.max(2,Math.round(c.n/max*100)):0;
-    const tag=clickable?`<button class="cr-row cr-click" onclick="crDrill('${dim}','${escA(c.key)}')">`:`<div class="cr-row">`;
-    const end=clickable?`</button>`:`</div>`;
-    return `${tag}
-      <div class="cr-label">${esc(c.label)}</div>
+    const o=clickable?`<button class="cr-row cr-click" onclick="crDrill('${dim}','${escA(c.key)}')">`:`<div class="cr-row">`;
+    const e=clickable?`</button>`:`</div>`;
+    return `${o}<div class="cr-label">${esc(c.label)}</div>
       <div class="cr-track"><div class="cr-bar" style="width:${w}%"></div></div>
-      <div class="cr-n">${c.n}</div>${end}`;}).join("")}</div>`;
+      <div class="cr-n">${c.n}</div>${e}`;}).join("")}</div>`;
+}
+/* The bottom of every drill: the tickets themselves. Categories like "Other"
+   tell you nothing, so this is where you read what actually happened. */
+function crTicketList(rows){
+  if(!rows.length)return `<div class="rp-empty">No tickets here.</div>`;
+  const sorted=rows.slice().sort((a,b)=>closedAt(b)-closedAt(a));
+  return `<div class="cr-tix">${sorted.map(t=>{
+    const note=(t.closeNote&&t.closeNote.text)?t.closeNote.text:"";
+    const pri=t.priority==="emergency"?"e":(t.priority==="urgent"?"u":"");
+    return `<div class="cr-tix-row">
+      <div class="cr-tix-top">
+        <span class="cr-tix-store">${esc(storeName(t.storeId))}</span>
+        <span class="r-pri ${pri}">${esc(PRIORITIES[t.priority]||"Normal")}</span>
+        <span class="cr-tix-when mono">${esc(fmtDateShort(closedAt(t)))}</span>
+      </div>
+      <div class="cr-tix-desc">${esc(t.description||"(no description)")}</div>
+      <div class="cr-tix-meta mono">${esc(t.shortId||"")} · ${esc(catPath(t))}</div>
+      ${note?`<div class="cr-tix-note">“${esc(note)}”</div>`:""}
+    </div>`;}).join("")}</div>`;
 }
 
 function renderClosedReport(){
-  const rows=crRows();
-  const total=rows.length;
+  const rows=crRows(), total=rows.length;
   const since=now()-CR_DAYS*86400000;
   const from=new Date(since).toLocaleDateString("en-US",{month:"short",day:"numeric"});
   const to=new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
   const pick=[30,60,90].map(d=>`<button class="ce-tab${CR_DAYS===d?" on":""}" onclick="openClosedReport(${d})">${d}d</button>`).join("");
 
-  let body,heroSub,backBtn="";
-  if(CR_FILTER){
-    // Drilled in: show the two OTHER dimensions inside this slice.
-    backBtn=`<button class="cr-back" onclick="crBack()">‹ All closed tickets</button>`;
-    heroSub=`closed in <b>${esc(CR_FILTER.label)}</b><br><span class="mono">last ${CR_DAYS} days · ${esc(from)} – ${esc(to)}</span>`;
-    const other=CR_FILTER.dim==="store"
-      ? [["cat","By category"],["item","By item"]]
-      : [["store","By store"],["item","By item"]];
-    body=other.map(([d,t])=>{
+  const crumb=CR_PATH.map(f=>esc(f.label)).join(" › ");
+  const backLabel=CR_LIST?"‹ Back to the chart"
+    :(CR_PATH.length>1?`‹ ${esc(CR_PATH[CR_PATH.length-2].label)}`:"‹ All closed tickets");
+  const backBtn=(CR_PATH.length||CR_LIST)?`<button class="cr-back" onclick="crBack()">${backLabel}</button>`:"";
+
+  let body,heroSub;
+  if(CR_LIST){
+    heroSub=`${crumb?`in <b>${crumb}</b><br>`:""}<span class="mono">last ${CR_DAYS} days · ${esc(from)} – ${esc(to)}</span>`;
+    body=`<div class="section-label" style="margin-top:16px">Tickets<span class="ln"></span></div>${crTicketList(rows)}`;
+  }else if(CR_PATH.length){
+    heroSub=`closed in <b>${crumb}</b><br><span class="mono">last ${CR_DAYS} days · ${esc(from)} – ${esc(to)}</span>`;
+    const used=new Set(CR_PATH.map(f=>f.dim));
+    const rest=[["cat","By category"],["store","By store"],["item","By item"]].filter(([d])=>!used.has(d));
+    body=rest.map(([d,t])=>{
       const list=crGroup(rows,d);
-      return `<div class="section-label" style="margin-top:16px">${t}<span class="ln"></span></div>
-        ${crBars(list,d,d!==CR_FILTER.dim)}`;}).join("");
+      // A single bucket adds nothing — don't make them tap through it.
+      if(list.length<2)return "";
+      return `<div class="section-label" style="margin-top:16px">${t}<span class="ln"></span></div>${crBars(list,d,true)}`;
+    }).join("")
+    + `<button class="btn btn-ghost btn-block" style="margin-top:14px" onclick="crShowList()">📋 Read these ${total} ticket${total===1?"":"s"}</button>`;
   }else{
     const modes=[["cat","Category"],["store","Store"],["item","Item"]];
     const tabs=modes.map(([k,l])=>`<button class="ce-tab${CR_MODE===k?" on":""}" onclick="crSetMode('${k}')">${l}</button>`).join("");
-    const list=crGroup(rows,CR_MODE);
-    const top=list[0];
-    const scopeTxt=SESSION.scope==="all"?"":` across your ${myStoreIds().length} store${myStoreIds().length===1?"":"s"}`;
-    heroSub=`closed in the last ${CR_DAYS} days${scopeTxt}<br><span class="mono">${esc(from)} – ${esc(to)}</span>`;
+    const list=crGroup(rows,CR_MODE), top=list[0];
+    heroSub=`closed in the last ${CR_DAYS} days<br><span class="mono">${esc(from)} – ${esc(to)}</span>`;
     const hint=CR_MODE==="item"
       ? `<p class="cr-hint">Items repeating across the window are your persistent problems.</p>`
       : (CR_MODE==="store"?`<p class="cr-hint">Ranked by volume — the busiest store is first.</p>`:"");
     body=`<div class="ce-tabs" style="margin-top:16px">${tabs}</div>
       ${top?`<div class="cr-top">Most: <b>${esc(top.label)}</b> · ${top.n}</div>`:""}
-      ${hint}
-      ${crBars(list,CR_MODE,true)}
-      <p class="cr-hint" style="margin-top:10px">Tap any bar to break it down.</p>`;
+      ${hint}${crBars(list,CR_MODE,true)}
+      <p class="cr-hint" style="margin-top:10px">Tap any bar to break it down, then read the tickets.</p>
+      <button class="btn btn-ghost btn-block" onclick="crShowList()">📋 Read all ${total} ticket${total===1?"":"s"}</button>`;
   }
 
   const emerg=rows.filter(t=>t.priority==="emergency").length;
@@ -4923,10 +4970,7 @@ function renderClosedReport(){
     <div class="sheet-body">
       ${backBtn}
       <div class="ce-tabs" style="margin-bottom:14px">${pick}</div>
-      <div class="cr-hero">
-        <div class="cr-big">${total}</div>
-        <div class="cr-sub">${heroSub}</div>
-      </div>
+      <div class="cr-hero"><div class="cr-big">${total}</div><div class="cr-sub">${heroSub}</div></div>
       <div class="imp-summary" style="margin:14px 0 4px">
         <div class="rp-stat"><div class="rp-n">${stores}</div><div class="rp-l">stores</div></div>
         <div class="rp-stat"><div class="rp-n">${emerg}</div><div class="rp-l">emergencies</div></div>
@@ -5414,6 +5458,82 @@ function costDetail(id){
       <button class="btn btn-ghost btn-sm" style="margin-left:8px" onclick="openJobCosts('match',{ticket:'${id}'})">$ Link invoice</button></span></div>
     ${list}`;
 }
+
+
+/* ============================================================ SEARCHABLE STORE PICKER
+   A native <select> is unusable past ~50 stores — you scroll and read. This
+   renders a real <input> that filters as you type, backed by a HIDDEN <select>
+   so every existing caller ($("cStore").value, onchange handlers, form reads)
+   keeps working untouched.
+   Matches on store name AND store number, so "28313" finds it as fast as "Cross". */
+function storePicker(opts){
+  const {id,ids,selected,onChange,allLabel,disabled}=opts;
+  const list=ids.slice().sort((a,b)=>storeName(a).localeCompare(storeName(b)));
+  const options=(allLabel?`<option value="all"${selected==="all"?" selected":""}>${esc(allLabel)}</option>`:"")
+    +list.map(sid=>`<option value="${sid}"${selected===sid?" selected":""}>${esc(storeName(sid))}</option>`).join("");
+  const cur=selected==="all"?(allLabel||""):(selected?storeName(selected):"");
+  const dis=disabled?" disabled":"";
+  return `<div class="sp" data-sp="${id}">
+    <select class="input sp-native" id="${id}"${dis} onchange="${onChange||""}">${options}</select>
+    <input class="input sp-input" id="${id}_q"${dis} autocomplete="off" spellcheck="false"
+      placeholder="Search stores…" value="${escA(cur)}"
+      onfocus="spOpen('${id}')" oninput="spFilter('${id}')" onkeydown="spKey(event,'${id}')">
+    <button type="button" class="sp-caret"${dis} onclick="spToggle('${id}')" tabindex="-1">▾</button>
+    <div class="sp-menu" id="${id}_menu"></div>
+  </div>`;
+}
+function spEls(id){return {sel:$(id),q:$(id+"_q"),menu:$(id+"_menu")}}
+function spItems(id){
+  const {sel}=spEls(id); if(!sel)return[];
+  return [...sel.options].map(o=>({value:o.value,label:o.textContent}));
+}
+function spOpen(id){const {q}=spEls(id); if(q)q.select(); spFilter(id,true);}
+function spToggle(id){
+  const {menu,q}=spEls(id);
+  if(menu&&menu.classList.contains("on")){spClose(id);}
+  else{if(q)q.focus(); spFilter(id,true);}
+}
+function spClose(id){const {menu}=spEls(id); if(menu)menu.classList.remove("on")}
+function spFilter(id,showAll){
+  const {q,menu,sel}=spEls(id); if(!q||!menu||!sel)return;
+  const term=(showAll?"":q.value).trim().toLowerCase();
+  const hits=spItems(id).filter(o=>{
+    if(!term)return true;
+    const num=(o.value&&o.value!=="all")?String(store(o.value).storeNumber||"").toLowerCase():"";
+    return o.label.toLowerCase().includes(term)||num.includes(term);
+  }).slice(0,60);
+  menu.innerHTML=hits.length
+    ? hits.map(o=>`<button type="button" class="sp-opt${o.value===sel.value?" cur":""}"
+        onclick="spPick('${id}','${escA(o.value)}')">${esc(o.label)}</button>`).join("")
+    : `<div class="sp-none">No store matches “${esc(q.value)}”</div>`;
+  menu.classList.add("on"); menu.scrollTop=0;
+}
+function spPick(id,val){
+  const {sel,q}=spEls(id); if(!sel)return;
+  sel.value=val;
+  const opt=[...sel.options].find(o=>o.value===val);
+  if(q)q.value=opt?opt.textContent:"";
+  spClose(id);
+  sel.dispatchEvent(new Event("change",{bubbles:true}));   // fire the caller's own handler
+}
+/* Enter takes the top match; Escape restores what was selected. */
+function spKey(e,id){
+  const {menu,sel,q}=spEls(id);
+  if(e.key==="Escape"){
+    const opt=[...(sel?sel.options:[])].find(o=>o.value===sel.value);
+    if(q)q.value=opt?opt.textContent:"";
+    spClose(id); e.preventDefault(); return;
+  }
+  if(e.key==="Enter"){
+    const first=menu&&menu.querySelector(".sp-opt");
+    if(first){first.click(); e.preventDefault();}
+  }
+}
+document.addEventListener("click",e=>{
+  document.querySelectorAll(".sp-menu.on").forEach(m=>{
+    const w=m.closest(".sp"); if(w&&!w.contains(e.target))m.classList.remove("on");
+  });
+});
 
 /* ============================================================ VENDORS */
 function openSettings(){
