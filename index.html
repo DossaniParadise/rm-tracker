@@ -526,6 +526,11 @@ button.inv-success:hover{background:rgba(5,150,105,.14)}
 .cr-back:hover{color:var(--amber-deep)}
 .cr-top{font-size:12.5px;color:var(--ink-mid);background:var(--panel-2);border:1px solid var(--line);
   border-radius:8px;padding:7px 11px;margin:10px 0 4px}
+.cr-of{font-size:26px;color:var(--ink-dim);font-weight:700;margin-left:4px}
+.cr-ratio{margin-top:10px}
+.cr-ratio-bar{height:8px;border-radius:99px;background:var(--panel-2);border:1px solid var(--line);overflow:hidden}
+.cr-ratio-fill{height:100%;background:linear-gradient(90deg,var(--amber),var(--amber-deep));border-radius:99px;transition:width .3s}
+.cr-ratio-txt{font-size:12px;color:var(--ink-mid);margin-top:6px}
 .cr-tix{display:flex;flex-direction:column;gap:8px}
 .cr-tix-row{background:var(--panel-2);border:1px solid var(--line);border-radius:9px;padding:10px 12px}
 .cr-tix-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px}
@@ -943,7 +948,7 @@ const API_BASE_URL = "https://alignment-api-khaki.vercel.app/api/dpm-alignment";
 const APP_WRITE_PASSWORD = "rm123"; // must match ROLES.MAINTENANCE on the API
 const IMGBB_API_KEY = "b733862d15744e2bfaa4329d122f4ba0";
 const POLL_MS = 20000;
-const APP_VERSION = "6.16";
+const APP_VERSION = "6.17";
 let   SHOW_REF_TAGS = false; // default OFF — toggle with the # button in the top bar
 
 const ROLE_PASSWORDS = {
@@ -4879,6 +4884,15 @@ function crRows(){
     return CR_PATH.every(f=>crKey(t,f.dim)===f.key);
   });
 }
+/* Tickets RAISED in the window (any status), under the same drill filters.
+   This is the denominator: closed is measured against what actually came in. */
+function crOpenedRows(){
+  const since=now()-CR_DAYS*86400000;
+  return Object.values(TICKETS).filter(t=>{
+    if((t.createdAt||0)<since)return false;
+    return CR_PATH.every(f=>crKey(t,f.dim)===f.key);
+  });
+}
 function crGroup(rows,dim){
   const by={};
   rows.forEach(t=>{
@@ -4936,7 +4950,7 @@ function renderClosedReport(){
     heroSub=`${crumb?`in <b>${crumb}</b><br>`:""}<span class="mono">last ${CR_DAYS} days · ${esc(from)} – ${esc(to)}</span>`;
     body=`<div class="section-label" style="margin-top:16px">Tickets<span class="ln"></span></div>${crTicketList(rows)}`;
   }else if(CR_PATH.length){
-    heroSub=`closed in <b>${crumb}</b><br><span class="mono">last ${CR_DAYS} days · ${esc(from)} – ${esc(to)}</span>`;
+    heroSub=`closed / raised in <b>${crumb}</b><br><span class="mono">last ${CR_DAYS} days · ${esc(from)} – ${esc(to)}</span>`;
     const used=new Set(CR_PATH.map(f=>f.dim));
     const rest=[["cat","By category"],["store","By store"],["item","By item"]].filter(([d])=>!used.has(d));
     body=rest.map(([d,t])=>{
@@ -4950,7 +4964,7 @@ function renderClosedReport(){
     const modes=[["cat","Category"],["store","Store"],["item","Item"]];
     const tabs=modes.map(([k,l])=>`<button class="ce-tab${CR_MODE===k?" on":""}" onclick="crSetMode('${k}')">${l}</button>`).join("");
     const list=crGroup(rows,CR_MODE), top=list[0];
-    heroSub=`closed in the last ${CR_DAYS} days<br><span class="mono">${esc(from)} – ${esc(to)}</span>`;
+    heroSub=`closed / raised in the last ${CR_DAYS} days<br><span class="mono">${esc(from)} – ${esc(to)}</span>`;
     const hint=CR_MODE==="item"
       ? `<p class="cr-hint">Items repeating across the window are your persistent problems.</p>`
       : (CR_MODE==="store"?`<p class="cr-hint">Ranked by volume — the busiest store is first.</p>`:"");
@@ -4961,6 +4975,14 @@ function renderClosedReport(){
       <button class="btn btn-ghost btn-block" onclick="crShowList()">📋 Read all ${total} ticket${total===1?"":"s"}</button>`;
   }
 
+  // Opened vs closed in the same window. Closing MORE than came in is a real
+  // outcome (backlog being cleared), so the bar caps rather than reading wrong.
+  const openedRows=crOpenedRows();
+  const opened=openedRows.length;
+  const stillOpen=openedRows.filter(t=>t.status!=="closed").length;
+  const closedMore=opened>0&&total>opened;
+  const pct=opened?Math.min(100,Math.round(total/opened*100)):0;
+
   const emerg=rows.filter(t=>t.priority==="emergency").length;
   const stores=new Set(rows.map(t=>t.storeId)).size;
   const durs=rows.map(t=>closedAt(t)-(t.createdAt||0)).filter(d=>d>0).sort((a,b)=>a-b);
@@ -4970,11 +4992,20 @@ function renderClosedReport(){
     <div class="sheet-body">
       ${backBtn}
       <div class="ce-tabs" style="margin-bottom:14px">${pick}</div>
-      <div class="cr-hero"><div class="cr-big">${total}</div><div class="cr-sub">${heroSub}</div></div>
+      <div class="cr-hero">
+        <div class="cr-big">${total}<span class="cr-of">/ ${opened}</span></div>
+        <div class="cr-sub">${heroSub}</div>
+      </div>
+      <div class="cr-ratio">
+        <div class="cr-ratio-bar"><div class="cr-ratio-fill" style="width:${pct}%"></div></div>
+        <div class="cr-ratio-txt">${opened?`<b>${pct}%</b> of the ${opened} raised ${CR_PATH.length?"here ":""}in this window ${closedMore?"— and older work cleared too":"are closed"}`
+          :`No tickets were raised in this window`}</div>
+      </div>
       <div class="imp-summary" style="margin:14px 0 4px">
-        <div class="rp-stat"><div class="rp-n">${stores}</div><div class="rp-l">stores</div></div>
+        <div class="rp-stat"><div class="rp-n">${opened}</div><div class="rp-l">raised</div></div>
+        <div class="rp-stat"><div class="rp-n">${stillOpen}</div><div class="rp-l">still open</div></div>
         <div class="rp-stat"><div class="rp-n">${emerg}</div><div class="rp-l">emergencies</div></div>
-        <div class="rp-stat"><div class="rp-n">${medDays}</div><div class="rp-l">median days open</div></div>
+        <div class="rp-stat"><div class="rp-n">${medDays}</div><div class="rp-l">median days</div></div>
       </div>
       ${total?body:`<div class="rp-empty">No tickets were closed in this window.</div>`}
     </div>
