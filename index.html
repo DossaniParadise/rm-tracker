@@ -510,6 +510,15 @@ button.inv-success:hover{background:rgba(5,150,105,.14)}
 .cr-back:hover{color:var(--amber-deep)}
 .cr-top{font-size:12.5px;color:var(--ink-mid);background:var(--panel-2);border:1px solid var(--line);
   border-radius:8px;padding:7px 11px;margin:10px 0 4px}
+.cr-tix{display:flex;flex-direction:column;gap:8px}
+.cr-tix-row{background:var(--panel-2);border:1px solid var(--line);border-radius:9px;padding:10px 12px}
+.cr-tix-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+.cr-tix-store{font-weight:700;font-size:12.5px}
+.cr-tix-when{font-size:11px;color:var(--ink-dim);margin-left:auto}
+.cr-tix-desc{font-size:13.5px;color:var(--ink);line-height:1.45;overflow-wrap:anywhere}
+.cr-tix-meta{font-size:10.5px;color:var(--ink-dim);margin-top:4px}
+.cr-tix-note{font-size:12px;color:var(--ink-mid);font-style:italic;margin-top:6px;
+  border-left:3px solid var(--line);padding-left:8px;overflow-wrap:anywhere}
 .cr-hint{font-size:11.5px;color:var(--ink-dim);margin:6px 0 8px}
 .cr-chart{display:flex;flex-direction:column;gap:7px}
 .cr-row{display:grid;grid-template-columns:120px 1fr 34px;align-items:center;gap:10px}
@@ -913,7 +922,7 @@ const API_BASE_URL = "https://alignment-api-khaki.vercel.app/api/dpm-alignment";
 const APP_WRITE_PASSWORD = "rm123"; // must match ROLES.MAINTENANCE on the API
 const IMGBB_API_KEY = "b733862d15744e2bfaa4329d122f4ba0";
 const POLL_MS = 20000;
-const APP_VERSION = "6.15";
+const APP_VERSION = "6.16";
 let   SHOW_REF_TAGS = false; // default OFF — toggle with the # button in the top bar
 
 const ROLE_PASSWORDS = {
@@ -4810,7 +4819,9 @@ async function invSave(sid,key,val){
    How many tickets were closed in a window, and the split by category, as a
    bar chart meant to be screenshotted. Closed tickets are lazily loaded, so
    this pulls them first. */
-let CR_DAYS=30, CR_MODE="cat", CR_FILTER=null;   // CR_FILTER = {dim,key,label}
+let CR_DAYS=30, CR_MODE="cat";
+let CR_PATH=[];          // breadcrumb chain of {dim,key,label} — drill as deep as you like
+let CR_LIST=false;       // showing the actual tickets rather than bars
 /* When was this ticket actually closed? The activity trail is authoritative;
    updatedAt is the fallback for imports and older records. */
 function closedAt(t){
@@ -4822,43 +4833,38 @@ function closedAt(t){
   return t.updatedAt||t.finishedAt||t.createdAt||0;
 }
 async function openClosedReport(days){
-  if(!canSeeClosedReport())return;
-  if(days){CR_DAYS=days;}
-  await ensureClosedLoaded();      // closed tickets aren't in the default payload
+  if(days){CR_DAYS=days;CR_PATH=[];CR_LIST=false;}
+  await ensureClosedLoaded();
   renderClosedReport();
 }
-function crSetMode(m){CR_MODE=m;renderClosedReport()}
-function crDrill(dim,key){CR_FILTER={dim,key,label:crLabel(dim,key)};renderClosedReport()}
-function crBack(){CR_FILTER=null;renderClosedReport()}
+function crSetMode(m){CR_MODE=m;CR_LIST=false;renderClosedReport()}
+function crDrill(dim,key){CR_PATH.push({dim,key,label:crLabel(dim,key)});CR_LIST=false;renderClosedReport()}
+function crBack(){ if(CR_LIST){CR_LIST=false;} else {CR_PATH.pop();} renderClosedReport(); }
+function crShowList(){CR_LIST=true;renderClosedReport()}
 
-/* One row per dimension value. "item" = subcategory, which is where persistent
-   problems show up (same asset failing over and over). */
 function crKey(t,dim){
   if(dim==="cat")   return t.category||"__none";
   if(dim==="store") return t.storeId||"__none";
-  return t.subcategory||"";          // blank items are skipped, not bucketed
+  return t.subcategory||"__nosub";
 }
 function crLabel(dim,key){
   if(dim==="cat")   return key==="__none"?"Uncategorised":(ALL_CATEGORIES[key]||key);
   if(dim==="store") return key==="__none"?"Unknown store":storeName(key);
+  if(key==="__nosub")return "(no item set)";
   const parent=(SUBCATEGORIES[key]||{}).parent;
   return (subLabel(key)||key)+(parent?` · ${ALL_CATEGORIES[parent]||parent}`:"");
 }
 function crRows(){
   const since=now()-CR_DAYS*86400000;
-  const mine=SESSION.scope==="all"?null:new Set(myStoreIds());
   return Object.values(TICKETS).filter(t=>{
     if(t.status!=="closed"||closedAt(t)<since)return false;
-    if(mine&&!mine.has(t.storeId))return false;         // directors / coaches: own stores only
-    if(CR_FILTER&&crKey(t,CR_FILTER.dim)!==CR_FILTER.key)return false;
-    return true;
+    return CR_PATH.every(f=>crKey(t,f.dim)===f.key);
   });
 }
 function crGroup(rows,dim){
   const by={};
   rows.forEach(t=>{
     const k=crKey(t,dim);
-    if(dim==="item"&&!k)return;      // ticket has no subcategory
     if(!by[k])by[k]={key:k,label:crLabel(dim,k),n:0};
     by[k].n++;
   });
@@ -4869,49 +4875,72 @@ function crBars(list,dim,clickable){
   const max=list[0].n;
   return `<div class="cr-chart">${list.map(c=>{
     const w=max?Math.max(2,Math.round(c.n/max*100)):0;
-    const tag=clickable?`<button class="cr-row cr-click" onclick="crDrill('${dim}','${escA(c.key)}')">`:`<div class="cr-row">`;
-    const end=clickable?`</button>`:`</div>`;
-    return `${tag}
-      <div class="cr-label">${esc(c.label)}</div>
+    const o=clickable?`<button class="cr-row cr-click" onclick="crDrill('${dim}','${escA(c.key)}')">`:`<div class="cr-row">`;
+    const e=clickable?`</button>`:`</div>`;
+    return `${o}<div class="cr-label">${esc(c.label)}</div>
       <div class="cr-track"><div class="cr-bar" style="width:${w}%"></div></div>
-      <div class="cr-n">${c.n}</div>${end}`;}).join("")}</div>`;
+      <div class="cr-n">${c.n}</div>${e}`;}).join("")}</div>`;
+}
+/* The bottom of every drill: the tickets themselves. Categories like "Other"
+   tell you nothing, so this is where you read what actually happened. */
+function crTicketList(rows){
+  if(!rows.length)return `<div class="rp-empty">No tickets here.</div>`;
+  const sorted=rows.slice().sort((a,b)=>closedAt(b)-closedAt(a));
+  return `<div class="cr-tix">${sorted.map(t=>{
+    const note=(t.closeNote&&t.closeNote.text)?t.closeNote.text:"";
+    const pri=t.priority==="emergency"?"e":(t.priority==="urgent"?"u":"");
+    return `<div class="cr-tix-row">
+      <div class="cr-tix-top">
+        <span class="cr-tix-store">${esc(storeName(t.storeId))}</span>
+        <span class="r-pri ${pri}">${esc(PRIORITIES[t.priority]||"Normal")}</span>
+        <span class="cr-tix-when mono">${esc(fmtDateShort(closedAt(t)))}</span>
+      </div>
+      <div class="cr-tix-desc">${esc(t.description||"(no description)")}</div>
+      <div class="cr-tix-meta mono">${esc(t.shortId||"")} · ${esc(catPath(t))}</div>
+      ${note?`<div class="cr-tix-note">“${esc(note)}”</div>`:""}
+    </div>`;}).join("")}</div>`;
 }
 
 function renderClosedReport(){
-  const rows=crRows();
-  const total=rows.length;
+  const rows=crRows(), total=rows.length;
   const since=now()-CR_DAYS*86400000;
   const from=new Date(since).toLocaleDateString("en-US",{month:"short",day:"numeric"});
   const to=new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
   const pick=[30,60,90].map(d=>`<button class="ce-tab${CR_DAYS===d?" on":""}" onclick="openClosedReport(${d})">${d}d</button>`).join("");
 
-  let body,heroSub,backBtn="";
-  if(CR_FILTER){
-    // Drilled in: show the two OTHER dimensions inside this slice.
-    backBtn=`<button class="cr-back" onclick="crBack()">‹ All closed tickets</button>`;
-    heroSub=`closed in <b>${esc(CR_FILTER.label)}</b><br><span class="mono">last ${CR_DAYS} days · ${esc(from)} – ${esc(to)}</span>`;
-    const other=CR_FILTER.dim==="store"
-      ? [["cat","By category"],["item","By item"]]
-      : [["store","By store"],["item","By item"]];
-    body=other.map(([d,t])=>{
+  const crumb=CR_PATH.map(f=>esc(f.label)).join(" › ");
+  const backLabel=CR_LIST?"‹ Back to the chart"
+    :(CR_PATH.length>1?`‹ ${esc(CR_PATH[CR_PATH.length-2].label)}`:"‹ All closed tickets");
+  const backBtn=(CR_PATH.length||CR_LIST)?`<button class="cr-back" onclick="crBack()">${backLabel}</button>`:"";
+
+  let body,heroSub;
+  if(CR_LIST){
+    heroSub=`${crumb?`in <b>${crumb}</b><br>`:""}<span class="mono">last ${CR_DAYS} days · ${esc(from)} – ${esc(to)}</span>`;
+    body=`<div class="section-label" style="margin-top:16px">Tickets<span class="ln"></span></div>${crTicketList(rows)}`;
+  }else if(CR_PATH.length){
+    heroSub=`closed in <b>${crumb}</b><br><span class="mono">last ${CR_DAYS} days · ${esc(from)} – ${esc(to)}</span>`;
+    const used=new Set(CR_PATH.map(f=>f.dim));
+    const rest=[["cat","By category"],["store","By store"],["item","By item"]].filter(([d])=>!used.has(d));
+    body=rest.map(([d,t])=>{
       const list=crGroup(rows,d);
-      return `<div class="section-label" style="margin-top:16px">${t}<span class="ln"></span></div>
-        ${crBars(list,d,d!==CR_FILTER.dim)}`;}).join("");
+      // A single bucket adds nothing — don't make them tap through it.
+      if(list.length<2)return "";
+      return `<div class="section-label" style="margin-top:16px">${t}<span class="ln"></span></div>${crBars(list,d,true)}`;
+    }).join("")
+    + `<button class="btn btn-ghost btn-block" style="margin-top:14px" onclick="crShowList()">📋 Read these ${total} ticket${total===1?"":"s"}</button>`;
   }else{
     const modes=[["cat","Category"],["store","Store"],["item","Item"]];
     const tabs=modes.map(([k,l])=>`<button class="ce-tab${CR_MODE===k?" on":""}" onclick="crSetMode('${k}')">${l}</button>`).join("");
-    const list=crGroup(rows,CR_MODE);
-    const top=list[0];
-    const scopeTxt=SESSION.scope==="all"?"":` across your ${myStoreIds().length} store${myStoreIds().length===1?"":"s"}`;
-    heroSub=`closed in the last ${CR_DAYS} days${scopeTxt}<br><span class="mono">${esc(from)} – ${esc(to)}</span>`;
+    const list=crGroup(rows,CR_MODE), top=list[0];
+    heroSub=`closed in the last ${CR_DAYS} days<br><span class="mono">${esc(from)} – ${esc(to)}</span>`;
     const hint=CR_MODE==="item"
       ? `<p class="cr-hint">Items repeating across the window are your persistent problems.</p>`
       : (CR_MODE==="store"?`<p class="cr-hint">Ranked by volume — the busiest store is first.</p>`:"");
     body=`<div class="ce-tabs" style="margin-top:16px">${tabs}</div>
       ${top?`<div class="cr-top">Most: <b>${esc(top.label)}</b> · ${top.n}</div>`:""}
-      ${hint}
-      ${crBars(list,CR_MODE,true)}
-      <p class="cr-hint" style="margin-top:10px">Tap any bar to break it down.</p>`;
+      ${hint}${crBars(list,CR_MODE,true)}
+      <p class="cr-hint" style="margin-top:10px">Tap any bar to break it down, then read the tickets.</p>
+      <button class="btn btn-ghost btn-block" onclick="crShowList()">📋 Read all ${total} ticket${total===1?"":"s"}</button>`;
   }
 
   const emerg=rows.filter(t=>t.priority==="emergency").length;
@@ -4923,10 +4952,7 @@ function renderClosedReport(){
     <div class="sheet-body">
       ${backBtn}
       <div class="ce-tabs" style="margin-bottom:14px">${pick}</div>
-      <div class="cr-hero">
-        <div class="cr-big">${total}</div>
-        <div class="cr-sub">${heroSub}</div>
-      </div>
+      <div class="cr-hero"><div class="cr-big">${total}</div><div class="cr-sub">${heroSub}</div></div>
       <div class="imp-summary" style="margin:14px 0 4px">
         <div class="rp-stat"><div class="rp-n">${stores}</div><div class="rp-l">stores</div></div>
         <div class="rp-stat"><div class="rp-n">${emerg}</div><div class="rp-l">emergencies</div></div>
@@ -4935,484 +4961,6 @@ function renderClosedReport(){
       ${total?body:`<div class="rp-empty">No tickets were closed in this window.</div>`}
     </div>
     <div class="sheet-foot"><button class="btn btn-ghost btn-block" onclick="closeModal()">Done</button></div>`);
-}
-
-/* ============================================================ JOB COSTS
-   "How much did this repair cost?" — matches PayMi invoices to FixMi tickets.
-
-   DATA
-   ----
-   PayMi invoices are read straight from its Firestore over REST (read-only,
-   same key the pending-approval banner already uses, but paginated so the
-   whole collection comes back, not just the first 300).
-   The match itself is written to THIS app's master under admins/jobCosts:
-
-     admins/jobCosts/<linkId> = {
-       id, invId, ticketId, amount,          // dollars placed on this ticket
-       storeId,                              // ticket's store (for rollups)
-       inv:{vendor,invoiceNumber,amount,storeName,status,fileUrl,createdAt},
-       by, byName, at                        // who matched, when
-     }
-     A "not a repair" dismissal is the same record with ticketId:null, skip:true.
-
-   One invoice can be split across several tickets (parts + labor, or a vendor
-   who billed two jobs on one ticket) and one ticket can carry several
-   invoices; amounts are per link, so the ticket cost is just the sum.
-   ============================================================ */
-const COSTS_NODE="admins/jobCosts";
-const PAYMI_ALL=PAYMI_FS;                 // same URL; we page through it
-let COST_ECHO={};                          // linkId -> rec we just wrote, or {__deleted,at}
-let PM_INV=null, PM_FETCHED_AT=0, PM_ERR=null, PM_BUSY=false;
-const PM_TTL_MS=5*60*1000;
-/* panel state */
-let JC={tab:"match", sel:null, q:"", store:"all", show:"open", tq:"", allStores:false, anyDate:false,
-        focusTicket:null, jobsQ:"", period:90, moreInv:false};
-
-function fmtMoney(n){
-  n=Number(n)||0;
-  return "$"+n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
-}
-function costLinks(){return ((MASTER&&MASTER.admins)||{}).jobCosts||{}}
-function linksForTicket(tid){return Object.values(costLinks()).filter(l=>l&&l.ticketId===tid)}
-function linksForInvoice(iid){return Object.values(costLinks()).filter(l=>l&&l.invId===iid)}
-function ticketCost(tid){return linksForTicket(tid).reduce((s,l)=>s+(Number(l.amount)||0),0)}
-function invAllocated(iid){return linksForInvoice(iid).filter(l=>!l.skip).reduce((s,l)=>s+(Number(l.amount)||0),0)}
-function invSkipped(iid){return linksForInvoice(iid).some(l=>l.skip)}
-function invRemaining(inv){return Math.round(((Number(inv.amount)||0)-invAllocated(inv.id))*100)/100}
-/* MATCHED = fully placed on jobs · PART = some placed · SKIP = not a repair · OPEN = nothing yet */
-function invMatchState(inv){
-  if(invSkipped(inv.id))return"SKIP";
-  const a=invAllocated(inv.id);
-  if(a<=0)return"OPEN";
-  return invRemaining(inv)<=0.005?"MATCHED":"PART";
-}
-function invStoreIds(inv){
-  if(Array.isArray(inv.storeIds)&&inv.storeIds.length)return inv.storeIds;
-  return inv.storeId?[inv.storeId]:[];
-}
-function pmById(id){return (PM_INV||[]).find(i=>i.id===id)||null}
-
-/* ---- PayMi read (paginated) ---- */
-function pmDecode(d){
-  const f=d.fields||{}, o={};
-  for(const k in f)o[k]=fsVal(f[k]);
-  o.id=String(d.name||"").split("/").pop();
-  o.amount=Number(o.amount)||0;
-  return o;
-}
-async function pmFetchAll(force){
-  if(!force&&PM_INV&&(Date.now()-PM_FETCHED_AT)<PM_TTL_MS)return PM_INV;
-  if(PM_BUSY)return PM_INV;
-  PM_BUSY=true;
-  try{
-    let url=PAYMI_ALL, out=[], guard=0;
-    while(url&&guard++<40){
-      const r=await fetchWithTimeout(url,{cache:"no-store"},25000);
-      if(!r.ok)throw new Error("PayMi read failed · HTTP "+r.status);
-      const j=await r.json();
-      (j.documents||[]).forEach(d=>out.push(pmDecode(d)));
-      url=j.nextPageToken?PAYMI_ALL+"&pageToken="+encodeURIComponent(j.nextPageToken):null;
-    }
-    out.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-    PM_INV=out; PM_FETCHED_AT=Date.now(); PM_ERR=null;
-    console.log("[JobCosts] "+out.length+" PayMi invoices loaded");
-  }catch(e){
-    PM_ERR=(e&&e.message)||"PayMi unreachable";
-    if(!PM_INV)PM_INV=[];
-    console.warn("[JobCosts] "+PM_ERR);
-  }finally{PM_BUSY=false}
-  return PM_INV;
-}
-
-/* ---- open the panel ---- */
-async function openJobCosts(tab,opts){
-  if(SESSION.role!=="admin")return;
-  if(tab)JC.tab=tab;
-  opts=opts||{};
-  if(opts.ticket){JC.focusTicket=opts.ticket;JC.sel=null;JC.tab="match";JC.store=(TICKETS[opts.ticket]||{}).storeId||"all";JC.show="open";}
-  else if(!opts.keep){JC.focusTicket=null;}
-  showLoader(true);
-  try{
-    // Invoices almost always arrive after the job is closed, and closed tickets
-    // aren't in the default payload — pull both before drawing anything.
-    if(CLOSED_ERR)CLOSED_LOADED=false;          // a failed attempt earlier — try again now
-    await Promise.all([pmFetchAll(false),ensureClosedLoaded()]);
-  }finally{showLoader(false)}
-  renderJobCosts();
-}
-async function jcReload(){
-  showLoader(true);
-  try{await Promise.all([pmFetchAll(true),refresh()])}catch(e){}
-  finally{showLoader(false)}
-  renderJobCosts(); toast("Invoices refreshed");
-}
-function jcSet(k,v){JC[k]=v;renderJobCosts()}
-async function jcRetryClosed(){
-  CLOSED_LOADED=false;
-  await ensureClosedLoaded();
-  renderJobCosts();
-}
-/* Invoices currently in play, in the order the arrows walk them. */
-function jcInvoiceList(){
-  const q=normTxt(JC.q);
-  return (PM_INV||[]).filter(inv=>{
-    const st=invMatchState(inv);
-    if(JC.show==="open"&&(st==="MATCHED"||st==="SKIP"))return false;
-    if(JC.show==="done"&&!(st==="MATCHED"||st==="SKIP"))return false;
-    if(JC.store!=="all"&&!invStoreIds(inv).includes(JC.store))return false;
-    if(q){const hay=normTxt([inv.vendor,inv.invoiceNumber,inv.storeName,invStoreLabel(inv),String(inv.amount)].join(" "));if(!hay.includes(q))return false}
-    return true;
-  });
-}
-function jcSelect(id){JC.sel=id;JC.tq="";JC.allStores=false;renderJobCosts()}
-/* Called BEFORE an action that removes the current invoice from the queue
-   (fully placed, or marked not-a-repair): move to the next one in line so the
-   arrows don't snap back to #1. */
-function jcAdvanceFrom(invId){
-  const list=jcInvoiceList(), i=list.findIndex(x=>x.id===invId);
-  if(i<0)return;
-  const nxt=list[i+1]||list[i-1]||null;
-  JC.sel=nxt?nxt.id:null;
-}
-function jcNav(dir){
-  const list=jcInvoiceList(); if(!list.length)return;
-  let i=list.findIndex(x=>x.id===JC.sel); if(i<0)i=0;
-  i=(i+dir+list.length)%list.length;
-  jcSelect(list[i].id);
-}
-function jcSearch(el,key){
-  JC[key]=el.value; const caret=el.selectionStart;
-  renderJobCosts();
-  const n=$(el.id); if(n){n.focus();try{n.setSelectionRange(caret,caret)}catch(e){}}
-}
-
-/* ---- ranking: which tickets probably belong to this invoice ---- */
-function normTxt(s){return String(s||"").toLowerCase().replace(/[^a-z0-9 ]+/g," ").replace(/\s+/g," ").trim()}
-function vendorTokens(s){return normTxt(s).split(" ").filter(w=>w.length>2&&!["inc","llc","the","and","co","corp","services","service","company"].includes(w))}
-function vendorLooksLike(a,b){
-  const ta=vendorTokens(a), tb=vendorTokens(b);
-  if(!ta.length||!tb.length)return false;
-  return ta.some(w=>tb.includes(w));
-}
-function ticketVendorName(t){
-  if(t.assignedVendorId&&VENDORS[t.assignedVendorId])return VENDORS[t.assignedVendorId].name;
-  if(t.assignedTechId)return techName(t.assignedTechId)||"";
-  return"";
-}
-function jcCandidates(inv){
-  const sids=invStoreIds(inv), invAt=inv.createdAt||0, q=normTxt(JC.tq);
-  const rows=[]; let hiddenByDate=0;
-  // Search open AND closed jobs — the job is usually already closed by the
-  // time its invoice shows up. CLOSED_TICKETS is merged in explicitly so a
-  // poll that raced the closed fetch can't drop them.
-  const pool={...CLOSED_TICKETS,...TICKETS};
-  Object.entries(pool).forEach(([id,t])=>{
-    if(!t)return;
-    const inStore=sids.includes(t.storeId);
-    if(!JC.allStores&&!inStore&&!q)return;
-    // An invoice is almost never dated before the job it bills: a ticket opened
-    // after the invoice was filed (plus a day of slack) is hidden unless asked for.
-    if(!JC.anyDate&&invAt&&(t.createdAt||0)>invAt+86400000){hiddenByDate++;return}
-    if(q){
-      const hay=normTxt([t.shortId,t.description,catPath(t),storeName(t.storeId),ticketVendorName(t)].join(" "));
-      if(!hay.includes(q))return;
-    }
-    let score=0, why=[];
-    if(inStore)score+=30;
-    const vn=ticketVendorName(t);
-    if(vn&&vendorLooksLike(vn,inv.vendor)){score+=50;why.push("same vendor")}
-    const finished=t.status==="closed"||t.status==="finished";
-    if(finished)score+=8;
-    // A job that wrapped up shortly before the invoice was filed is the usual case.
-    // Only finished/closed jobs have a "done" date worth comparing.
-    const done=finished?(t.status==="closed"?closedAt(t):(t.finishedAt||t.updatedAt||0)):0;
-    if(invAt&&done){
-      const days=(invAt-done)/86400000;
-      if(days>=-3&&days<=60){score+=20-Math.min(15,Math.max(0,days/4));if(days<=21)why.push("done "+Math.max(0,Math.round(days))+"d before invoice")}
-    }
-    const already=linksForInvoice(inv.id).some(l=>l.ticketId===id);
-    if(already)score-=1000;
-    rows.push({id,t,score,why,already});
-    if(t.status==="closed")rows.closedN=(rows.closedN||0)+1; else rows.openN=(rows.openN||0)+1;
-  });
-  rows.sort((a,b)=>b.score-a.score||(b.t.createdAt||0)-(a.t.createdAt||0));
-  rows._hiddenByDate=hiddenByDate;
-  return rows;
-}
-
-/* ---- writes ---- */
-async function jcLink(invId,tid){
-  const inv=pmById(invId), t=TICKETS[tid];
-  if(!inv||!t){toast("Invoice or ticket not found — refresh","err");return}
-  const el=$("jcAmt_"+invId+"_"+tid);
-  const amt=Math.round((parseFloat(el&&el.value)||0)*100)/100;
-  if(!(amt>0)){toast("Enter the amount to place on this job","err");return}
-  const id=uid();
-  const rec={id,invId,ticketId:tid,amount:amt,storeId:t.storeId,
-    inv:{vendor:inv.vendor||"",invoiceNumber:inv.invoiceNumber||"",amount:inv.amount||0,
-         storeName:inv.storeName||"",status:inv.status||"",fileUrl:inv.fileUrl||null,createdAt:inv.createdAt||0},
-    by:SESSION.email,byName:SESSION.name,at:now()};
-  MASTER.admins.jobCosts=MASTER.admins.jobCosts||{};
-  MASTER.admins.jobCosts[id]=rec; COST_ECHO[id]=rec;
-  // Stay on this invoice while money remains on it; once it's fully placed it
-  // leaves the "needs matching" queue, so step to the next one in line.
-  if(invRemaining(inv)<=0.005&&!JC.focusTicket&&!jcInvoiceList().some(x=>x.id===inv.id)){
-    delete MASTER.admins.jobCosts[id]; jcAdvanceFrom(inv.id); MASTER.admins.jobCosts[id]=rec;
-  }
-  renderJobCosts();
-  toast(fmtMoney(amt)+" placed on #"+(t.shortId||tid.slice(0,6).toUpperCase()));
-  render();
-  try{await apiWrite(`${COSTS_NODE}/${id}`,rec);refreshInBackground();}
-  catch(e){delete MASTER.admins.jobCosts[id];delete COST_ECHO[id];renderJobCosts();toast(e.message||"Save failed — link removed","err")}
-}
-async function jcSkip(invId){
-  const inv=pmById(invId); if(!inv)return;
-  const id=uid();
-  const rec={id,invId,ticketId:null,skip:true,amount:0,storeId:null,
-    inv:{vendor:inv.vendor||"",invoiceNumber:inv.invoiceNumber||"",amount:inv.amount||0,storeName:inv.storeName||"",status:inv.status||"",fileUrl:inv.fileUrl||null,createdAt:inv.createdAt||0},
-    by:SESSION.email,byName:SESSION.name,at:now()};
-  MASTER.admins.jobCosts=MASTER.admins.jobCosts||{};
-  jcAdvanceFrom(inv.id);                       // next in line, before it leaves the queue
-  MASTER.admins.jobCosts[id]=rec; COST_ECHO[id]=rec;
-  renderJobCosts(); toast("Marked as not a repair");
-  try{await apiWrite(`${COSTS_NODE}/${id}`,rec);refreshInBackground();}
-  catch(e){delete MASTER.admins.jobCosts[id];delete COST_ECHO[id];renderJobCosts();toast(e.message||"Save failed","err")}
-}
-async function jcUnlink(linkId,from){
-  const rec=costLinks()[linkId]; if(!rec)return;
-  delete MASTER.admins.jobCosts[linkId]; COST_ECHO[linkId]={__deleted:true,at:now()};
-  if(from==="ticket"&&rec.ticketId)openTicket(rec.ticketId); else renderJobCosts();
-  render();
-  toast(rec.skip?"Invoice back in the queue":"Link removed");
-  try{await apiWrite(`${COSTS_NODE}/${linkId}`,null);refreshInBackground();}
-  catch(e){MASTER.admins.jobCosts[linkId]=rec;delete COST_ECHO[linkId];
-    if(from==="ticket"&&rec.ticketId)openTicket(rec.ticketId); else renderJobCosts();
-    toast(e.message||"Could not remove","err")}
-}
-
-/* ---- pieces ---- */
-function invStoreLabel(inv){
-  const ids=invStoreIds(inv);
-  const names=ids.map(id=>RESTAURANTS[id]?storeName(id):null).filter(Boolean);
-  return names.length?names.join(" + "):(inv.storeName||"—");
-}
-function invCard(inv){
-  const st=invMatchState(inv), alloc=invAllocated(inv.id), pct=inv.amount?Math.min(100,alloc/inv.amount*100):0;
-  const sel=JC.sel===inv.id;
-  const when=inv.createdAt?new Date(inv.createdAt).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"2-digit"}):"";
-  const mpill=st==="OPEN"?"":`<span class="ipill ${st}">${st==="MATCHED"?"matched":st==="PART"?"partly matched":"not a repair"}</span>`;
-  return `<div class="inv${sel?" sel":""}${st==="MATCHED"||st==="SKIP"?" done":""}" onclick="jcSelect('${inv.id}')">
-    <div class="inv-top"><div class="inv-vendor">${esc(inv.vendor||"(no vendor)")}</div><div class="inv-amt">${fmtMoney(inv.amount)}</div></div>
-    <div class="inv-store">${esc(invStoreLabel(inv))}</div>
-    <div class="inv-meta"><span class="mono">#${esc(inv.invoiceNumber||"—")}</span>${when?`<span>· ${esc(when)}</span>`:""}
-      ${inv.status?`<span class="ipill ${esc(inv.status)}">${esc(inv.status.toLowerCase())}</span>`:""}${mpill}
-      ${inv.fileUrl?`<a href="${escA(inv.fileUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--amber-deep);font-weight:600">📄 view</a>`:""}</div>
-    ${alloc>0?`<div class="inv-meter"><i class="${st==="PART"?"part":""}" style="width:${pct}%"></i></div>`:""}
-  </div>`;
-}
-function ticketLine(id,t){
-  return `<span class="mono">#${esc(t.shortId||id.slice(0,6).toUpperCase())}</span> ${esc(storeName(t.storeId))} · ${esc((t.description||"").slice(0,60))}`;
-}
-function candCard(inv,c,idx){
-  const {id,t,why,already}=c;
-  const st=STATUSES[t.status]||STATUSES.unassigned;
-  const have=ticketCost(id), remain=invRemaining(inv);
-  const who=ticketVendorName(t);
-  const done=t.status==="closed"?"closed "+fmtDateShort(closedAt(t)):(t.status==="finished"&&t.finishedAt?"finished "+fmtDateShort(t.finishedAt):"opened "+fmtDateShort(t.createdAt));
-  return `<div class="cand${idx===0&&why.length&&!already?" best":""}">
-    <div class="cand-top"><span class="cand-id">#${esc(t.shortId||id.slice(0,6).toUpperCase())}</span>
-      <span class="sbadge" style="color:${st.color};background:${st.color}1a"><span class="dot"></span>${st.label}</span>
-      ${why.map(w=>`<span class="cand-why">${esc(w)}</span>`).join("")}
-      <span style="flex:1"></span>
-      <button class="btn btn-ghost btn-sm" onclick="openTicket('${id}')" title="Open ticket">↗</button></div>
-    <div class="cand-desc">${esc(t.description||"No description")}</div>
-    <div class="cand-meta"><span>${esc(storeName(t.storeId))}</span><span>·</span><span>${esc(catPath(t))}</span><span>·</span><span>${esc(done)}</span>${who?`<span>·</span><span>${esc(who)}</span>`:""}${have>0?`<span>·</span><span class="cand-has">has ${fmtMoney(have)}</span>`:""}</div>
-    ${already?`<div class="cand-meta" style="margin-top:8px;color:var(--green);font-weight:600">✓ Already on this invoice</div>`:
-    `<div class="cand-act"><input class="input" id="jcAmt_${inv.id}_${id}" type="number" step="0.01" min="0" value="${remain>0?remain.toFixed(2):""}" placeholder="0.00" onclick="event.stopPropagation()">
-      <button class="btn btn-primary btn-sm" onclick="jcLink('${inv.id}','${id}')">Put on this job</button></div>`}
-  </div>`;
-}
-
-/* ---- tabs ---- */
-function invFileView(inv){
-  if(!inv.fileUrl)return `<div class="jc-pdf-empty"><div style="font-size:30px;opacity:.4">📄</div>No file attached to this invoice in PayMi.</div>`;
-  const ext=String(inv.fileName||inv.fileUrl).split("?")[0].split(".").pop().toLowerCase();
-  if(["png","jpg","jpeg","gif","webp","bmp"].includes(ext))
-    return `<div class="jc-pdf-img"><img src="${escA(inv.fileUrl)}" alt="Invoice"></div>`;
-  return `<iframe src="${escA(inv.fileUrl)}#toolbar=0&navpanes=0" title="Invoice"></iframe>`;
-}
-function jcMatchTab(){
-  const list=jcInvoiceList();
-  if(!list.some(x=>x.id===JC.sel)){
-    // Current invoice fell out of the filtered set (filter change, or it was
-    // just matched elsewhere): stay near where we were instead of jumping to #1.
-    const i=Math.min(JC.lastIdx||0,list.length-1);
-    JC.sel=list.length?list[Math.max(0,i)].id:null;
-  }
-  JC.lastIdx=Math.max(0,list.findIndex(x=>x.id===JC.sel));
-  const inv=JC.sel?pmById(JC.sel):null;
-  const focusT=JC.focusTicket?TICKETS[JC.focusTicket]:null;
-  const storeOpts=Object.keys(RESTAURANTS).map(id=>[id,storeName(id)]).sort((a,b)=>a[1].localeCompare(b[1]))
-    .map(([id,n])=>`<option value="${id}"${JC.store===id?" selected":""}>${esc(n)}</option>`).join("");
-  const filters=`<div class="jc-filters top">
-      <input class="input" id="jcQ" placeholder="Vendor, invoice #, amount…" value="${escA(JC.q)}" oninput="jcSearch(this,'q')">
-      <select class="input" onchange="jcSet('store',this.value)"><option value="all">All stores</option>${storeOpts}</select>
-      <select class="input" onchange="jcSet('show',this.value)">
-        <option value="open"${JC.show==="open"?" selected":""}>Needs matching</option>
-        <option value="done"${JC.show==="done"?" selected":""}>Matched / not a repair</option>
-        <option value="all"${JC.show==="all"?" selected":""}>Everything</option></select>
-      ${focusT?`<span class="jc-focus-chip">Putting cost on <span class="mono">#${esc(focusT.shortId||JC.focusTicket)}</span> <button onclick="jcSet('focusTicket',null)" title="Stop">✕</button></span>`:""}
-    </div>`;
-  if(!inv){
-    return filters+`<div class="jc-empty" style="margin-top:14px">${PM_ERR?"Couldn't read PayMi: "+esc(PM_ERR):(JC.show==="open"?"Nothing waiting — every invoice here is on a job.":"No invoices match these filters.")}</div>`;
-  }
-  const remain=invRemaining(inv), links=linksForInvoice(inv.id).filter(l=>!l.skip), st=invMatchState(inv);
-  const when=inv.createdAt?new Date(inv.createdAt).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):"";
-  // ---- left: jobs ----
-  let cands=jcCandidates(inv);
-  if(focusT)cands=cands.filter(c=>c.id===JC.focusTicket);
-  const shown=cands.slice(0,40);
-  const hiddenByDate=focusT?0:cands._hiddenByDate||0;
-  const left=`<div class="jc-left">
-    ${focusT?"":`<div class="jc-filters"><input class="input" id="jcTq" placeholder="Find a job by #, words, store…" value="${escA(JC.tq)}" oninput="jcSearch(this,'tq')">
-      <label class="jc-chk"><input type="checkbox" ${JC.allStores?"checked":""} onchange="jcSet('allStores',this.checked)"> All stores</label>
-      <label class="jc-chk" title="An invoice is almost never dated before the job it bills"><input type="checkbox" ${JC.anyDate?"checked":""} onchange="jcSet('anyDate',this.checked)"> Include jobs opened after ${esc(when||"the invoice")}</label></div>`}
-    <div class="jc-pool${CLOSED_ERR?" err":""}">${CLOSED_ERR
-      ?`⚠ ${esc(CLOSED_ERR)} — only open jobs are listed. <button class="jc-retry" onclick="jcRetryClosed()">Retry</button>`
-      :`Searched ${cands.openN||0} open · ${cands.closedN||0} closed job${(cands.closedN||0)===1?"":"s"}${JC.allStores||JC.tq?" (all stores)":" at "+esc(invStoreLabel(inv))}${hiddenByDate?` · ${hiddenByDate} hidden by date`:""}`}</div>
-    <div class="jc-cands">${shown.length?shown.map((c,i)=>candCard(inv,c,i)).join(""):`<div class="jc-empty">No jobs at ${esc(invStoreLabel(inv))} opened before this invoice.${hiddenByDate?`<br>${hiddenByDate} newer job${hiddenByDate===1?"":"s"} hidden — tick the date box to see them.`:""}<br>Search above or tick “All stores” if the invoice was filed under the wrong store.</div>`}
-      ${cands.length>shown.length?`<div class="jc-empty" style="padding:10px">${cands.length-shown.length} more — narrow with the search box.</div>`:""}</div>
-  </div>`;
-  // ---- right: the invoice itself ----
-  const mpill=st==="OPEN"?"":`<span class="ipill ${st}">${st==="MATCHED"?"matched":st==="PART"?"partly matched":"not a repair"}</span>`;
-  const right=`<div class="jc-right">
-    <div class="jc-inv-head">
-      <div class="jc-inv-amt">${fmtMoney(inv.amount)}</div>
-      <div class="jc-inv-who"><b>${esc(inv.vendor||"(no vendor)")}</b> <span class="mono">#${esc(inv.invoiceNumber||"—")}</span><br>
-        <span class="jc-inv-sub">${esc(invStoreLabel(inv))}${when?" · "+esc(when):""}</span></div>
-      <div class="jc-inv-pills">${inv.status?`<span class="ipill ${esc(inv.status)}">${esc(inv.status.toLowerCase())}</span>`:""}${mpill}
-        ${inv.fileUrl?`<a class="btn btn-ghost btn-sm" href="${escA(inv.fileUrl)}" target="_blank" rel="noopener" title="Open in a new tab">↗</a>`:""}</div>
-    </div>
-    <div class="jc-inv-state">
-      <span class="jc-remain">${st==="SKIP"?`Marked <b>not a repair</b>`:remain>0.005?`<b>${fmtMoney(remain)}</b> still to place${links.length?" · "+fmtMoney(invAllocated(inv.id))+" placed":""}`:`<b style="color:var(--green)">Fully placed</b> on ${links.length} job${links.length===1?"":"s"}`}</span>
-      ${st==="OPEN"&&!focusT?`<button class="btn btn-ghost btn-sm" onclick="jcSkip('${inv.id}')">Not a repair job</button>`:""}
-    </div>
-    ${jcLinksBlock(linksForInvoice(inv.id),"inv")}
-    <div class="jc-pdf">${invFileView(inv)}</div>
-  </div>`;
-  return filters+`<div class="jc-work">${left}${right}</div>`;
-}
-function jcLinksBlock(links,mode){
-  if(!links.length)return"";
-  return `<div class="jc-links">${links.map(l=>{
-    const t=l.ticketId?TICKETS[l.ticketId]:null;
-    const label=mode==="inv"
-      ?(l.skip?"Not a repair job":t?ticketLine(l.ticketId,t):`<span class="mono">#${esc(l.ticketId||"")}</span> (ticket not loaded)`)
-      :`<b>${esc((l.inv||{}).vendor||"")}</b> · #${esc((l.inv||{}).invoiceNumber||"—")} of ${fmtMoney((l.inv||{}).amount)}`;
-    return `<div class="jc-link">${l.skip?"":`<span class="amt">${fmtMoney(l.amount)}</span>`}<span class="t">${label}</span>
-      <button class="jc-unlink" title="Remove this link" onclick="jcUnlink('${l.id}')">✕</button></div>`}).join("")}</div>`;
-}
-
-function jcJobsTab(){
-  const q=normTxt(JC.jobsQ), since=JC.period?now()-JC.period*86400000:0;
-  const byT={};
-  Object.values(costLinks()).forEach(l=>{if(!l||!l.ticketId)return;(byT[l.ticketId]=byT[l.ticketId]||[]).push(l)});
-  let rows=Object.entries(byT).map(([id,links])=>{
-    const t=TICKETS[id]; const amt=links.reduce((s,l)=>s+(Number(l.amount)||0),0);
-    const latest=Math.max(...links.map(l=>l.at||0));
-    return {id,t,links,amt,latest};
-  }).filter(r=>r.t&&(!since||closedAt(r.t)>=since||r.latest>=since));
-  if(q)rows=rows.filter(r=>normTxt([r.t.shortId,r.t.description,storeName(r.t.storeId),catPath(r.t),r.links.map(l=>(l.inv||{}).vendor).join(" ")].join(" ")).includes(q));
-  rows.sort((a,b)=>b.amt-a.amt);
-  const total=rows.reduce((s,r)=>s+r.amt,0);
-  return `${jcPeriodBar()}
-    <div class="jc-total"><div class="n">${fmtMoney(total)}</div><div class="l">across ${rows.length} job${rows.length===1?"":"s"}</div></div>
-    <div class="jc-filters"><input class="input" id="jcJobsQ" placeholder="Search jobs, stores, vendors…" value="${escA(JC.jobsQ)}" oninput="jcSearch(this,'jobsQ')"></div>
-    <div class="jc-list" style="max-height:none">${rows.length?rows.map(r=>`<div class="jc-job" onclick="openTicket('${r.id}')">
-      <div><div class="d">${esc(r.t.description||"No description")}</div>
-        <div class="m"><span class="mono">#${esc(r.t.shortId||r.id.slice(0,6).toUpperCase())}</span> · ${esc(storeName(r.t.storeId))} · ${esc(catPath(r.t))} · ${r.links.length} invoice${r.links.length===1?"":"s"}: ${esc([...new Set(r.links.map(l=>(l.inv||{}).vendor).filter(Boolean))].join(", "))}</div></div>
-      <div class="amt">${fmtMoney(r.amt)}</div></div>`).join(""):`<div class="jc-empty">No costed jobs in this window. Match invoices on the first tab.</div>`}</div>`;
-}
-function jcStoresTab(){
-  const since=JC.period?now()-JC.period*86400000:0;
-  const by={}, n={};
-  Object.values(costLinks()).forEach(l=>{
-    if(!l||!l.ticketId)return;
-    const t=TICKETS[l.ticketId]; const sid=l.storeId||(t&&t.storeId); if(!sid)return;
-    if(since&&!((t&&closedAt(t)>=since)||(l.at||0)>=since))return;
-    by[sid]=(by[sid]||0)+(Number(l.amount)||0);
-    (n[sid]=n[sid]||new Set()).add(l.ticketId);
-  });
-  const rows=Object.entries(by).map(([sid,amt])=>({sid,amt,jobs:n[sid].size})).sort((a,b)=>b.amt-a.amt);
-  const max=rows.length?rows[0].amt:1, total=rows.reduce((s,r)=>s+r.amt,0);
-  return `${jcPeriodBar()}
-    <div class="jc-total"><div class="n">${fmtMoney(total)}</div><div class="l">across ${rows.length} store${rows.length===1?"":"s"}</div></div>
-    ${rows.length?`<div class="cr-chart">${rows.map(r=>`<button class="cr-click" onclick="JC.tab='match';JC.store='${r.sid}';JC.show='all';JC.sel=null;renderJobCosts()">
-      <div class="cr-row" style="grid-template-columns:120px 1fr 92px"><div class="cr-label">${esc(storeName(r.sid))}</div>
-        <div class="cr-track"><div class="cr-bar" style="width:${Math.max(2,r.amt/max*100)}%"></div></div>
-        <div class="cr-n">${fmtMoney(r.amt)}</div></div>
-      <div class="cr-hint" style="text-align:right;margin:0 0 4px">${r.jobs} job${r.jobs===1?"":"s"}</div></button>`).join("")}</div>
-      <p class="cr-hint">Tap a store to see its invoices.</p>`:`<div class="jc-empty">Nothing costed in this window yet.</div>`}`;
-}
-function jcPeriodBar(){
-  return `<div class="ce-tabs" style="margin-top:14px">${[[30,"30d"],[90,"90d"],[365,"1y"],[0,"All time"]].map(([d,l])=>`<button class="ce-tab${JC.period===d?" on":""}" onclick="jcSet('period',${d})">${l}</button>`).join("")}</div>`;
-}
-
-function renderJobCosts(){
-  const open=(PM_INV||[]).filter(i=>invMatchState(i)==="OPEN"||invMatchState(i)==="PART").length;
-  const tabs=[["match","Match invoices",open?` <span class="mono" style="font-size:10px;opacity:.85">${open}</span>`:""],["jobs","By job",""],["stores","By store",""]]
-    .map(([k,l,b])=>`<button class="ce-tab${JC.tab===k?" on":""}" onclick="jcSet('tab','${k}')">${l}${b}</button>`).join("");
-  const src=PM_ERR?`<span class="jc-src err"><b>●</b> PayMi offline</span>`
-    :`<span class="jc-src"><b>●</b> PayMi · ${(PM_INV||[]).length} invoices</span>`;
-  const isMatch=JC.tab==="match";
-  const body=JC.tab==="jobs"?jcJobsTab():JC.tab==="stores"?jcStoresTab():jcMatchTab();
-  let foot;
-  if(isMatch){
-    const list=jcInvoiceList(), i=list.findIndex(x=>x.id===JC.sel);
-    foot=`<button class="btn btn-ghost jc-arrow" onclick="jcNav(-1)" ${list.length<2?"disabled":""} title="Previous invoice (←)">‹</button>
-      <div class="jc-pos">${list.length?`Invoice <b>${i+1}</b> of <b>${list.length}</b>`:"No invoices"}${JC.show==="open"?" needing a job":""}</div>
-      <button class="btn btn-ghost jc-arrow" onclick="jcNav(1)" ${list.length<2?"disabled":""} title="Next invoice (→)">›</button>
-      <button class="btn btn-ghost" onclick="closeModal()">Done</button>`;
-  }else foot=`<button class="btn btn-ghost btn-block" onclick="closeModal()">Done</button>`;
-  const o=$("modalOverlay");
-  const fresh=!(o&&o.classList.contains("on")&&o.querySelector("#jcRoot"));
-  const html=`<div class="sheet-head"><h2>Job costs</h2>
-      <div class="jc-tabs">${tabs}</div><div class="jc-right-src">${src}<button class="btn btn-ghost btn-sm" onclick="jcReload()" title="Re-read PayMi">⟳</button></div>
-      <button class="x-btn" onclick="closeModal()">✕</button></div>
-    <div class="sheet-body${isMatch?" jc-match":""}" id="jcRoot">${body}</div>
-    <div class="sheet-foot jc-foot">${foot}</div>`;
-  if(fresh){
-    modal(html);
-    const oo=$("modalOverlay");oo.classList.add("wide");oo.classList.add("tall");oo.classList.add("jc");
-    oo._jcKeys=e=>{
-      if(!oo.querySelector("#jcRoot")||!oo.classList.contains("on")){document.removeEventListener("keydown",oo._jcKeys);oo._jcKeys=null;return}
-      if(JC.tab!=="match")return;
-      const tag=(document.activeElement||{}).tagName;
-      if(tag==="INPUT"||tag==="TEXTAREA"||tag==="SELECT")return;
-      if(e.key==="ArrowLeft"){jcNav(-1);e.preventDefault()}
-      else if(e.key==="ArrowRight"){jcNav(1);e.preventDefault()}
-    };
-    document.addEventListener("keydown",oo._jcKeys);
-  }else{
-    // Re-render in place so the sheet doesn't flicker; keep the job list's scroll.
-    const lf=o.querySelector(".jc-left"), top=lf?lf.scrollTop:0;
-    o.querySelector(".sheet").innerHTML=html; applyTags();
-    const nl=o.querySelector(".jc-left"); if(nl)nl.scrollTop=top;
-  }
-}
-
-/* ---- ticket detail: the cost row + linked invoices ---- */
-function costDetail(id){
-  if(SESSION.role!=="admin")return"";
-  const links=linksForTicket(id), total=links.reduce((s,l)=>s+(Number(l.amount)||0),0);
-  const list=links.length?`<div class="cost-links">${links.map(l=>`<div class="jc-link">
-      <span class="amt">${fmtMoney(l.amount)}</span>
-      <span class="t"><b>${esc((l.inv||{}).vendor||"")}</b> · #${esc((l.inv||{}).invoiceNumber||"—")}${(l.inv||{}).amount&&Math.abs((l.inv||{}).amount-l.amount)>0.005?` <span style="color:var(--ink-dim)">(of ${fmtMoney((l.inv||{}).amount)})</span>`:""}${(l.inv||{}).fileUrl?` · <a href="${escA(l.inv.fileUrl)}" target="_blank" rel="noopener" style="color:var(--amber-deep);font-weight:600">📄</a>`:""}</span>
-      <button class="jc-unlink" title="Remove" onclick="jcUnlink('${l.id}','ticket')">✕</button></div>`).join("")}</div>`:"";
-  return `<div class="detail-row"><span class="k">Cost</span><span class="v">
-      <span class="mono" style="font-weight:800;color:${total>0?"var(--green)":"var(--ink-dim)"}">${total>0?fmtMoney(total):"—"}</span>
-      <button class="btn btn-ghost btn-sm" style="margin-left:8px" onclick="openJobCosts('match',{ticket:'${id}'})">$ Link invoice</button></span></div>
-    ${list}`;
 }
 
 /* ============================================================ VENDORS */
