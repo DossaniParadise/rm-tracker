@@ -133,6 +133,22 @@ body.no-reftags .reftag{display:none}
 .sort-select{max-width:210px}
 @media(max-width:600px){.sort-select{max-width:none}}
 .loc-select{max-width:300px;flex:0 1 auto}
+.sp{position:relative;flex:1 1 220px;min-width:0}
+.sp-native{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}
+.sp-input{width:100%;padding-right:34px}
+.sp-caret{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;
+  color:var(--ink-dim);font-size:13px;cursor:pointer;padding:4px 6px;line-height:1}
+.sp-menu{display:none;position:absolute;z-index:70;left:0;right:0;top:calc(100% + 4px);max-height:260px;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--panel);border:1px solid var(--line);
+  border-radius:10px;box-shadow:0 10px 28px rgba(20,30,45,.18)}
+.sp-menu.on{display:block}
+.sp-opt{display:block;width:100%;text-align:left;background:none;border:none;padding:11px 13px;
+  font-size:13.5px;color:var(--ink);cursor:pointer;border-bottom:1px solid var(--line-soft,var(--line))}
+.sp-opt:last-child{border-bottom:none}
+.sp-opt:hover{background:var(--panel-2)}
+.sp-opt.cur{background:rgba(29,118,187,.10);font-weight:700}
+.sp-none{padding:14px 13px;font-size:12.5px;color:var(--ink-dim)}
+@media(max-width:600px){.sp{flex:1 1 100%}.sp-menu{max-height:min(320px,52vh)}.sp-opt{padding:13px;font-size:14px}}
 .search{flex:1;min-width:160px}
 .list-head{font-family:var(--disp);font-weight:800;font-size:18px;margin:0 0 12px}
 .list-head .lh-n{color:var(--ink-dim);font-weight:600}
@@ -922,7 +938,7 @@ const API_BASE_URL = "https://alignment-api-khaki.vercel.app/api/dpm-alignment";
 const APP_WRITE_PASSWORD = "rm123"; // must match ROLES.MAINTENANCE on the API
 const IMGBB_API_KEY = "b733862d15744e2bfaa4329d122f4ba0";
 const POLL_MS = 20000;
-const APP_VERSION = "6.16";
+const APP_VERSION = "6.17";
 let   SHOW_REF_TAGS = false; // default OFF — toggle with the # button in the top bar
 
 const ROLE_PASSWORDS = {
@@ -2168,10 +2184,8 @@ function renderBoard(){
       </div>
       ${techTiles}
       <div class="board-controls">
-        ${storeIds.length>1?`<select class="input loc-select" onchange="curStore=this.value;render()">
-          <option value="all"${curStore==="all"?" selected":""}>All stores (${storeIds.length})</option>
-          ${storeIds.slice().sort((a,b)=>storeName(a).localeCompare(storeName(b))).map(id=>`<option value="${id}"${curStore===id?" selected":""}>${esc(storeName(id))}</option>`).join("")}
-        </select>`:""}
+        ${storeIds.length>1?storePicker({id:"boardStore",ids:storeIds,selected:curStore,
+          allLabel:`All stores (${storeIds.length})`,onChange:"curStore=this.value;render()"}):""}
         ${sortSelect()}
         <input class="input search" placeholder="Search store, issue, ticket #…" value="${escA(curSearch)}" oninput="onSearchInput(this)">
       </div>
@@ -2243,10 +2257,8 @@ function renderBoard(){
     </div>
     ${tilesBlock}
     <div class="board-controls">
-      ${storeIds.length>1?`<select class="input loc-select" onchange="curStore=this.value;render()">
-        <option value="all"${curStore==="all"?" selected":""}>All stores (${storeIds.length})</option>
-        ${storeIds.slice().sort((a,b)=>storeName(a).localeCompare(storeName(b))).map(id=>`<option value="${id}"${curStore===id?" selected":""}>${esc(storeName(id))}</option>`).join("")}
-      </select>`:""}
+      ${storeIds.length>1?storePicker({id:"boardStore2",ids:storeIds,selected:curStore,
+        allLabel:`All stores (${storeIds.length})`,onChange:"curStore=this.value;render()"}):""}
       ${(curFilter==="dispatched"||curFilter==="assigned")?assigneeFilterSelect(allTickets):""}
       ${SESSION.role==="admin"?categoryFilterSelect():""}
       ${sortSelect()}
@@ -2649,7 +2661,8 @@ function openCreate(preStore){
     <div class="sheet-head"><h2>Report new issue</h2><button class="x-btn" onclick="closeModal()">✕</button></div>
     <div class="sheet-body">
       <div class="field"><label class="label">Store</label>
-        <select class="input" id="cStore" ${ids.length===1?"disabled":""} onchange="syncCreateCats()">${storeOpts}</select></div>
+        ${storePicker({id:"cStore",ids,selected:preStore||(ids.length===1?ids[0]:""),
+          disabled:ids.length===1,onChange:"syncCreateCats()"})}</div>
       <div style="display:flex;gap:12px;margin-top:14px">
         <div class="field" style="flex:1"><label class="label">Category</label><select class="input" id="cCat" onchange="syncCreateSubs()"></select></div>
         <div class="field" style="flex:1"><label class="label">Priority</label><select class="input" id="cPri">${priOpts}</select></div>
@@ -3508,7 +3521,9 @@ function openEdit(id){
     : "";
   modal(`<div class="sheet-head"><h2>Edit ticket</h2><button class="x-btn" onclick="openTicket('${id}')">✕</button></div>
     <div class="sheet-body">
-      ${canMoveStore?`<div class="field"><label class="label">Store</label><select class="input" id="eStore" onchange="openEdit(EDIT_ID)">${storeOpts}</select></div>`:""}
+      ${canMoveStore?`<div class="field"><label class="label">Store</label>
+        ${storePicker({id:"eStore",ids:(SESSION.role==="admin"?Object.keys(RESTAURANTS):myStoreIds()),
+          selected:t.storeId,onChange:"openEdit(EDIT_ID)"})}</div>`:""}
       <div style="display:flex;gap:12px${canMoveStore?";margin-top:14px":""}">
         <div class="field" style="flex:1"><label class="label">Category</label><select class="input" id="eCat" onchange="syncEditSubs()">${catOpts}</select></div>
         <div class="field" style="flex:1"><label class="label">Priority</label><select class="input" id="ePri">${priOpts}</select></div></div>
@@ -4441,9 +4456,7 @@ function renderImportStep(){
     ${r.dupOf?`<div class="imp-warnbox">Looks like an existing ticket (${esc(r.dupOf)}). Skip if it's the same issue.</div>`:""}
     ${r.sibling?`<div class="imp-warnbox">Similar to ${esc(r.sibling)} earlier in this file — check it isn't the same issue.</div>`:""}
     <div class="imp-fields"><div class="field full"><label class="label">Store</label>
-      <select class="input" id="isStore" onchange="impStepStoreChanged()">
-        ${stores.map(id=>`<option value="${id}"${id===r.sid?" selected":""}>${esc(storeName(id))}</option>`).join("")}
-      </select>
+      ${storePicker({id:"isStore",ids:stores,selected:r.sid,onChange:"impStepStoreChanged()"})}
       <div class="uz-h mono" style="margin-top:4px;color:var(--ink-dim)">OwlOps said: ${esc(r.dept)}</div></div>
       <div class="field"><label class="label">Category</label>
         <select class="input" id="isCat" onchange="impStepCatChanged()">${catOpts}</select></div>
@@ -4962,6 +4975,88 @@ function renderClosedReport(){
     </div>
     <div class="sheet-foot"><button class="btn btn-ghost btn-block" onclick="closeModal()">Done</button></div>`);
 }
+
+
+/* ============================================================ SEARCHABLE STORE PICKER
+   A native <select> is unusable once you have 50+ stores — you scroll and read.
+   This renders a real <input> that filters as you type, backed by a hidden
+   <select> so every existing caller ($("cStore").value, onchange handlers,
+   form reads) keeps working untouched.
+   Matches on store name AND store number, so "28313" finds it as fast as "Cross". */
+function storePicker(opts){
+  const {id,ids,selected,onChange,allLabel,disabled}=opts;
+  const list=ids.slice().sort((a,b)=>storeName(a).localeCompare(storeName(b)));
+  const options=(allLabel?`<option value="all"${selected==="all"?" selected":""}>${esc(allLabel)}</option>`:"")
+    +list.map(sid=>`<option value="${sid}"${selected===sid?" selected":""}>${esc(storeName(sid))}</option>`).join("");
+  const cur=selected==="all"?(allLabel||""):(selected?storeName(selected):"");
+  const dis=disabled?" disabled":"";
+  return `<div class="sp" data-sp="${id}">
+    <select class="input sp-native" id="${id}"${dis} onchange="${onChange||""}">${options}</select>
+    <input class="input sp-input" id="${id}_q"${dis} autocomplete="off" spellcheck="false"
+      placeholder="Search stores…" value="${escA(cur)}"
+      onfocus="spOpen('${id}')" oninput="spFilter('${id}')"
+      onkeydown="spKey(event,'${id}')">
+    <button type="button" class="sp-caret"${dis} onclick="spToggle('${id}')" tabindex="-1">▾</button>
+    <div class="sp-menu" id="${id}_menu"></div>
+  </div>`;
+}
+function spEls(id){return {sel:$(id),q:$(id+"_q"),menu:$(id+"_menu")}}
+function spItems(id){
+  const {sel}=spEls(id); if(!sel)return[];
+  return [...sel.options].map(o=>({value:o.value,label:o.textContent}));
+}
+function spOpen(id){
+  const {q}=spEls(id); if(q)q.select();
+  spFilter(id,true);
+}
+function spToggle(id){
+  const {menu,q}=spEls(id);
+  if(menu&&menu.classList.contains("on")){spClose(id);}
+  else{if(q)q.focus();spFilter(id,true);}
+}
+function spClose(id){const {menu}=spEls(id);if(menu)menu.classList.remove("on")}
+function spFilter(id,showAll){
+  const {q,menu,sel}=spEls(id); if(!q||!menu||!sel)return;
+  const term=(showAll?"":q.value).trim().toLowerCase();
+  const hits=spItems(id).filter(o=>{
+    if(!term)return true;
+    const num=(o.value&&o.value!=="all")?String(store(o.value).storeNumber||"").toLowerCase():"";
+    return o.label.toLowerCase().includes(term)||num.includes(term);
+  }).slice(0,60);
+  menu.innerHTML=hits.length
+    ? hits.map((o,i)=>`<button type="button" class="sp-opt${o.value===sel.value?" cur":""}" data-i="${i}"
+        onclick="spPick('${id}','${escA(o.value)}')">${esc(o.label)}</button>`).join("")
+    : `<div class="sp-none">No store matches “${esc(q.value)}”</div>`;
+  menu.classList.add("on");
+  menu.scrollTop=0;
+}
+function spPick(id,val){
+  const {sel,q}=spEls(id); if(!sel)return;
+  sel.value=val;
+  const opt=[...sel.options].find(o=>o.value===val);
+  if(q)q.value=opt?opt.textContent:"";
+  spClose(id);
+  sel.dispatchEvent(new Event("change",{bubbles:true}));   // fire the caller's handler
+}
+/* Keyboard: Enter takes the first match, Escape restores what was selected. */
+function spKey(e,id){
+  const {menu,sel,q}=spEls(id);
+  if(e.key==="Escape"){
+    const opt=[...(sel?sel.options:[])].find(o=>o.value===sel.value);
+    if(q)q.value=opt?opt.textContent:"";
+    spClose(id);e.preventDefault();return;
+  }
+  if(e.key==="Enter"){
+    const first=menu&&menu.querySelector(".sp-opt");
+    if(first){first.click();e.preventDefault();}
+  }
+}
+document.addEventListener("click",e=>{
+  // close any open picker when tapping elsewhere
+  document.querySelectorAll(".sp-menu.on").forEach(m=>{
+    if(!m.closest(".sp").contains(e.target))m.classList.remove("on");
+  });
+});
 
 /* ============================================================ VENDORS */
 function openSettings(){
